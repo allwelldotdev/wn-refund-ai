@@ -1,0 +1,33 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO policy_versions\n           (version, rules, content_hash, author_kind, author_admin_id, change_note, reverted_from_version_id)\n         VALUES ($1, $2, $3, 'admin', $4, $5, $6)\n         RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "policy_versions",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Jsonb",
+        "Text",
+        "Uuid",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "26d291f64bd7dd7238e031b7f0b838f885bb8d706cfa57dc7f98e3cf22a466c8"
+}

@@ -5,6 +5,7 @@
 pub mod auth;
 pub mod config;
 pub mod error;
+pub mod policy;
 
 use std::sync::Arc;
 
@@ -43,6 +44,7 @@ pub fn build_router(state: AppState) -> Router {
     Router::new()
         .route("/api/health", get(health))
         .merge(auth::routes())
+        .merge(policy::routes())
         .fallback(|| async { ApiError::NotFound })
         .layer(DefaultBodyLimit::max(BODY_LIMIT_BYTES))
         .layer(TraceLayer::new_for_http())

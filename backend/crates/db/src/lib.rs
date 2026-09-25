@@ -3,6 +3,7 @@
 //! metadata in `backend/.sqlx` lets Docker builds compile without a database.
 
 pub mod auth;
+pub mod policy;
 pub mod seed;
 
 use std::time::Duration;
@@ -40,6 +41,13 @@ pub enum DbError {
     /// A stored value the code cannot interpret (a data-integrity bug).
     #[error("corrupt row: {0}")]
     Corrupt(String),
+}
+
+/// Decodes a `jsonb` column into its domain type.
+pub(crate) fn from_json<T: serde::de::DeserializeOwned>(
+    value: serde_json::Value,
+) -> Result<T, DbError> {
+    serde_json::from_value(value).map_err(|e| DbError::Corrupt(e.to_string()))
 }
 
 /// Each in-flight message pipeline holds one connection for its conversation
