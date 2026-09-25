@@ -6,6 +6,7 @@ use std::sync::Arc;
 use ai::OfflineAssistant;
 use anyhow::Context;
 use api::config::Config;
+use api::rate_limit::RateLimiter;
 use api::{AppState, build_router, prepare_database};
 use tracing_subscriber::EnvFilter;
 
@@ -39,6 +40,7 @@ async fn main() -> anyhow::Result<()> {
         db,
         assistant: Arc::new(OfflineAssistant),
         ai: Arc::new(config.ai),
+        rate: RateLimiter::default(),
     };
 
     tokio::spawn(api::review_job::sweep_pending(state.clone()));

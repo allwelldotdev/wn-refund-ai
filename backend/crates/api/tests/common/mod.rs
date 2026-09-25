@@ -7,6 +7,7 @@
 use std::sync::Arc;
 
 use ai::{AiConfig, FakeAssistant};
+use api::rate_limit::RateLimiter;
 use api::{AppState, build_router};
 use axum::Router;
 use axum::body::{Body, Bytes};
@@ -97,6 +98,7 @@ impl TestApp {
             db,
             assistant: fake.clone(),
             ai: Arc::new(AiConfig::load().expect("default AI config")),
+            rate: RateLimiter::default(),
         };
         TestApp {
             router: build_router(state.clone()),

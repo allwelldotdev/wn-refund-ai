@@ -9,6 +9,7 @@ pub mod conversations;
 pub mod error;
 pub mod pipeline;
 pub mod policy;
+pub mod rate_limit;
 pub mod review_job;
 pub mod sse;
 
@@ -24,6 +25,7 @@ use serde_json::{Value, json};
 use tower_http::trace::TraceLayer;
 
 use crate::error::ApiError;
+use crate::rate_limit::RateLimiter;
 
 /// Seed source for policy version 1 (ADR-016). Compiled in so the container
 /// needs no extra files at runtime.
@@ -37,6 +39,7 @@ pub struct AppState {
     pub db: Db,
     pub assistant: SharedAssistant,
     pub ai: Arc<AiConfig>,
+    pub rate: RateLimiter,
 }
 
 /// Applies migrations, then the idempotent seed. Runs on every startup.

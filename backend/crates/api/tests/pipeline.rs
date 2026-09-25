@@ -506,3 +506,28 @@ async fn message_guards(pool: PgPool) {
     assert_eq!(res.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert!(app.fake.calls_for(Stage::Intake).is_empty());
 }
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn the_eleventh_message_in_a_minute_is_rate_limited(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let george = app.login("george@example.com").await;
+    let conv = app.new_conversation(&george).await;
+    for i in 1..=10 {
+        let res = app.say(&george, &conv, &format!("Message {i}")).await;
+        assert_eq!(res.status, StatusCode::OK, "message {i}");
+    }
+    let res = app.say(&george, &conv, "Message 11").await;
+    assert_eq!(res.status, StatusCode::TOO_MANY_REQUESTS);
+    assert_eq!(res.error_code(), "rate_limited");
+    let retry: u64 = res.headers["retry-after"]
+        .to_str()
+        .unwrap()
+        .parse()
+        .unwrap();
+    assert!((1..=60).contains(&retry), "{retry}");
+
+    // The limit is per customer.
+    let hana = app.login("hana@example.com").await;
+    let other = app.new_conversation(&hana).await;
+    assert_eq!(app.say(&hana, &other, "Hello").await.status, StatusCode::OK);
+}

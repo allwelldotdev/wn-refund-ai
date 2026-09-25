@@ -96,6 +96,10 @@ async fn post_message(
     Path(conversation_id): Path<Uuid>,
     ApiJson(req): ApiJson<PostMessage>,
 ) -> Result<Response, ApiError> {
+    state
+        .rate
+        .check(s.customer_id)
+        .map_err(ApiError::RateLimited)?;
     let body = req.body.trim();
     if body.is_empty() {
         return Err(ApiError::field("body", "must not be empty"));
