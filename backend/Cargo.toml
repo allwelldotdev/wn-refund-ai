@@ -38,6 +38,9 @@ tower = { version = "0.5.3", features = ["util"] }
 http-body-util = "0.1.5"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"] }
+# Facade only: the agent runtime and derive macros are not used.
+rig = { version = "0.42.0", default-features = false, features = ["reqwest", "rustls"] }
+wiremock = "0.6.5"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

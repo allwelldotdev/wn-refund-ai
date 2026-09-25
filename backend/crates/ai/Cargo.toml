@@ -14,11 +14,13 @@ serde_json.workspace = true
 schemars.workspace = true
 thiserror.workspace = true
 toml.workspace = true
+rig.workspace = true
 
 [dev-dependencies]
 tokio.workspace = true
 chrono.workspace = true
 uuid.workspace = true
+wiremock.workspace = true
 
 [lints]
 workspace = true
