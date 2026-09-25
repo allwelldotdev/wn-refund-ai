@@ -1,0 +1,163 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT r.ref, r.state, c.name, c.email, o.ref AS \"order_ref?\", i.name AS \"item_name?\",\n                  r.amount_cents, r.reason_category, a.flags AS \"flags?\", v.status AS \"review_status?\",\n                  r.created_at, r.resolved_at\n           FROM refund_requests r\n           JOIN customers c ON c.id = r.customer_id\n           LEFT JOIN orders o ON o.id = r.order_id\n           LEFT JOIN order_items i ON i.id = r.order_item_id\n           LEFT JOIN decision_audit a ON a.refund_request_id = r.id\n           LEFT JOIN escalation_reviews v ON v.refund_request_id = r.id\n           WHERE ($1::text IS NULL OR r.state = $1)\n             AND ($2::text IS NULL OR r.ref ILIKE $2 OR c.name ILIKE $2\n                  OR c.email ILIKE $2 OR o.ref ILIKE $2)\n           ORDER BY r.created_at DESC, r.id\n           LIMIT $3 OFFSET $4",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "ref",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "refund_requests",
+            "name": "ref"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "state",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "refund_requests",
+            "name": "state"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customers",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "email",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customers",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "order_ref?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "orders",
+            "name": "ref"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "item_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "order_items",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "amount_cents",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "refund_requests",
+            "name": "amount_cents"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "reason_category",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "refund_requests",
+            "name": "reason_category"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "flags?",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "decision_audit",
+            "name": "flags"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "review_status?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "escalation_reviews",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "refund_requests",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "resolved_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "refund_requests",
+            "name": "resolved_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "afd25113b8fce1ca3883d8a5efbab847b792dfa7608313483d2310cb2e0a7aac"
+}

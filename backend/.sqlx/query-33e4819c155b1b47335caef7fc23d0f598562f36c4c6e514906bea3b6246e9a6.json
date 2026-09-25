@@ -1,0 +1,124 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT v.status, v.draft, v.error, v.model, v.latency_ms, v.resolution,\n                  v.resolution_note, a.name AS \"resolved_by?\", v.resolved_at\n           FROM escalation_reviews v\n           LEFT JOIN admins a ON a.id = v.resolved_by_admin_id\n           WHERE v.refund_request_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "escalation_reviews",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "draft",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "escalation_reviews",
+            "name": "draft"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "error",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "escalation_reviews",
+            "name": "error"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "model",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "escalation_reviews",
+            "name": "model"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "latency_ms",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "escalation_reviews",
+            "name": "latency_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "resolution",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "escalation_reviews",
+            "name": "resolution"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "resolution_note",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "escalation_reviews",
+            "name": "resolution_note"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "resolved_by?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "admins",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "resolved_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "escalation_reviews",
+            "name": "resolved_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "33e4819c155b1b47335caef7fc23d0f598562f36c4c6e514906bea3b6246e9a6"
+}

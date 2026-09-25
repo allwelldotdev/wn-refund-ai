@@ -2,6 +2,7 @@
 //! `auth`, return `ApiError` on failure, and never decide a refund themselves:
 //! the message pipeline hands that to `domain::engine::decide`.
 
+pub mod admin;
 pub mod auth;
 pub mod config;
 pub mod conversations;
@@ -50,6 +51,7 @@ pub fn build_router(state: AppState) -> Router {
         .merge(auth::routes())
         .merge(policy::routes())
         .merge(conversations::routes())
+        .merge(admin::routes())
         .fallback(|| async { ApiError::NotFound })
         .layer(DefaultBodyLimit::max(BODY_LIMIT_BYTES))
         .layer(TraceLayer::new_for_http())

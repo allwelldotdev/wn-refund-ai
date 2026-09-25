@@ -2,6 +2,7 @@
 //! idempotent demo seed. Queries use SQLx compile-time checking; the offline
 //! metadata in `backend/.sqlx` lets Docker builds compile without a database.
 
+pub mod admin;
 pub mod auth;
 pub mod conversations;
 pub mod lock;

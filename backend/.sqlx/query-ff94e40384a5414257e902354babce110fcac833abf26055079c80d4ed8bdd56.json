@@ -1,0 +1,136 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT a.verdict, a.flags, a.rule_trace, a.extracted, a.facts, a.stages,\n                a.evaluated_through_seq, a.policy_version_id, p.version, a.content_hash\n         FROM decision_audit a\n         JOIN policy_versions p ON p.id = a.policy_version_id\n         WHERE a.refund_request_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "verdict",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "decision_audit",
+            "name": "verdict"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "flags",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "decision_audit",
+            "name": "flags"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "rule_trace",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "decision_audit",
+            "name": "rule_trace"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "extracted",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "decision_audit",
+            "name": "extracted"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "facts",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "decision_audit",
+            "name": "facts"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "stages",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "decision_audit",
+            "name": "stages"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "evaluated_through_seq",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "decision_audit",
+            "name": "evaluated_through_seq"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "policy_version_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "decision_audit",
+            "name": "policy_version_id"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "version",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "policy_versions",
+            "name": "version"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "content_hash",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "decision_audit",
+            "name": "content_hash"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "ff94e40384a5414257e902354babce110fcac833abf26055079c80d4ed8bdd56"
+}

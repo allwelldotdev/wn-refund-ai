@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT to_jsonb(r) AS \"request!\",\n                  (SELECT to_jsonb(a) FROM decision_audit a WHERE a.refund_request_id = r.id) AS decision_audit,\n                  (SELECT to_jsonb(v) FROM escalation_reviews v WHERE v.refund_request_id = r.id) AS escalation_review,\n                  (SELECT coalesce(jsonb_agg(to_jsonb(e) ORDER BY e.created_at, e.id), '[]'::jsonb)\n                   FROM request_events e WHERE e.refund_request_id = r.id) AS \"events!\"\n           FROM refund_requests r WHERE r.ref = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "request!",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "decision_audit",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "escalation_review",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "events!",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "a168abbfa31732881959454930920848b08b1b13dbde67b514a0f2ddb7dd4ad9"
+}
