@@ -22,6 +22,15 @@ services:
       dockerfile: backend/Dockerfile
     environment:
       DATABASE_URL: postgres://refund:refund@postgres:5432/refund
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?set OPENROUTER_API_KEY in .env (see .env.example)}
+      # Empty means "use backend/crates/ai/models.toml".
+      AI_INTAKE_MODEL: ${AI_INTAKE_MODEL:-}
+      AI_INTAKE_EFFORT: ${AI_INTAKE_EFFORT:-}
+      AI_RESPONDER_MODEL: ${AI_RESPONDER_MODEL:-}
+      AI_RESPONDER_EFFORT: ${AI_RESPONDER_EFFORT:-}
+      AI_REVIEW_MODEL: ${AI_REVIEW_MODEL:-}
+      AI_REVIEW_EFFORT: ${AI_REVIEW_EFFORT:-}
+      AI_FALLBACK_MODEL: ${AI_FALLBACK_MODEL:-}
       RUST_LOG: ${RUST_LOG:-info,sqlx=warn}
     ports:
       - "8080:8080"
