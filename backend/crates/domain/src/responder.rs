@@ -58,6 +58,32 @@ pub enum ResponderInput {
     },
 }
 
+impl ResponderInput {
+    pub fn target(&self) -> Option<&Target> {
+        match self {
+            ResponderInput::Clarify { .. } => None,
+            ResponderInput::Verdict { target, .. } => target.as_ref(),
+        }
+    }
+
+    /// What `validate_reply` checks a reply to this input against. Only an
+    /// approval must state the amount.
+    pub fn expectation(&self) -> ReplyExpectation {
+        match self {
+            ResponderInput::Clarify { .. } => ReplyExpectation::Clarify,
+            ResponderInput::Verdict {
+                verdict, target, ..
+            } => ReplyExpectation::Verdict {
+                verdict: *verdict,
+                amount_cents: target
+                    .as_ref()
+                    .filter(|_| *verdict == Verdict::Approved)
+                    .map(|t| t.amount_cents),
+            },
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ReplyExpectation {
     Clarify,
@@ -272,6 +298,32 @@ mod tests {
         }
         let approved = fallback_reply(&verdict(Verdict::Approved, None), Some(&target));
         assert!(approved.contains("$1,299.00") && approved.contains("ORD-1006"));
+    }
+
+    #[test]
+    fn expectation_requires_the_amount_only_for_approvals() {
+        let target = Some(Target::new("ORD-1001", "Wireless headphones", 8999));
+        let input = |v| ResponderInput::Verdict {
+            verdict: v,
+            target: target.clone(),
+            reasons: vec![],
+            policy_prose: String::new(),
+        };
+        assert_eq!(
+            input(Verdict::Approved).expectation(),
+            verdict(Verdict::Approved, Some(8999))
+        );
+        assert_eq!(
+            input(Verdict::Denied).expectation(),
+            verdict(Verdict::Denied, None)
+        );
+        let clarify = ResponderInput::Clarify {
+            missing: vec![MissingField::Order],
+            clarify_turn: 1,
+            policy_prose: String::new(),
+        };
+        assert_eq!(clarify.expectation(), E::Clarify);
+        assert_eq!(clarify.target(), None);
     }
 
     #[test]

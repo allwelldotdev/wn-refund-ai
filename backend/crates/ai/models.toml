@@ -1,0 +1,18 @@
+# Default model per LLM stage. Each value can be overridden with an AI_* env
+# variable (see .env.example); an empty variable counts as unset.
+fallback_model = "openai/gpt-5.6-luna"
+
+[intake]
+model = "openai/gpt-6-luna"
+effort = "low"
+timeout_secs = 30
+
+[responder]
+model = "openai/gpt-6-luna"
+effort = "none"
+timeout_secs = 30
+
+[review]
+model = "openai/gpt-6-luna-pro"
+effort = "medium"
+timeout_secs = 90
