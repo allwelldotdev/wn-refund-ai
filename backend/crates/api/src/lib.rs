@@ -4,6 +4,7 @@
 
 pub mod auth;
 pub mod config;
+pub mod conversations;
 pub mod error;
 pub mod policy;
 
@@ -45,6 +46,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/health", get(health))
         .merge(auth::routes())
         .merge(policy::routes())
+        .merge(conversations::routes())
         .fallback(|| async { ApiError::NotFound })
         .layer(DefaultBodyLimit::max(BODY_LIMIT_BYTES))
         .layer(TraceLayer::new_for_http())

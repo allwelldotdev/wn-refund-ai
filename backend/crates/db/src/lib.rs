@@ -3,6 +3,9 @@
 //! metadata in `backend/.sqlx` lets Docker builds compile without a database.
 
 pub mod auth;
+pub mod conversations;
+pub mod messages;
+pub mod orders;
 pub mod policy;
 pub mod seed;
 
@@ -43,11 +46,27 @@ pub enum DbError {
     Corrupt(String),
 }
 
+/// Decodes a `text` column holding one of the domain enums. The CHECK
+/// constraints make a failure here a bug, not user error.
+pub(crate) fn parse_enum<T>(value: &str) -> Result<T, DbError>
+where
+    T: std::str::FromStr<Err = domain::types::UnknownVariant>,
+{
+    value
+        .parse()
+        .map_err(|e: domain::types::UnknownVariant| DbError::Corrupt(e.to_string()))
+}
+
 /// Decodes a `jsonb` column into its domain type.
 pub(crate) fn from_json<T: serde::de::DeserializeOwned>(
     value: serde_json::Value,
 ) -> Result<T, DbError> {
     serde_json::from_value(value).map_err(|e| DbError::Corrupt(e.to_string()))
+}
+
+pub(crate) fn is_unique_violation(err: &sqlx::Error, constraint: &str) -> bool {
+    err.as_database_error()
+        .is_some_and(|e| e.is_unique_violation() && e.constraint() == Some(constraint))
 }
 
 /// Each in-flight message pipeline holds one connection for its conversation

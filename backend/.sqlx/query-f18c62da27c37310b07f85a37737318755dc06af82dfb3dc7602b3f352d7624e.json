@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO message_signals (message_id, scope, detector, start_char, end_char, score)\n             VALUES ($1, $2, $3, $4, $5, $6)\n             ON CONFLICT DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Int4",
+        "Int4",
+        "Float4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f18c62da27c37310b07f85a37737318755dc06af82dfb3dc7602b3f352d7624e"
+}
