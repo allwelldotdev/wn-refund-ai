@@ -210,6 +210,13 @@
 **Decision:** (c). Any flag adds a `fail_closed` Escalated entry to the trace; an item with an approved refund adds an `active_refund_exists` Escalated entry. `conflicting_claim_escalates` keeps only claim-versus-records conflicts: not received but delivered, a claimed amount above the paid amount, and contradictory statements. Both built-in entries appear in the trace like rules, with generic customer reasons ("This request needs a closer look from our team." and "This item already has a refund on record…") that never reveal what screening detected.
 **Rationale:** ADR-003 and ADR-013 are invariants, not policy preferences, so no admin edit can break them. Option (b) would need special-casing in the form and its validation. The trace still explains every escalation.
 
+## ADR-031: Backend runs on `OfflineAssistant` until OpenRouter is wired
+**Status:** Accepted
+**Context:** The build order puts the HTTP API, auth, conversations and the message pipeline (milestone 3) before the OpenRouter integration (milestone 4). The pipeline and its integration tests run on `FakeAssistant`, but the running binary needs some assistant, and `docker-compose.yml` does not yet pass `OPENROUTER_API_KEY` to the backend.
+**Options:** (a) refuse to start the binary without `OPENROUTER_API_KEY` from milestone 3 on; (b) run the binary with a stub `RefundAssistant` until milestone 4 adds the real provider.
+**Decision:** (b). `ai::OfflineAssistant`, defined in `backend/crates/ai/src/lib.rs` and wired in `backend/crates/api/src/main.rs`, implements `RefundAssistant`; every stage call (intake, respond, review) returns `AiError::Transport("no LLM provider is configured")`.
+**Rationale:** Option (a) would require the key before any code reads it, and `docker compose up` would fail for a reviewer without one. With (b), the live stack fails closed: the pipeline treats the failed intake as `llm_failure`, so every request becomes Escalated, the customer gets the Rust template reply (`domain::responder::fallback_reply`, ADR-003), and an admin resolves it manually. No request is approved or denied without a model. The background review job's single attempt also fails, marking escalation reviews failed instead of drafted. `docker compose up` still works without an API key during this period, and startup logs a warning that every refund request will be escalated. Milestone 4 replaces `OfflineAssistant` with the OpenRouter assistant plus a fail-fast key check and should supersede this ADR.
+
 ## Future work
 - LLM-assisted policy authoring with dry-run impact preview (ADR-019).
 - Fraud-scoring stage added to the pipeline (ADR-002).
