@@ -45,5 +45,7 @@ macro_rules! string_enum {
     };
 }
 
+pub mod money;
 pub mod policy;
+pub mod prose;
 pub mod types;
