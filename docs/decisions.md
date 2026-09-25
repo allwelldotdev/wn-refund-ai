@@ -1,13 +1,3 @@
-<!--
-EDITING RULE (for whoever modifies this file):
-Each entry records a significant software architecture design choice, along with its context,
-options considered, and the underlying rationale for the decision.
-Use the same fixed fields for every entry: Status, Context, Options, Decision, Rationale.
-Keep entries concise, straightforward and clearly communicated: short sentences, no filler, no duplication.
-Never delete or rewrite a past decision. If a decision changes, add a new entry and mark the old one
-"Superseded by ADR-NNN". Number entries sequentially.
--->
-
 # Architecture Decision Records: AI Refund Support System
 
 ## ADR-001: The LLM assists, a deterministic engine decides
