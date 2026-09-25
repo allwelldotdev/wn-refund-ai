@@ -56,7 +56,7 @@ Optional per-stage model overrides are documented in `.env.example` but not read
 
 ### Per-message pipeline (target design, from `docs/decisions.md`)
 
-The `ai` crate that runs the LLM stages lands in milestone 4; the diagram below is the fixed target design, with each LLM node labelled with its planned model slug and reasoning effort (defaults from `.env.example`).
+The `domain` crate (heuristic pre-scan and the deterministic policy engine `decide()`) is implemented; the `ai` crate that runs the LLM stages lands in milestone 4. The diagram below is the fixed target design, with each LLM node labelled with its planned model slug and reasoning effort (defaults from `.env.example`). The policy engine's rules are documented in prose at `policy/refund-policy.md`, rendered from the typed rules in `policy/default-policy.json`.
 
 ```mermaid
 flowchart LR
@@ -88,7 +88,7 @@ Today, only `postgres` and `backend` run; `api --> pg` is live, the rest is plan
 
 | Module | Role | Status |
 |---|---|---|
-| `backend/crates/domain` | Policy rule types (`Rule`, `Policy`), JSON parsing, range validation, canonical-JSON content hashing. Pure, no I/O. | The decision engine (`decide()`), prose renderer and heuristic pre-scan land in milestone 2. |
+| `backend/crates/domain` | Policy rule types (`Rule`, `Policy`); decision engine `decide()` (every enabled rule runs, most severe verdict wins, nothing fired means Escalated, plus two built-in fail-closed checks no policy can disable); prose renderer (`policy/refund-policy.md` is its snapshot); heuristic pre-scan (`role_marker`, `instruction_override`, `encoded_payload`, `unusual_unicode`, `abnormal_length` detectors, plus a 6-message window scan for split payloads); LLM stage contracts for intake, responder and review, including responder reply validation and the Rust fallback template. Pure, no I/O, no async. | Implemented. |
 | `backend/crates/db` | Postgres pool, migrations, idempotent demo seed (`seed.rs`). | Implemented. |
 | `backend/crates/ai` | `RefundAssistant` trait, OpenRouter integration, fake implementation for tests. | _Available after milestone 4._ |
 | `backend/crates/api` | Axum binary `refund-api`: startup (migrate + seed) and `GET /api/health`. | Auth, conversation and admin routes land in milestone 3. |
@@ -100,13 +100,14 @@ _Available after milestone 4._
 
 ## Security model
 
-The design below is fixed in `docs/decisions.md`; none of it is implemented in code yet. The heuristic pre-scan and policy engine land in milestone 2, authentication and role enforcement in milestone 3, the LLM stages (where fail-closed behaviour applies) in milestone 4, and plain-text message rendering in the frontend in milestone 5.
+The design below is fixed in `docs/decisions.md`. The heuristic pre-scan and policy engine (`backend/crates/domain`) are implemented and unit-tested. Authentication and role enforcement land in milestone 3, the LLM stages (where fail-closed behaviour also applies) in milestone 4, and plain-text message rendering in the frontend in milestone 5.
 
-- **Prompt-injection defence:** a Rust heuristic pre-scan checks role markers, instruction-override phrases, encoded payloads and unusual unicode, per message and across the whole conversation window (so a payload split across messages is still caught), before any LLM call runs.
-- **Session-derived identity:** the customer ID always comes from the authenticated session, never from chat text; the policy engine independently verifies that the referenced order belongs to that customer.
-- **Fail-closed:** any pre-scan signal, low intake confidence, a schema-validation failure, or a repeated LLM error escalates the request rather than approving or denying it.
-- **Plain-text rendering:** message bodies are always rendered as plain text, never as markup, even when they contain a flagged payload.
-- **Roles enforced in the API:** customer vs. admin access is checked in the Rust API, not only in the UI.
+- **Prompt-injection defence:** `domain::prescan` runs five detectors — `role_marker`, `instruction_override`, `encoded_payload`, `unusual_unicode` and `abnormal_length` (messages over 2000 chars) — on char offsets, per message and across a 6-message window, so a payload split across messages is still caught. A hit escalates the request before any LLM call runs; the patterns favour precision, and ambiguous manipulation is left to the intake LLM (milestone 4).
+- **Session-derived identity:** the customer ID always comes from the authenticated session, never from chat text (arrives milestone 3). Before the engine runs, the pipeline checks in Rust that any order the intake stage identified is one of that session customer's own orders; a reference to another customer's order raises the `foreign_order_reference` flag, which fails closed via the engine's built-in `fail_closed` check.
+- **Fail-closed, deterministic engine:** `domain::engine::decide()` evaluates every enabled rule and the most severe verdict wins; if nothing fires, the verdict is Escalated. Two checks sit outside the configurable policy and cannot be disabled by any policy setting: any flag (injection signal, low confidence, foreign order reference, LLM failure) produces a `fail_closed` Escalated entry, and an item that already has an approved refund produces an `active_refund_exists` Escalated entry (ADR-030). The full policy prose, rendered from the typed rules, is checked in to `policy/refund-policy.md`.
+- **Reply validation:** the responder LLM only words a decision the engine already made. `validate_reply` rejects any reply that names the wrong outcome, uses a forbidden word for a different verdict, or (for an approval) omits the approved amount; a Rust fallback template is used when the model fails or the reply is rejected.
+- **Plain-text rendering:** message bodies are always rendered as plain text, never as markup, even when they contain a flagged payload. (Frontend, milestone 5.)
+- **Roles enforced in the API:** customer vs. admin access is checked in the Rust API, not only in the UI. (Milestone 3.)
 
 ## Reading the audit trail
 
@@ -170,9 +171,14 @@ _Model evaluation results are produced by the eval script added in milestone 7. 
 
 ## Testing
 
-- `make test` — starts Postgres via compose, then runs `cargo test --workspace`. Works today; currently exercises the `domain` and `db` crates, since `api` and `ai` have no tests yet.
+- `make test` — starts Postgres via compose, then runs `cargo test --workspace`. Works today; `make check` currently runs 67 tests (59 in `domain`, 8 in `db`), since `api` and `ai` have no tests yet.
 - `make check` — `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, then `make test`; also runs `tsc` and `eslint` once a `frontend/` directory exists.
 - `make redteam` — _Available after milestone 7._ Running it today prints "Red-team suite is added in milestone 7." and exits with an error, by design.
+- The `domain` crate has a prose snapshot test (`backend/crates/domain/tests/prose_snapshot.rs`) that fails if the rendered policy drifts from `policy/refund-policy.md`. Regenerate the snapshot after a rule change with:
+
+```bash
+cd backend && UPDATE_POLICY_MD=1 cargo test -p domain --test prose_snapshot
+```
 
 ## Assumptions and trade-offs
 
@@ -180,6 +186,7 @@ Summarised from `docs/decisions.md`; ADR numbers there give the full context, op
 
 - The LLM assists but never decides a refund; a deterministic Rust engine produces the verdict and a rule trace (ADR-001).
 - Any pipeline failure or injection signal fails closed to Escalated, rather than auto-approving or auto-denying (ADR-003).
+- Two safety checks — any pipeline flag, and an item that already has an approved refund — sit outside the configurable rule list so no admin edit can disable them (ADR-030).
 - OpenRouter is the sole LLM provider, with per-stage model slugs and reasoning effort in config rather than hardcoded (ADR-011).
 - PostgreSQL was chosen over SQLite or Turso for concurrent writes, row locks and JSONB audit data (ADR-006); SQLx compile-time query checking is kept in Docker builds via committed offline metadata (ADR-007).
 - Policy is a typed, versioned rule list edited through a form, not free-text parsed by an LLM, so an invalid or ambiguous policy can never be saved (ADR-016 in the full log).
