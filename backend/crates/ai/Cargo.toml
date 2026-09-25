@@ -10,11 +10,15 @@ publish.workspace = true
 domain.workspace = true
 async-trait.workspace = true
 serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
 thiserror.workspace = true
 toml.workspace = true
 
 [dev-dependencies]
 tokio.workspace = true
+chrono.workspace = true
+uuid.workspace = true
 
 [lints]
 workspace = true

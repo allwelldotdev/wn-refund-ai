@@ -4,6 +4,7 @@
 
 pub mod config;
 pub mod fake;
+pub mod prompts;
 
 use std::sync::Arc;
 
