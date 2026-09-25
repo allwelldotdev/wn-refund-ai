@@ -1,6 +1,7 @@
 //! Escalation review contract. After an escalation, a stronger model drafts a
 //! case summary and a suggested resolution for the admin. The admin decides.
 
+use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +12,8 @@ use crate::types::Flag;
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct ReviewInput {
     pub request_ref: String,
+    /// When the engine decided; the reference point for time-based rules.
+    pub decided_at: DateTime<Utc>,
     pub order: Option<OrderFacts>,
     pub extracted: Option<IntakeOutput>,
     pub fired: Vec<FiredRule>,

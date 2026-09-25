@@ -54,6 +54,7 @@ async fn review(state: &AppState, refund_request_id: Uuid) -> anyhow::Result<()>
         .collect();
     let input = ReviewInput {
         request_ref: case.request_ref,
+        decided_at: case.facts.now,
         order: case.facts.order,
         extracted: case.extracted,
         fired: case.rule_trace,

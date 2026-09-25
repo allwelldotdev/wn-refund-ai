@@ -191,6 +191,7 @@ async fn review_uses_the_review_model_and_schema() {
             .await;
     let input = ReviewInput {
         request_ref: "RR-1001".into(),
+        decided_at: Utc::now(),
         order: None,
         extracted: None,
         fired: vec![],
