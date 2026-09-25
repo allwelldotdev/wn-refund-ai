@@ -10,12 +10,32 @@ cp .env.example .env
 docker compose up
 ```
 
-Today this starts Postgres and the Rust API only. The backend does not yet read `OPENROUTER_API_KEY` — the `ai` crate that consumes it lands in milestone 4 — and the frontend arrives in milestone 5, so there is no UI to open yet. What you get right now:
+Today this starts Postgres and the Rust API only; the frontend arrives in milestone 5, so there is no UI to open yet. The `ai` crate now exists, but `docker-compose.yml` does not pass `OPENROUTER_API_KEY` (or any `AI_*` variable) into the `backend` container, so the running binary uses `ai::OfflineAssistant` (ADR-031): every LLM call fails and every chat request is escalated to a human. The real OpenRouter integration lands in milestone 4.
 
 ```bash
 curl http://localhost:8080/api/health
 # {"status":"ok"}
 ```
+
+### Try it with curl
+
+```bash
+# Log in with a demo account (password demo1234)
+TOKEN=$(curl -s http://localhost:8080/api/auth/login \
+  -H 'content-type: application/json' \
+  -d '{"email":"alice@example.com","password":"demo1234"}' | jq -r .token)
+
+# Create a conversation
+CONV=$(curl -s http://localhost:8080/api/conversations \
+  -H "authorization: Bearer $TOKEN" -X POST | jq -r .id)
+
+# Post a message and watch the SSE stream
+curl -N http://localhost:8080/api/conversations/$CONV/messages \
+  -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+  -d "{\"client_msg_id\":\"$(uuidgen)\",\"body\":\"My wireless headphones from ORD-1001 arrived damaged.\"}"
+```
+
+Because the backend has no LLM provider wired up yet, this will escalate every time (`llm_failure`) and reply with the Rust fallback template, no matter what you ask. This example uses `jq` and `uuidgen`.
 
 ### Make targets (optional convenience)
 
@@ -24,7 +44,7 @@ curl http://localhost:8080/api/health
 ## Prerequisites
 
 - Docker with Compose v2 (the `docker compose` subcommand).
-- An OpenRouter account and API key, created at <https://openrouter.ai/keys>. Needed once the AI stages land in milestone 4; not required to run today's stack.
+- An OpenRouter account and API key, created at <https://openrouter.ai/keys>. Needed once the live provider lands in milestone 4; not required to run today's stack, since `docker-compose.yml` does not pass it to the backend yet.
 - For local, non-Docker backend development only: Rust 1.98.1, pinned in `backend/rust-toolchain.toml`. Node.js tooling is not needed yet — the frontend arrives in milestone 5.
 
 ## Environment variables
@@ -37,10 +57,10 @@ cp .env.example .env
 
 | Variable | Required | Default | Notes |
 |---|---|---|---|
-| `OPENROUTER_API_KEY` | Yes, per `.env.example` | none | Create a key at <https://openrouter.ai/keys>. Not consumed by any running service yet: `docker-compose.yml` does not currently pass it into the `backend` container, and the `ai` crate that would read it lands in milestone 4. |
-| `RUST_LOG` | No | `info,sqlx=warn` | Backend logging filter, already honoured by `backend/crates/api/src/main.rs`. |
+| `OPENROUTER_API_KEY` | Yes, per `.env.example` | none | Create a key at <https://openrouter.ai/keys>. Not consumed by any running service yet: `docker-compose.yml` does not pass it into the `backend` container, and the OpenRouter implementation of `RefundAssistant` lands in milestone 4. |
+| `RUST_LOG` | No | `info,sqlx=warn` | Backend logging filter, honoured by `backend/crates/api/src/main.rs`. |
 
-Optional per-stage model overrides are documented in `.env.example` but not read by any code yet — their defaults are planned to live in `backend/crates/ai/models.toml`, added with the `ai` crate in milestone 4:
+The `ai` crate now reads the `AI_*` overrides below (`AiConfig::load` in `backend/crates/ai/src/config.rs`, called from `backend/crates/api/src/config.rs`): a blank value counts as unset, and an invalid `*_EFFORT` value is a startup error naming the offending variable. `docker-compose.yml` does not pass any of them into the container yet, so the compiled-in defaults from `backend/crates/ai/models.toml` are what the container runs with even if you set them in `.env`; they take effect once you run the backend natively (`make dev`) or once compose forwards them in milestone 4.
 
 | Variable | Default (from `.env.example`) |
 |---|---|
@@ -54,23 +74,26 @@ Optional per-stage model overrides are documented in `.env.example` but not read
 
 ## Architecture
 
-### Per-message pipeline (target design, from `docs/decisions.md`)
+### Per-message pipeline
 
-The `domain` crate (heuristic pre-scan and the deterministic policy engine `decide()`) is implemented; the `ai` crate that runs the LLM stages lands in milestone 4. The diagram below is the fixed target design, with each LLM node labelled with its planned model slug and reasoning effort (defaults from `.env.example`). The policy engine's rules are documented in prose at `policy/refund-policy.md`, rendered from the typed rules in `policy/default-policy.json`.
+Implemented end to end in `backend/crates/api/src/pipeline.rs`, running on `ai::OfflineAssistant` until milestone 4 wires in OpenRouter (ADR-031). Each LLM node is labelled with its model slug and reasoning effort from `backend/crates/ai/models.toml`; the intake and responder stages retry once on `openai/gpt-5.6-luna` (the fallback model) before failing. The policy engine's rules are documented in prose at `policy/refund-policy.md`, rendered from the typed rules in `policy/default-policy.json`.
 
 ```mermaid
 flowchart LR
-    guards["Rust guards"] --> prescan["Heuristic pre-scan"]
+    guards["Rust guards (conversation lock, ownership checks)"] --> prescan["Heuristic pre-scan (window)"]
     prescan -- "injection signal" --> escalated["Escalated (fail closed)"]
     prescan -- "clear" --> intake["Intake LLM (openai/gpt-6-luna, low)"]
     intake -- "low confidence / schema failure / error" --> escalated
-    intake -- "complete" --> policy["Policy engine"]
+    intake -- "missing field" --> clarify["Clarifying question (up to 3 turns)"]
+    clarify --> intake
+    intake -- "complete" --> policy["Policy engine (decide)"]
     policy --> responder["Responder LLM (openai/gpt-6-luna, none)"]
+    responder -- "invalid reply / error" --> escalated
     escalated --> responder
     policy -- "verdict: Escalated" --> review["Review LLM (openai/gpt-6-luna-pro, medium), async"]
 ```
 
-The pipeline fails closed: any pre-scan signal, low intake confidence, a schema failure, or an LLM error escalates the request instead of approving or denying it.
+The pipeline fails closed: any pre-scan signal, low intake confidence, a schema failure, a foreign order reference, or an LLM error adds a flag that `decide()` turns into a `fail_closed` Escalated entry (ADR-030). A responder failure re-runs `decide()` with `responder_failure` added to the flags rather than overwriting the verdict directly (ADR-032): an Approved decision becomes Escalated, a Denied decision stays Denied and is worded by the Rust template. Escalation review runs asynchronously after the reply is sent, with a startup sweep that retries any review left pending by a restart.
 
 ### Compose topology (planned; frontend arrives in milestone 5)
 
@@ -90,28 +113,38 @@ Today, only `postgres` and `backend` run; `api --> pg` is live, the rest is plan
 |---|---|---|
 | `backend/crates/domain` | Policy rule types (`Rule`, `Policy`); decision engine `decide()` (every enabled rule runs, most severe verdict wins, nothing fired means Escalated, plus two built-in fail-closed checks no policy can disable); prose renderer (`policy/refund-policy.md` is its snapshot); heuristic pre-scan (`role_marker`, `instruction_override`, `encoded_payload`, `unusual_unicode`, `abnormal_length` detectors, plus a 6-message window scan for split payloads); LLM stage contracts for intake, responder and review, including responder reply validation and the Rust fallback template. Pure, no I/O, no async. | Implemented. |
 | `backend/crates/db` | Postgres pool, migrations, idempotent demo seed (`seed.rs`). | Implemented. |
-| `backend/crates/ai` | `RefundAssistant` trait, OpenRouter integration, fake implementation for tests. | _Available after milestone 4._ |
-| `backend/crates/api` | Axum binary `refund-api`: startup (migrate + seed) and `GET /api/health`. | Auth, conversation and admin routes land in milestone 3. |
+| `backend/crates/ai` | `RefundAssistant` trait (intake / respond / review); `AiConfig` (compiled-in `models.toml` plus `AI_*` env overrides); `FakeAssistant` for tests; `OfflineAssistant`, used by the running binary until milestone 4. | Implemented for its milestone-3 scope; the OpenRouter implementation lands in milestone 4. |
+| `backend/crates/api` | Axum binary `refund-api`: `/api/health`, session auth (`/api/auth/*`), customer routes (orders, conversations, the per-message pipeline), public and admin policy routes, and the admin request queue, case file and resolve endpoints. | Implemented for its milestone-3 scope. |
 | `frontend` | Next.js BFF, customer chat and admin dashboard. | _Available after milestone 5._ |
 
 ## How the AI integration works
 
-_Available after milestone 4._
+Three narrow LLM stages sit behind the `RefundAssistant` trait (`backend/crates/ai/src/lib.rs`), each with its own model slug, reasoning effort and timeout in `backend/crates/ai/models.toml`:
+
+- **Intake** (`openai/gpt-6-luna`, low effort) reads the customer's messages and the pipeline's own record of their orders, and extracts a structured claim: order, item, reason and a confidence score. It never sees or sets a verdict.
+- **Responder** (`openai/gpt-6-luna`, no reasoning) words the reply for a verdict the policy engine already produced. `domain::responder::validate_reply` rejects any reply that names a different outcome, uses a forbidden word for a different verdict, or omits the approved amount; a rejected or failed call falls back to a Rust template (`domain::responder::fallback_reply`).
+- **Review** (`openai/gpt-6-luna-pro`, medium effort) runs asynchronously, only for requests the engine escalated, to draft notes for the human admin who resolves the case. It cannot change the verdict.
+
+The LLM never decides a refund: every stage's output either feeds facts into `domain::engine::decide()` or words a verdict `decide()` already returned. Intake and the responder retry once on the fallback model (`openai/gpt-5.6-luna` by default, from `AI_FALLBACK_MODEL`; `api::pipeline::call_with_fallback`) before the call counts as failed; the review stage makes a single attempt with no fallback, since a failed draft only means the admin decides without one (`api::review_job`). Every attempt, on any stage, is bounded by that stage's `timeout_secs` from `models.toml`, enforced in the `api` crate. Today the running binary uses `ai::OfflineAssistant`, which fails every call outright, so every request is escalated and every reply is the Rust template (ADR-031); the OpenRouter-backed assistant lands in milestone 4.
 
 ## Security model
 
-The design below is fixed in `docs/decisions.md`. The heuristic pre-scan and policy engine (`backend/crates/domain`) are implemented and unit-tested. Authentication and role enforcement land in milestone 3, the LLM stages (where fail-closed behaviour also applies) in milestone 4, and plain-text message rendering in the frontend in milestone 5.
+The design is fixed in `docs/decisions.md`. The heuristic pre-scan, policy engine, authentication, role enforcement and the fail-closed pipeline are implemented. Plain-text message rendering lands in the frontend in milestone 5.
 
-- **Prompt-injection defence:** `domain::prescan` runs five detectors — `role_marker`, `instruction_override`, `encoded_payload`, `unusual_unicode` and `abnormal_length` (messages over 2000 chars) — on char offsets, per message and across a 6-message window, so a payload split across messages is still caught. A hit escalates the request before any LLM call runs; the patterns favour precision, and ambiguous manipulation is left to the intake LLM (milestone 4).
-- **Session-derived identity:** the customer ID always comes from the authenticated session, never from chat text (arrives milestone 3). Before the engine runs, the pipeline checks in Rust that any order the intake stage identified is one of that session customer's own orders; a reference to another customer's order raises the `foreign_order_reference` flag, which fails closed via the engine's built-in `fail_closed` check.
-- **Fail-closed, deterministic engine:** `domain::engine::decide()` evaluates every enabled rule and the most severe verdict wins; if nothing fires, the verdict is Escalated. Two checks sit outside the configurable policy and cannot be disabled by any policy setting: any flag (injection signal, low confidence, foreign order reference, LLM failure) produces a `fail_closed` Escalated entry, and an item that already has an approved refund produces an `active_refund_exists` Escalated entry (ADR-030). The full policy prose, rendered from the typed rules, is checked in to `policy/refund-policy.md`.
+- **Prompt-injection defence:** `domain::prescan` runs five detectors — `role_marker`, `instruction_override`, `encoded_payload`, `unusual_unicode` and `abnormal_length` (messages over 2000 chars) — on char offsets, per message and across a 6-message window, so a payload split across messages is still caught. A hit escalates the request before any LLM call runs; the patterns favour precision, and ambiguous manipulation is left to the intake LLM.
+- **Session-derived identity:** the customer ID always comes from the authenticated session (`CustomerSession` in `backend/crates/api/src/auth.rs`), never from chat text. Before the engine runs, the pipeline checks in Rust that any order the intake stage identified is one of that session customer's own orders; a reference to another customer's order raises the `foreign_order_reference` flag, which fails closed via the engine's built-in `fail_closed` check. Attaching an order the customer does not own to a message is rejected outright (403 `order_not_owned`).
+- **Fail-closed, deterministic engine:** `domain::engine::decide()` evaluates every enabled rule and the most severe verdict wins; if nothing fires, the verdict is Escalated. Two checks sit outside the configurable policy and cannot be disabled by any policy setting: any flag (injection signal, low confidence, foreign order reference, LLM failure, responder failure) produces a `fail_closed` Escalated entry, and an item that already has an approved refund produces an `active_refund_exists` Escalated entry (ADR-030). A responder failure re-runs `decide()` rather than overwriting the verdict, so an approval can never ship without a validated reply (ADR-032). The full policy prose, rendered from the typed rules, is checked in to `policy/refund-policy.md`.
 - **Reply validation:** the responder LLM only words a decision the engine already made. `validate_reply` rejects any reply that names the wrong outcome, uses a forbidden word for a different verdict, or (for an approval) omits the approved amount; a Rust fallback template is used when the model fails or the reply is rejected.
 - **Plain-text rendering:** message bodies are always rendered as plain text, never as markup, even when they contain a flagged payload. (Frontend, milestone 5.)
-- **Roles enforced in the API:** customer vs. admin access is checked in the Rust API, not only in the UI. (Milestone 3.)
+- **Roles enforced in the API:** every protected handler in `backend/crates/api` takes a `CustomerSession` or `AdminSession` extractor; a customer session on an admin route (or vice versa) is rejected with 403, and a customer's lookup of another customer's conversation is a 404, not a 403, so it does not confirm the id exists.
+- **Rate limiting:** `backend/crates/api/src/rate_limit.rs` allows 10 messages per minute per customer; over the limit returns 429 with body `{"error":{"code":"rate_limited","message":"Too many messages. Try again in N seconds."}}` and a `retry-after: N` response header (`ApiError::RateLimited`, `backend/crates/api/src/error.rs`).
+- **Body limits:** request bodies over 64 KiB are rejected with 413 (`DefaultBodyLimit`, `backend/crates/api/src/lib.rs`).
 
 ## Reading the audit trail
 
-`make psql` opens a `psql` shell on the compose database and works today:
+The admin API is implemented: `GET /api/admin/requests` lists requests (filterable by `state` and `q`, with `limit`/`offset`), `GET /api/admin/requests/{ref}` returns the case file, `GET /api/admin/requests/{ref}/audit` returns the raw `decision_audit` rows for that request, and `POST /api/admin/requests/{ref}/resolve` records an admin's approve/deny decision on an escalated request. The admin drawer that renders this in a UI is _available after milestone 5_ (frontend).
+
+Until then, `make psql` opens a `psql` shell on the compose database:
 
 ```bash
 make psql
@@ -127,8 +160,6 @@ ORDER BY created_at DESC
 LIMIT 20;
 
 -- Rule trace and policy version behind each decision
--- (decision_audit is only written by the policy engine, added in milestone 3/4;
--- the seeded history claims predate it and will not appear here)
 SELECT r.ref, d.verdict, d.rule_trace, d.policy_version_id, d.flags
 FROM decision_audit d
 JOIN refund_requests r ON r.id = d.refund_request_id
@@ -139,9 +170,16 @@ LIMIT 20;
 SELECT version, author_kind, change_note, created_at
 FROM policy_versions
 ORDER BY version;
-```
 
-The admin drawer and the `GET /api/admin/requests/{ref}/audit` endpoint are _Available after milestone 3/6._
+-- Requests currently sitting with a human, with the flags that escalated them
+-- (milestone 3 runs on OfflineAssistant, so expect llm_failure on most rows)
+SELECT r.ref, d.flags
+FROM refund_requests r
+JOIN decision_audit d ON d.refund_request_id = r.id
+WHERE r.state = 'escalated'
+ORDER BY r.created_at DESC
+LIMIT 20;
+```
 
 ## Demo accounts and scenario matrix
 
@@ -171,7 +209,7 @@ _Model evaluation results are produced by the eval script added in milestone 7. 
 
 ## Testing
 
-- `make test` — starts Postgres via compose, then runs `cargo test --workspace`. Works today; `make check` currently runs 67 tests (59 in `domain`, 8 in `db`), since `api` and `ai` have no tests yet.
+- `make test` — starts Postgres via compose, then runs `cargo test --workspace`: 121 tests today, split as `domain` 39 unit + 20 engine + 1 prose snapshot, `ai` 6, `db` 4 unit + 5 seed + 4 policy_versions + 2 refunds, `api` 2 unit + 7 auth + 4 policy + 4 conversations + 15 pipeline + 6 admin + 2 scenarios. `api/tests/scenarios.rs` asserts every seeded scenario's documented verdict and flags without calling an LLM.
 - `make check` — `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, then `make test`; also runs `tsc` and `eslint` once a `frontend/` directory exists.
 - `make redteam` — _Available after milestone 7._ Running it today prints "Red-team suite is added in milestone 7." and exits with an error, by design.
 - The `domain` crate has a prose snapshot test (`backend/crates/domain/tests/prose_snapshot.rs`) that fails if the rendered policy drifts from `policy/refund-policy.md`. Regenerate the snapshot after a rule change with:
@@ -193,6 +231,8 @@ Summarised from `docs/decisions.md`; ADR numbers there give the full context, op
 - One Next.js app acts as a BFF with per-tab sessions, so two roles can be tested side by side in one browser (ADR-010).
 - There is no payout step; a decision (and an admin's later approve/deny) is the end state (ADR-025). Attachments and LLM-assisted policy authoring are deferred (ADR-026, ADR-019).
 - The exported design mockup is a visual reference only; where its behaviour differs from the spec, the spec wins (ADR-028, ADR-029).
+- The running binary uses a stub `RefundAssistant` (`ai::OfflineAssistant`) until OpenRouter is wired in milestone 4, so `docker compose up` needs no API key today; every request fails closed to Escalated with `llm_failure` in the meantime (ADR-031).
+- A responder failure is folded into the engine as a `responder_failure` flag and `decide()` runs again, rather than overwriting the verdict outside the engine, so the stored rule trace always explains the final verdict (ADR-032).
 
 ## Future work
 
