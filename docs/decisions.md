@@ -203,6 +203,13 @@
 **Decision:** (c). ADR-028 still governs how the mockup is used once present. This extends ADR-028; it does not supersede it.
 **Rationale:** No backend milestone depends on visual design, so nothing waits. The frontend still gets the reference it was meant to follow.
 
+## ADR-030: Safety checks live outside the configurable rule list
+**Status:** Accepted
+**Context:** Admins can enable, disable and tune every rule (ADR-016). The original design put two safety conditions inside the configurable `conflicting_claim_escalates` rule: pipeline flags (injection signals, low confidence, a foreign order reference, LLM failure) and "this item already has an approved refund". If an admin disabled that rule, a flagged request could be approved, and a second refund for an already-refunded item could be approved too, colliding with the unique partial index (ADR-013) and failing with a database error instead of a reply.
+**Options:** (a) keep both conditions inside the configurable rule; (b) forbid disabling `conflicting_claim_escalates`; (c) move them into two built-in checks in `decide()` that no policy setting can switch off.
+**Decision:** (c). Any flag adds a `fail_closed` Escalated entry to the trace; an item with an approved refund adds an `active_refund_exists` Escalated entry. `conflicting_claim_escalates` keeps only claim-versus-records conflicts: not received but delivered, a claimed amount above the paid amount, and contradictory statements. Both built-in entries appear in the trace like rules, with generic customer reasons ("This request needs a closer look from our team." and "This item already has a refund on record…") that never reveal what screening detected.
+**Rationale:** ADR-003 and ADR-013 are invariants, not policy preferences, so no admin edit can break them. Option (b) would need special-casing in the form and its validation. The trace still explains every escalation.
+
 ## Future work
 - LLM-assisted policy authoring with dry-run impact preview (ADR-019).
 - Fraud-scoring stage added to the pipeline (ADR-002).
