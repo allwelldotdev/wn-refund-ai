@@ -27,11 +27,15 @@ regex = "1.13.1"
 schemars = { version = "1.2.2", features = ["uuid1"] }
 async-trait = "0.1.92"
 toml = "1.1.6"
+tokio-stream = "0.1.19"
+futures-util = "0.3.34"
 argon2 = "0.6.0"
 tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread", "net", "signal", "time", "sync"] }
 sqlx = { version = "0.9.0", default-features = false, features = ["postgres", "runtime-tokio", "tls-rustls", "macros", "migrate", "json", "uuid", "chrono"] }
 axum = "0.8.9"
 tower-http = { version = "0.6", features = ["trace", "limit"] }
+tower = { version = "0.5.3", features = ["util"] }
+http-body-util = "0.1.5"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"] }
 
@@ -40,3 +44,10 @@ unsafe_code = "forbid"
 
 [workspace.lints.clippy]
 dbg_macro = "warn"
+
+# Password hashing runs on every login and seed; unoptimized it dominates test time.
+[profile.dev.package.argon2]
+opt-level = 3
+
+[profile.dev.package.blake2]
+opt-level = 3

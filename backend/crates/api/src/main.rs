@@ -1,9 +1,11 @@
 //! `refund-api`         migrate, seed, then serve on BIND_ADDR (default 0.0.0.0:8080)
 //! `refund-api seed`    migrate and seed, then exit
 
-use std::net::SocketAddr;
+use std::sync::Arc;
 
+use ai::OfflineAssistant;
 use anyhow::Context;
+use api::config::Config;
 use api::{AppState, build_router, prepare_database};
 use tracing_subscriber::EnvFilter;
 
@@ -15,8 +17,8 @@ async fn main() -> anyhow::Result<()> {
         )
         .init();
 
-    let database_url = std::env::var("DATABASE_URL").context("DATABASE_URL must be set")?;
-    let db = db::connect(&database_url)
+    let config = Config::from_env()?;
+    let db = db::connect(&config.database_url)
         .await
         .context("connecting to Postgres")?;
     let report = prepare_database(&db)
@@ -30,13 +32,18 @@ async fn main() -> anyhow::Result<()> {
         None => {}
     }
 
-    let addr: SocketAddr = std::env::var("BIND_ADDR")
-        .unwrap_or_else(|_| "0.0.0.0:8080".into())
-        .parse()
-        .context("BIND_ADDR must be host:port")?;
-    let listener = tokio::net::TcpListener::bind(addr).await?;
-    tracing::info!(%addr, "listening");
-    axum::serve(listener, build_router(AppState { db }))
+    // No LLM provider is wired yet: every stage call fails, so every request
+    // fails closed to Escalated and waits for an admin (ADR-031).
+    tracing::warn!("no LLM provider configured; every refund request will be escalated");
+    let state = AppState {
+        db,
+        assistant: Arc::new(OfflineAssistant),
+        ai: Arc::new(config.ai),
+    };
+
+    let listener = tokio::net::TcpListener::bind(config.bind_addr).await?;
+    tracing::info!(addr = %config.bind_addr, "listening");
+    axum::serve(listener, build_router(state))
         .with_graceful_shutdown(shutdown_signal())
         .await?;
     Ok(())

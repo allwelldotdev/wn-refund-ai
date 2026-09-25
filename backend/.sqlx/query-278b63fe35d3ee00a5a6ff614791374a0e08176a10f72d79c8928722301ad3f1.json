@@ -1,0 +1,42 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT name AS \"name!\", email AS \"email!\", role AS \"role!\", scenario\n           FROM (SELECT name, email, 'admin' AS role, NULL::text AS scenario FROM admins\n                 UNION ALL\n                 SELECT name, email, 'customer', scenario FROM customers) accounts\n           ORDER BY role, name",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "email!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "role!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "scenario",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "278b63fe35d3ee00a5a6ff614791374a0e08176a10f72d79c8928722301ad3f1"
+}

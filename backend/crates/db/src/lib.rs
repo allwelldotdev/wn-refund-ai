@@ -2,11 +2,13 @@
 //! idempotent demo seed. Queries use SQLx compile-time checking; the offline
 //! metadata in `backend/.sqlx` lets Docker builds compile without a database.
 
+pub mod auth;
 pub mod seed;
 
 use std::time::Duration;
 
 use sqlx::postgres::{PgPool, PgPoolOptions};
+use uuid::Uuid;
 
 #[derive(Clone, Debug)]
 pub struct Db(pub PgPool);
@@ -21,11 +23,30 @@ pub enum DbError {
     InvalidPolicy(Vec<domain::policy::FieldError>),
     #[error("password hashing failed: {0}")]
     PasswordHash(String),
+    #[error("not found")]
+    NotFound,
+    /// A business rule enforced by the database, e.g. `duplicate_active_refund`.
+    #[error("conflict: {0}")]
+    Conflict(&'static str),
+    /// A policy edit was based on a version that is no longer the latest.
+    #[error("stale base: latest policy is version {latest_version}")]
+    StaleBase {
+        latest_id: Uuid,
+        latest_version: i32,
+    },
+    /// A policy edit that would not change the rules.
+    #[error("no change")]
+    NoOp,
+    /// A stored value the code cannot interpret (a data-integrity bug).
+    #[error("corrupt row: {0}")]
+    Corrupt(String),
 }
 
+/// Each in-flight message pipeline holds one connection for its conversation
+/// lock, so the pool is sized above the expected concurrency.
 pub async fn connect(database_url: &str) -> Result<Db, DbError> {
     let pool = PgPoolOptions::new()
-        .max_connections(10)
+        .max_connections(20)
         .acquire_timeout(Duration::from_secs(5))
         .connect(database_url)
         .await?;
