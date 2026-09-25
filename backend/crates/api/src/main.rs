@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use ai::OfflineAssistant;
+use ai::OpenRouterAssistant;
 use anyhow::Context;
 use api::config::Config;
 use api::rate_limit::RateLimiter;
@@ -18,7 +18,20 @@ async fn main() -> anyhow::Result<()> {
         )
         .init();
 
+    let serve = match std::env::args().nth(1).as_deref() {
+        None => true,
+        Some("seed") => false,
+        Some(other) => anyhow::bail!("unknown command `{other}`; expected no argument or `seed`"),
+    };
     let config = Config::from_env()?;
+    // Checked before touching the database, so a missing key fails fast.
+    let assistant = if serve {
+        let key = config.openrouter_api_key()?;
+        Some(OpenRouterAssistant::new(key).context("building the OpenRouter client")?)
+    } else {
+        None
+    };
+
     let db = db::connect(&config.database_url)
         .await
         .context("connecting to Postgres")?;
@@ -27,18 +40,20 @@ async fn main() -> anyhow::Result<()> {
         .context("migrating and seeding")?;
     tracing::info!(?report, "database ready");
 
-    match std::env::args().nth(1).as_deref() {
-        Some("seed") => return Ok(()),
-        Some(other) => anyhow::bail!("unknown command `{other}`; expected no argument or `seed`"),
-        None => {}
-    }
-
-    // No LLM provider is wired yet: every stage call fails, so every request
-    // fails closed to Escalated and waits for an admin (ADR-031).
-    tracing::warn!("no LLM provider configured; every refund request will be escalated");
+    let Some(assistant) = assistant else {
+        return Ok(());
+    };
+    let ai = &config.ai;
+    tracing::info!(
+        intake = %ai.intake.model,
+        responder = %ai.responder.model,
+        review = %ai.review.model,
+        fallback = %ai.fallback_model,
+        "LLM provider: OpenRouter"
+    );
     let state = AppState {
         db,
-        assistant: Arc::new(OfflineAssistant),
+        assistant: Arc::new(assistant),
         ai: Arc::new(config.ai),
         rate: RateLimiter::default(),
     };

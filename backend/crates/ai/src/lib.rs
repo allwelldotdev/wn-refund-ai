@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 
 pub use config::{AiConfig, ConfigError, Effort, Stage, StageModel};
 pub use fake::FakeAssistant;
+pub use openrouter::OpenRouterAssistant;
 
 /// How one stage call went. Stored in `decision_audit.stages`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -95,39 +96,3 @@ pub trait RefundAssistant: Send + Sync {
 }
 
 pub type SharedAssistant = Arc<dyn RefundAssistant>;
-
-/// Used when no LLM provider is configured. Every call fails, so the pipeline
-/// fails closed: each request escalates to a human with `llm_failure` and the
-/// customer gets the template reply.
-pub struct OfflineAssistant;
-
-impl OfflineAssistant {
-    const MESSAGE: &str = "no LLM provider is configured";
-}
-
-#[async_trait]
-impl RefundAssistant for OfflineAssistant {
-    async fn intake(
-        &self,
-        _: &IntakeInput,
-        _: &StageModel,
-    ) -> Result<Completed<IntakeOutput>, AiError> {
-        Err(AiError::Transport(Self::MESSAGE.into()))
-    }
-
-    async fn respond(
-        &self,
-        _: &ResponderInput,
-        _: &StageModel,
-    ) -> Result<Completed<String>, AiError> {
-        Err(AiError::Transport(Self::MESSAGE.into()))
-    }
-
-    async fn review(
-        &self,
-        _: &ReviewInput,
-        _: &StageModel,
-    ) -> Result<Completed<ReviewOutput>, AiError> {
-        Err(AiError::Transport(Self::MESSAGE.into()))
-    }
-}

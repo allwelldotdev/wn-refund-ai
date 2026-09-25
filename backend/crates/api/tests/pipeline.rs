@@ -531,3 +531,33 @@ async fn the_eleventh_message_in_a_minute_is_rate_limited(pool: PgPool) {
     let other = app.new_conversation(&hana).await;
     assert_eq!(app.say(&hana, &other, "Hello").await.status, StatusCode::OK);
 }
+
+/// The stage timeout is enforced around the assistant call itself, so a
+/// provider that hangs cannot stall the conversation.
+#[tokio::test]
+async fn a_hung_primary_call_times_out_and_the_fallback_answers() {
+    let mut ai = ai::AiConfig::load().unwrap();
+    ai.intake.timeout_secs = 1;
+    let fallback = ai.fallback_model.clone();
+    let (output, log) = api::pipeline::call_with_fallback(&ai, Stage::Intake, |model| {
+        let hang = model.model != fallback;
+        async move {
+            if hang {
+                tokio::time::sleep(Duration::from_secs(30)).await;
+            }
+            Ok(ai::Completed {
+                output: model.model.clone(),
+                record: ai::StageRecord::new(&model),
+            })
+        }
+    })
+    .await;
+
+    assert_eq!(output.as_deref(), Some("openai/gpt-5.6-luna"));
+    let record = log.record.unwrap();
+    assert_eq!((record.attempt, record.fallback), (2, true));
+    assert!(record.latency_ms < 1000, "{}", record.latency_ms);
+    assert_eq!(log.failures.len(), 1);
+    assert_eq!(log.failures[0].model, "openai/gpt-6-luna");
+    assert_eq!(log.failures[0].error, "timeout after 1s");
+}
