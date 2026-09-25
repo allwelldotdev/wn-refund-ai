@@ -48,5 +48,6 @@ macro_rules! string_enum {
 pub mod engine;
 pub mod money;
 pub mod policy;
+pub mod prescan;
 pub mod prose;
 pub mod types;
