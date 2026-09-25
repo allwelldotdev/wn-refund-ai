@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO request_events (refund_request_id, kind, actor_kind, payload)\n             VALUES ($1, 'review_failed', 'system', $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d71127377aaecc2f38b6995d673ddcb52201b9dccc78b10310ff50ab7b006883"
+}

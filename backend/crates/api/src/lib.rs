@@ -6,7 +6,10 @@ pub mod auth;
 pub mod config;
 pub mod conversations;
 pub mod error;
+pub mod pipeline;
 pub mod policy;
+pub mod review_job;
+pub mod sse;
 
 use std::sync::Arc;
 

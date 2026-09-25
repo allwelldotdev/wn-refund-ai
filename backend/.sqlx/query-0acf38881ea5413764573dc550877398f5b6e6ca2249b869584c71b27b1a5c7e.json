@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT refund_request_id FROM escalation_reviews WHERE status = 'pending' ORDER BY created_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "refund_request_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "escalation_reviews",
+            "name": "refund_request_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0acf38881ea5413764573dc550877398f5b6e6ca2249b869584c71b27b1a5c7e"
+}

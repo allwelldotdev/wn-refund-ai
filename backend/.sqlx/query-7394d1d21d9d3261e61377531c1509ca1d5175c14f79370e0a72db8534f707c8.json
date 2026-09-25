@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE escalation_reviews\n         SET status = 'drafted', draft = $2, model = $3, effort = $4, latency_ms = $5,\n             prompt_tokens = $6, completion_tokens = $7, drafted_at = now()\n         WHERE refund_request_id = $1 AND status = 'pending'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Jsonb",
+        "Text",
+        "Text",
+        "Int4",
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7394d1d21d9d3261e61377531c1509ca1d5175c14f79370e0a72db8534f707c8"
+}

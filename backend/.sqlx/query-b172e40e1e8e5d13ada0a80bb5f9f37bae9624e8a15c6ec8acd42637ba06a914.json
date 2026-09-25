@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO decision_audit\n           (refund_request_id, policy_version_id, content_hash, evaluated_through_seq, verdict,\n            prescan_signals, extracted, facts, rule_trace, flags, stages)\n         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Int4",
+        "Text",
+        "Jsonb",
+        "Jsonb",
+        "Jsonb",
+        "Jsonb",
+        "Jsonb",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b172e40e1e8e5d13ada0a80bb5f9f37bae9624e8a15c6ec8acd42637ba06a914"
+}

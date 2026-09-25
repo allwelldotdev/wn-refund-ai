@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE escalation_reviews\n         SET status = 'failed', error = $2, model = $3, effort = $4, latency_ms = $5\n         WHERE refund_request_id = $1 AND status = 'pending'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ca73c8dbece2dd0379a9a0c38220dbedd9e5b39141d612c16b9663cf64d75ca0"
+}

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO escalation_reviews (refund_request_id, status) VALUES ($1, 'pending')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "466ffa5f25db246fc451b33ee9823f77328f3c55c48ba705c5b4c42e78f8ecdb"
+}

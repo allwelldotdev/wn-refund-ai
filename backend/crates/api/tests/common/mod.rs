@@ -12,10 +12,13 @@ use axum::Router;
 use axum::body::{Body, Bytes};
 use axum::http::{HeaderMap, Method, Request, StatusCode, header};
 use db::Db;
+use domain::intake::{IntakeOutput, IntakeStatus, MissingField};
+use domain::types::ReasonCategory;
 use http_body_util::BodyExt;
 use serde_json::Value;
 use sqlx::PgPool;
 use tower::ServiceExt;
+use uuid::Uuid;
 
 pub struct TestApp {
     pub router: Router,
@@ -154,5 +157,90 @@ impl TestApp {
             .await;
         assert_eq!(res.status, StatusCode::OK, "login {email}");
         res.json()["token"].as_str().unwrap().to_owned()
+    }
+}
+
+impl TestApp {
+    pub async fn new_conversation(&self, token: &str) -> String {
+        let res = self
+            .post("/api/conversations", token, serde_json::json!({}))
+            .await;
+        assert_eq!(res.status, StatusCode::CREATED);
+        res.json()["id"].as_str().unwrap().to_owned()
+    }
+
+    /// Posts a customer message with a fresh `client_msg_id` and returns the
+    /// whole SSE response (the stream ends after `done`).
+    pub async fn say(&self, token: &str, conversation: &str, body: &str) -> TestResponse {
+        self.say_with(token, conversation, body, None, Uuid::new_v4())
+            .await
+    }
+
+    pub async fn say_with(
+        &self,
+        token: &str,
+        conversation: &str,
+        body: &str,
+        order_id: Option<Uuid>,
+        client_msg_id: Uuid,
+    ) -> TestResponse {
+        let mut req = serde_json::json!({ "client_msg_id": client_msg_id, "body": body });
+        if let Some(id) = order_id {
+            req["order_id"] = id.to_string().into();
+        }
+        self.post(
+            &format!("/api/conversations/{conversation}/messages"),
+            token,
+            req,
+        )
+        .await
+    }
+
+    /// The conversation's `decision_audit` row as JSON.
+    pub async fn audit(&self, conversation: &str) -> Value {
+        sqlx::query_scalar(
+            "SELECT to_jsonb(a) FROM decision_audit a
+             JOIN refund_requests r ON r.id = a.refund_request_id
+             WHERE r.conversation_id = $1::uuid",
+        )
+        .bind(conversation)
+        .fetch_one(&self.pool)
+        .await
+        .expect("conversation has a decision audit")
+    }
+}
+
+pub fn order_id(order_ref: &str) -> Uuid {
+    db::seed::stable_id("order", order_ref)
+}
+
+/// What a correct intake returns for the first item of a seeded order.
+pub fn complete_intake(order_ref: &str, reason: ReasonCategory) -> IntakeOutput {
+    IntakeOutput {
+        status: IntakeStatus::Complete,
+        missing: vec![],
+        order_id: Some(order_id(order_ref)),
+        order_item_id: Some(db::seed::item_id(order_ref, 0)),
+        mentioned_order_refs: vec![order_ref.to_owned()],
+        reason_category: Some(reason),
+        claimed_amount_cents: None,
+        contradictory_statements: false,
+        injection_signals: vec![],
+        confidence: 0.95,
+    }
+}
+
+pub fn needs_info_intake(missing: Vec<MissingField>) -> IntakeOutput {
+    IntakeOutput {
+        status: IntakeStatus::NeedsInfo,
+        missing,
+        order_id: None,
+        order_item_id: None,
+        mentioned_order_refs: vec![],
+        reason_category: None,
+        claimed_amount_cents: None,
+        contradictory_statements: false,
+        injection_signals: vec![],
+        confidence: 0.9,
     }
 }

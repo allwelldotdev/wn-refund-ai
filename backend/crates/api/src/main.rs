@@ -41,6 +41,8 @@ async fn main() -> anyhow::Result<()> {
         ai: Arc::new(config.ai),
     };
 
+    tokio::spawn(api::review_job::sweep_pending(state.clone()));
+
     let listener = tokio::net::TcpListener::bind(config.bind_addr).await?;
     tracing::info!(addr = %config.bind_addr, "listening");
     axum::serve(listener, build_router(state))
