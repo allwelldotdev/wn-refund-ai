@@ -30,7 +30,9 @@ use domain::intake::{
 };
 use domain::prescan::{WindowMessage, prescan_window};
 use domain::prose::render_policy;
-use domain::responder::{ResponderInput, Target, fallback_reply, holding_reply, validate_reply};
+use domain::responder::{
+    ResponderInput, Target, clean_reply, fallback_reply, holding_reply, validate_reply,
+};
 use domain::types::{AssistantKind, Flag, MessageRole, RequestState, SignalScope, Verdict};
 use serde::Serialize;
 use serde_json::json;
@@ -444,7 +446,7 @@ async fn respond(state: &AppState, input: &ResponderInput) -> (Option<String>, S
     let assistant = &state.assistant;
     call_with_fallback(&state.ai, Stage::Responder, |m| async move {
         let mut done = assistant.respond(input, &m).await?;
-        done.output = done.output.trim().to_owned();
+        done.output = clean_reply(&done.output);
         validate_reply(&done.output, &expectation).map_err(|v| AiError::Rejected(v.0))?;
         Ok(done)
     })

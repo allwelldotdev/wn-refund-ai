@@ -104,8 +104,31 @@ impl fmt::Display for ReplyViolation {
 
 impl std::error::Error for ReplyViolation {}
 
+/// Removes invisible formatting characters (soft hyphen, zero-width and bidi
+/// controls, word joiners, BOM, tag characters) and trims. Models sometimes
+/// emit them; run before `validate_reply` so a verdict word cannot hide from
+/// the checks behind one, and the customer never receives them.
+pub fn clean_reply(reply: &str) -> String {
+    let invisible = |c: char| {
+        matches!(c,
+            '\u{00AD}'
+            | '\u{034F}'
+            | '\u{061C}'
+            | '\u{180E}'
+            | '\u{200B}'..='\u{200F}'
+            | '\u{202A}'..='\u{202E}'
+            | '\u{2060}'..='\u{2064}'
+            | '\u{2066}'..='\u{2069}'
+            | '\u{FEFF}'
+            | '\u{E0000}'..='\u{E007F}')
+    };
+    let cleaned: String = reply.chars().filter(|c| !invisible(*c)).collect();
+    cleaned.trim().to_owned()
+}
+
 /// Case-insensitive word checks on the whole reply, so a model that drifts
-/// from the decided outcome is caught before the customer sees it.
+/// from the decided outcome is caught before the customer sees it. Expects
+/// text that went through `clean_reply`.
 pub fn validate_reply(reply: &str, expectation: &ReplyExpectation) -> Result<(), ReplyViolation> {
     let chars = reply.trim().chars().count();
     if chars == 0 {
@@ -327,6 +350,19 @@ mod tests {
         };
         assert_eq!(clarify.expectation(), E::Clarify);
         assert_eq!(clarify.target(), None);
+    }
+
+    #[test]
+    fn invisible_characters_are_removed_before_validation() {
+        assert_eq!(
+            clean_reply(" Clear\u{AD}ance coat\u{200B} was de\u{2060}nied.\u{FEFF}\n"),
+            "Clearance coat was denied."
+        );
+        // Hidden inside a forbidden word, it would otherwise pass the check.
+        let sneaky = "Your refund request has been denied, but it may be ap\u{AD}proved later.";
+        assert_eq!(check(sneaky, verdict(Verdict::Denied, None)), Ok(()));
+        let err = check(&clean_reply(sneaky), verdict(Verdict::Denied, None)).unwrap_err();
+        assert!(err.contains("\"approved\""), "{err}");
     }
 
     #[test]

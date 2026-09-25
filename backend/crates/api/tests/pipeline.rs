@@ -296,6 +296,29 @@ async fn a_responder_that_names_the_wrong_outcome_twice_escalates(pool: PgPool) 
     );
 }
 
+/// Seen live: a model put a soft hyphen inside an item name. Invisible
+/// characters are stripped before validation, streaming and storage.
+#[sqlx::test(migrations = "../../migrations")]
+async fn invisible_characters_never_reach_the_customer(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let alice = app.login("alice@example.com").await;
+    let conv = app.new_conversation(&alice).await;
+    app.fake
+        .push_intake(Ok(complete_intake("ORD-1001", ReasonCategory::Damaged)));
+    app.fake.push_respond(Ok(
+        "Good news: your refund of $89.99 for Wire\u{AD}less headphones has been ap\u{200B}proved.\u{FEFF}"
+            .into(),
+    ));
+
+    let res = app.say(&alice, &conv, "Headphones arrived broken.").await;
+    let clean = "Good news: your refund of $89.99 for Wireless headphones has been approved.";
+    assert_eq!(res.event("request_updated")["state"], "approved");
+    assert_eq!(res.event("reply_done")["body"], clean);
+    assert_eq!(tokens(&res), clean);
+    let got = app.get(&format!("/api/conversations/{conv}"), &alice).await;
+    assert_eq!(got.json()["messages"][1]["body"], clean);
+}
+
 #[sqlx::test(migrations = "../../migrations")]
 async fn a_repeated_client_msg_id_is_acknowledged_not_reprocessed(pool: PgPool) {
     let app = TestApp::new(pool).await;
