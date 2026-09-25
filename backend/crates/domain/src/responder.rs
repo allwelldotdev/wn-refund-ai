@@ -150,7 +150,7 @@ pub fn validate_reply(reply: &str, expectation: &ReplyExpectation) -> Result<(),
 /// Template reply for when the responder model fails twice. Always passes
 /// `validate_reply` for the same expectation.
 pub fn fallback_reply(expectation: &ReplyExpectation, target: Option<&Target>) -> String {
-    let subject = target.map_or_else(|| "your request".to_owned(), Target::phrase);
+    let about = target.map_or_else(String::new, |t| format!(" for {}", t.phrase()));
     match expectation {
         ReplyExpectation::Clarify => {
             "Could you tell me which order and item this is about, and what went wrong with it?"
@@ -160,18 +160,17 @@ pub fn fallback_reply(expectation: &ReplyExpectation, target: Option<&Target>) -
             verdict,
             amount_cents,
         } => match verdict {
-            Verdict::Approved => match amount_cents.or(target.map(|t| t.amount_cents)) {
-                Some(cents) => format!(
-                    "Good news: your refund of {} for {subject} has been approved.",
-                    format_cents(cents)
-                ),
-                None => format!("Good news: your refund for {subject} has been approved."),
-            },
+            Verdict::Approved => {
+                let amount = amount_cents
+                    .or(target.map(|t| t.amount_cents))
+                    .map_or_else(String::new, |c| format!(" of {}", format_cents(c)));
+                format!("Good news: your refund{amount}{about} has been approved.")
+            }
             Verdict::Denied => format!(
-                "Unfortunately, your refund request for {subject} has been denied under our refund policy."
+                "Unfortunately, your refund request{about} has been denied under our refund policy."
             ),
             Verdict::Escalated => format!(
-                "Your refund request for {subject} has been escalated to our support team for review. A support agent will follow up with you."
+                "Your refund request{about} has been escalated to our support team for review. A support agent will follow up with you."
             ),
         },
     }
@@ -298,6 +297,10 @@ mod tests {
         }
         let approved = fallback_reply(&verdict(Verdict::Approved, None), Some(&target));
         assert!(approved.contains("$1,299.00") && approved.contains("ORD-1006"));
+        assert_eq!(
+            fallback_reply(&verdict(Verdict::Escalated, None), None),
+            "Your refund request has been escalated to our support team for review. A support agent will follow up with you."
+        );
     }
 
     #[test]
