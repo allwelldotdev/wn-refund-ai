@@ -1,0 +1,14 @@
+# Rust
+/backend/target/
+
+# Node / Next.js
+node_modules/
+/frontend/.next/
+/frontend/out/
+
+# Secrets (copy .env.example to .env)
+.env
+
+# Misc
+*.log
+.DS_Store

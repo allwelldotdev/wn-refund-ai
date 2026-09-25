@@ -1,0 +1,16 @@
+[package]
+name = "domain"
+description = "Pure refund domain: types, policy rules, deterministic engine, prose renderer, heuristic pre-scan. No I/O."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+serde_path_to_error.workspace = true
+sha2.workspace = true
+
+[lints]
+workspace = true

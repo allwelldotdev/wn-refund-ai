@@ -1,0 +1,38 @@
+[workspace]
+resolver = "3"
+members = ["crates/domain", "crates/db", "crates/ai", "crates/api"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94"
+publish = false
+
+[workspace.dependencies]
+# internal
+domain = { path = "crates/domain" }
+db = { path = "crates/db" }
+ai = { path = "crates/ai" }
+
+# shared
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+serde_path_to_error = "0.1.20"
+thiserror = "2.0.21"
+anyhow = "1.0.104"
+uuid = { version = "1.26.1", features = ["v4", "v5", "serde"] }
+chrono = { version = "0.4.45", default-features = false, features = ["std", "clock", "serde"] }
+sha2 = "0.11.0"
+argon2 = "0.6.0"
+tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread", "net", "signal", "time", "sync"] }
+sqlx = { version = "0.9.0", default-features = false, features = ["postgres", "runtime-tokio", "tls-rustls", "macros", "migrate", "json", "uuid", "chrono"] }
+axum = "0.8.9"
+tower-http = { version = "0.6", features = ["trace", "limit"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"

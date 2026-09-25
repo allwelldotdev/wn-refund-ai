@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO refund_requests\n           (id, ref, conversation_id, customer_id, order_id, order_item_id, amount_cents,\n            reason_category, state, created_at, resolved_at)\n         VALUES ($1, $2, $3, $4, $5, $6, $7, 'damaged', 'resolved_approved', $8, $9)\n         ON CONFLICT (id) DO UPDATE\n         SET created_at = EXCLUDED.created_at, resolved_at = EXCLUDED.resolved_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Int8",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8fc598a48b4cf9d1559b7e5301f719363d8828f49f8964b82225e007b348e58b"
+}

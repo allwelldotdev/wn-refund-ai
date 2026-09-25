@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO orders (id, ref, customer_id, placed_at, delivered_at, status, total_cents)\n                 VALUES ($1, $2, $3, $4, $5, $6, $7)\n                 ON CONFLICT (id) DO UPDATE\n                 SET placed_at = EXCLUDED.placed_at, delivered_at = EXCLUDED.delivered_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Timestamptz",
+        "Timestamptz",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bb510a712460abfb37a8ea63afe01ebe41b2f1957a046257866c16f90cf1aa9a"
+}

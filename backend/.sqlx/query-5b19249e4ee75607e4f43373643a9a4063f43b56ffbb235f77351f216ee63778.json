@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO messages (id, conversation_id, seq, role, assistant_kind, body, created_at)\n         VALUES ($1, $2, 2, 'assistant', 'verdict', $3, $4)\n         ON CONFLICT (id) DO UPDATE SET created_at = EXCLUDED.created_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5b19249e4ee75607e4f43373643a9a4063f43b56ffbb235f77351f216ee63778"
+}

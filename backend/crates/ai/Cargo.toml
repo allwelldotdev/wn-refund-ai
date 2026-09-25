@@ -1,0 +1,12 @@
+[package]
+name = "ai"
+description = "LLM integration behind the RefundAssistant trait (OpenRouter via Rig), plus a fake for tests."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO policy_versions (version, rules, content_hash, author_kind, change_note)\n         SELECT 1, $1, $2, 'system', 'Initial policy seeded from policy/default-policy.json'\n         WHERE NOT EXISTS (SELECT 1 FROM policy_versions)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Jsonb",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ba1a11a585a8562acea013c8be845d7117e7e0e99b0ce0b4e1a573a2d043302b"
+}
