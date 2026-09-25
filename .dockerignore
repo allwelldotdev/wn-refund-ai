@@ -1,0 +1,8 @@
+**/target
+**/node_modules
+frontend/.next
+.git
+.env
+.claude
+CLAUDE.md
+*.log

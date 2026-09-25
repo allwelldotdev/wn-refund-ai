@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: refund
+      POSTGRES_PASSWORD: refund
+      POSTGRES_DB: refund
+    ports:
+      - "5432:5432"
+    volumes:
+      # Postgres 18+ images keep data under /var/lib/postgresql/<major>/docker.
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U refund -d refund"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgres://refund:refund@postgres:5432/refund
+      RUST_LOG: ${RUST_LOG:-info,sqlx=warn}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+
+volumes:
+  pgdata: {}
