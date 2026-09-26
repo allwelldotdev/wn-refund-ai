@@ -44,5 +44,23 @@ services:
       retries: 30
       start_period: 10s
 
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      # Server-side only: the browser talks to the BFF, never to the API.
+      BACKEND_URL: http://backend:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/login >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+
 volumes:
   pgdata: {}
