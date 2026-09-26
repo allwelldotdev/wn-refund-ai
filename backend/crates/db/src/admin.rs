@@ -2,7 +2,7 @@
 //! rows, and the final human decision on escalations.
 
 use chrono::{DateTime, Utc};
-use domain::types::{AssistantKind, MessageRole, ReasonCategory, RequestState, SignalScope};
+use domain::types::{AssistantKind, Flag, MessageRole, ReasonCategory, RequestState, SignalScope};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use uuid::Uuid;
@@ -15,6 +15,11 @@ pub struct ListFilter {
     /// Matched case-insensitively against request ref, customer name and
     /// email, and order ref.
     pub q: Option<String>,
+    /// Only requests created at or after this instant.
+    pub since: Option<DateTime<Utc>>,
+    /// Each group is a set of flag names; a request matches when its decision
+    /// audit carries at least one flag from every group.
+    pub flag_groups: Vec<Vec<Flag>>,
     pub limit: i64,
     pub offset: i64,
 }
@@ -36,6 +41,57 @@ pub struct ListItem {
     pub resolved_at: Option<DateTime<Utc>>,
 }
 
+/// Counts for the admin overview. `created` covers requests created at or
+/// after `since`, by their current state; the open-escalation figures cover
+/// every request still waiting for an admin.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct Stats {
+    pub since: DateTime<Utc>,
+    pub created: CreatedCounts,
+    pub open_escalations: i64,
+    pub oldest_open_escalation_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct CreatedCounts {
+    pub total: i64,
+    pub approved: i64,
+    pub denied: i64,
+    pub escalated: i64,
+    pub resolved_approved: i64,
+    pub resolved_denied: i64,
+}
+
+pub async fn stats(db: &Db, since: DateTime<Utc>) -> Result<Stats, DbError> {
+    let r = sqlx::query!(
+        r#"SELECT count(*) FILTER (WHERE created_at >= $1) AS "total!",
+                  count(*) FILTER (WHERE created_at >= $1 AND state = 'approved') AS "approved!",
+                  count(*) FILTER (WHERE created_at >= $1 AND state = 'denied') AS "denied!",
+                  count(*) FILTER (WHERE created_at >= $1 AND state = 'escalated') AS "escalated!",
+                  count(*) FILTER (WHERE created_at >= $1 AND state = 'resolved_approved') AS "resolved_approved!",
+                  count(*) FILTER (WHERE created_at >= $1 AND state = 'resolved_denied') AS "resolved_denied!",
+                  count(*) FILTER (WHERE state = 'escalated') AS "open_escalations!",
+                  min(created_at) FILTER (WHERE state = 'escalated') AS oldest_open_escalation_at
+           FROM refund_requests"#,
+        since,
+    )
+    .fetch_one(&db.0)
+    .await?;
+    Ok(Stats {
+        since,
+        created: CreatedCounts {
+            total: r.total,
+            approved: r.approved,
+            denied: r.denied,
+            escalated: r.escalated,
+            resolved_approved: r.resolved_approved,
+            resolved_denied: r.resolved_denied,
+        },
+        open_escalations: r.open_escalations,
+        oldest_open_escalation_at: r.oldest_open_escalation_at,
+    })
+}
+
 /// `%`, `_` and `\` in the search text match literally.
 fn like_pattern(q: &str) -> String {
     let escaped = q
@@ -53,16 +109,34 @@ pub async fn list_requests(db: &Db, f: &ListFilter) -> Result<(Vec<ListItem>, i6
             .map(str::trim)
             .filter(|q| !q.is_empty())
             .map(like_pattern);
+    // One comma-joined string per group keeps the query static.
+    let groups: Vec<String> = f
+        .flag_groups
+        .iter()
+        .map(|g| {
+            g.iter()
+                .map(|flag| flag.as_str())
+                .collect::<Vec<_>>()
+                .join(",")
+        })
+        .collect();
     let total = sqlx::query_scalar!(
         r#"SELECT count(*) AS "total!"
            FROM refund_requests r
            JOIN customers c ON c.id = r.customer_id
            LEFT JOIN orders o ON o.id = r.order_id
+           LEFT JOIN decision_audit a ON a.refund_request_id = r.id
            WHERE ($1::text IS NULL OR r.state = $1)
              AND ($2::text IS NULL OR r.ref ILIKE $2 OR c.name ILIKE $2
-                  OR c.email ILIKE $2 OR o.ref ILIKE $2)"#,
+                  OR c.email ILIKE $2 OR o.ref ILIKE $2)
+             AND ($3::timestamptz IS NULL OR r.created_at >= $3)
+             AND NOT EXISTS (
+                   SELECT 1 FROM unnest($4::text[]) AS g(grp)
+                   WHERE NOT (coalesce(a.flags, '[]'::jsonb) ?| string_to_array(g.grp, ',')))"#,
         state,
         pattern,
+        f.since,
+        &groups,
     )
     .fetch_one(&db.0)
     .await?;
@@ -79,10 +153,16 @@ pub async fn list_requests(db: &Db, f: &ListFilter) -> Result<(Vec<ListItem>, i6
            WHERE ($1::text IS NULL OR r.state = $1)
              AND ($2::text IS NULL OR r.ref ILIKE $2 OR c.name ILIKE $2
                   OR c.email ILIKE $2 OR o.ref ILIKE $2)
+             AND ($3::timestamptz IS NULL OR r.created_at >= $3)
+             AND NOT EXISTS (
+                   SELECT 1 FROM unnest($4::text[]) AS g(grp)
+                   WHERE NOT (coalesce(a.flags, '[]'::jsonb) ?| string_to_array(g.grp, ',')))
            ORDER BY r.created_at DESC, r.id
-           LIMIT $3 OFFSET $4"#,
+           LIMIT $5 OFFSET $6"#,
         state,
         pattern,
+        f.since,
+        &groups,
         f.limit,
         f.offset,
     )

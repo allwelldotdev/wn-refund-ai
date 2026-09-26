@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT r.ref, r.state, c.name, c.email, o.ref AS \"order_ref?\", i.name AS \"item_name?\",\n                  r.amount_cents, r.reason_category, a.flags AS \"flags?\", v.status AS \"review_status?\",\n                  r.created_at, r.resolved_at\n           FROM refund_requests r\n           JOIN customers c ON c.id = r.customer_id\n           LEFT JOIN orders o ON o.id = r.order_id\n           LEFT JOIN order_items i ON i.id = r.order_item_id\n           LEFT JOIN decision_audit a ON a.refund_request_id = r.id\n           LEFT JOIN escalation_reviews v ON v.refund_request_id = r.id\n           WHERE ($1::text IS NULL OR r.state = $1)\n             AND ($2::text IS NULL OR r.ref ILIKE $2 OR c.name ILIKE $2\n                  OR c.email ILIKE $2 OR o.ref ILIKE $2)\n           ORDER BY r.created_at DESC, r.id\n           LIMIT $3 OFFSET $4",
+  "query": "SELECT r.ref, r.state, c.name, c.email, o.ref AS \"order_ref?\", i.name AS \"item_name?\",\n                  r.amount_cents, r.reason_category, a.flags AS \"flags?\", v.status AS \"review_status?\",\n                  r.created_at, r.resolved_at\n           FROM refund_requests r\n           JOIN customers c ON c.id = r.customer_id\n           LEFT JOIN orders o ON o.id = r.order_id\n           LEFT JOIN order_items i ON i.id = r.order_item_id\n           LEFT JOIN decision_audit a ON a.refund_request_id = r.id\n           LEFT JOIN escalation_reviews v ON v.refund_request_id = r.id\n           WHERE ($1::text IS NULL OR r.state = $1)\n             AND ($2::text IS NULL OR r.ref ILIKE $2 OR c.name ILIKE $2\n                  OR c.email ILIKE $2 OR o.ref ILIKE $2)\n             AND ($3::timestamptz IS NULL OR r.created_at >= $3)\n             AND NOT EXISTS (\n                   SELECT 1 FROM unnest($4::text[]) AS g(grp)\n                   WHERE NOT (coalesce(a.flags, '[]'::jsonb) ?| string_to_array(g.grp, ',')))\n           ORDER BY r.created_at DESC, r.id\n           LIMIT $5 OFFSET $6",
   "describe": {
     "columns": [
       {
@@ -140,6 +140,8 @@
       "Left": [
         "Text",
         "Text",
+        "Timestamptz",
+        "TextArray",
         "Int8",
         "Int8"
       ]
@@ -159,5 +161,5 @@
       true
     ]
   },
-  "hash": "afd25113b8fce1ca3883d8a5efbab847b792dfa7608313483d2310cb2e0a7aac"
+  "hash": "9d49d1807728006308b16e5b46aadb17c7de56c364448e56cbe7c8e74f0bb883"
 }

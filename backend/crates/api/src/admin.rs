@@ -1,11 +1,12 @@
 //! Admin request routes: the queue, the case file, the raw audit rows, and
 //! resolving escalations. The admin makes the final call on every escalation.
 
-use axum::extract::{Path, Query, State};
+use axum::extract::{Path, RawQuery, State};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use db::admin::{ListFilter, RequestDetail, Resolution, Resolved};
-use domain::types::RequestState;
+use chrono::{DateTime, Utc};
+use db::admin::{ListFilter, RequestDetail, Resolution, Resolved, Stats};
+use domain::types::{Flag, RequestState};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
@@ -18,60 +19,131 @@ pub const MAX_NOTE_CHARS: usize = 2000;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
+        .route("/api/admin/stats", get(stats))
         .route("/api/admin/requests", get(list))
         .route("/api/admin/requests/{ref}", get(detail))
         .route("/api/admin/requests/{ref}/audit", get(audit))
         .route("/api/admin/requests/{ref}/resolve", post(resolve))
 }
 
-#[derive(Deserialize)]
-struct ListQuery {
-    state: Option<String>,
-    q: Option<String>,
-    limit: Option<i64>,
-    offset: Option<i64>,
+/// Query parameters as (name, value) pairs; `flag` may repeat.
+fn query_pairs(raw: Option<&str>) -> Vec<(String, String)> {
+    form_urlencoded::parse(raw.unwrap_or_default().as_bytes())
+        .into_owned()
+        .collect()
 }
 
+/// The last non-empty value of a parameter.
+fn param<'a>(pairs: &'a [(String, String)], name: &str) -> Option<&'a str> {
+    pairs
+        .iter()
+        .rev()
+        .find(|(k, v)| k == name && !v.trim().is_empty())
+        .map(|(_, v)| v.trim())
+}
+
+fn int_param(pairs: &[(String, String)], name: &'static str) -> Result<Option<i64>, ApiError> {
+    param(pairs, name)
+        .map(|v| {
+            v.parse::<i64>()
+                .map_err(|_| ApiError::field(name, "must be a whole number"))
+        })
+        .transpose()
+}
+
+fn time_param(
+    pairs: &[(String, String)],
+    name: &'static str,
+) -> Result<Option<DateTime<Utc>>, ApiError> {
+    param(pairs, name)
+        .map(|v| {
+            DateTime::parse_from_rfc3339(v)
+                .map(|t| t.with_timezone(&Utc))
+                .map_err(|_| ApiError::field(name, "must be an RFC 3339 timestamp"))
+        })
+        .transpose()
+}
+
+fn one_of<T: Copy>(all: &[T], as_str: fn(&T) -> &'static str) -> String {
+    all.iter().map(as_str).collect::<Vec<_>>().join(", ")
+}
+
+/// `GET /api/admin/requests?state=&q=&since=&flag=a,b&flag=c&limit=&offset=`.
+/// Each `flag` is an any-of group; a request must match every group.
 async fn list(
     State(state): State<AppState>,
     _: AdminSession,
-    Query(query): Query<ListQuery>,
+    RawQuery(raw): RawQuery,
 ) -> Result<Json<Value>, ApiError> {
-    let filter_state = match query.state.as_deref().filter(|s| !s.is_empty()) {
-        None => None,
-        Some(s) => Some(s.parse::<RequestState>().map_err(|_| {
-            ApiError::field(
-                "state",
-                format!(
-                    "must be one of {}",
-                    RequestState::ALL
-                        .iter()
-                        .map(|s| s.as_str())
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                ),
-            )
-        })?),
-    };
-    let limit = query.limit.unwrap_or(50);
+    let pairs = query_pairs(raw.as_deref());
+    let filter_state = param(&pairs, "state")
+        .map(|s| {
+            s.parse::<RequestState>().map_err(|_| {
+                ApiError::field(
+                    "state",
+                    format!(
+                        "must be one of {}",
+                        one_of(RequestState::ALL, |s| s.as_str())
+                    ),
+                )
+            })
+        })
+        .transpose()?;
+    let mut flag_groups = Vec::new();
+    for (_, value) in pairs
+        .iter()
+        .filter(|(k, v)| k == "flag" && !v.trim().is_empty())
+    {
+        let group = value
+            .split(',')
+            .map(str::trim)
+            .filter(|f| !f.is_empty())
+            .map(|f| {
+                f.parse::<Flag>().map_err(|_| {
+                    ApiError::field(
+                        "flag",
+                        format!("must be one of {}", one_of(Flag::ALL, |f| f.as_str())),
+                    )
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        if !group.is_empty() {
+            flag_groups.push(group);
+        }
+    }
+    let limit = int_param(&pairs, "limit")?.unwrap_or(50);
     if !(1..=MAX_PAGE).contains(&limit) {
         return Err(ApiError::field(
             "limit",
             format!("must be between 1 and {MAX_PAGE}"),
         ));
     }
-    let offset = query.offset.unwrap_or(0);
+    let offset = int_param(&pairs, "offset")?.unwrap_or(0);
     if offset < 0 {
         return Err(ApiError::field("offset", "must not be negative"));
     }
     let filter = ListFilter {
         state: filter_state,
-        q: query.q,
+        q: param(&pairs, "q").map(str::to_owned),
+        since: time_param(&pairs, "since")?,
+        flag_groups,
         limit,
         offset,
     };
     let (items, total) = db::admin::list_requests(&state.db, &filter).await?;
     Ok(Json(json!({ "items": items, "total": total })))
+}
+
+/// `GET /api/admin/stats?since=` (default: the last 24 hours).
+async fn stats(
+    State(state): State<AppState>,
+    _: AdminSession,
+    RawQuery(raw): RawQuery,
+) -> Result<Json<Stats>, ApiError> {
+    let pairs = query_pairs(raw.as_deref());
+    let since =
+        time_param(&pairs, "since")?.unwrap_or_else(|| Utc::now() - chrono::Duration::hours(24));
+    Ok(Json(db::admin::stats(&state.db, since).await?))
 }
 
 async fn detail(

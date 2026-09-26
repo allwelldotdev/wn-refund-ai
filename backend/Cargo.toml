@@ -36,6 +36,7 @@ axum = "0.8.9"
 tower-http = { version = "0.6", features = ["trace", "limit"] }
 tower = { version = "0.5.3", features = ["util"] }
 http-body-util = "0.1.5"
+form_urlencoded = "1.2.2"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"] }
 # Facade only: the agent runtime and derive macros are not used.
