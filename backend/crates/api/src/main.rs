@@ -56,6 +56,7 @@ async fn main() -> anyhow::Result<()> {
         assistant: Arc::new(assistant),
         ai: Arc::new(config.ai),
         rate: RateLimiter::default(),
+        login_throttle: Default::default(),
     };
 
     tokio::spawn(api::review_job::sweep_pending(state.clone()));

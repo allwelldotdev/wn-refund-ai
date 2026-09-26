@@ -25,7 +25,7 @@ use serde_json::{Value, json};
 use tower_http::trace::TraceLayer;
 
 use crate::error::ApiError;
-use crate::rate_limit::RateLimiter;
+use crate::rate_limit::{LoginThrottle, RateLimiter};
 
 /// Seed source for policy version 1 (ADR-016). Compiled in so the container
 /// needs no extra files at runtime.
@@ -40,6 +40,7 @@ pub struct AppState {
     pub assistant: SharedAssistant,
     pub ai: Arc<AiConfig>,
     pub rate: RateLimiter,
+    pub login_throttle: LoginThrottle,
 }
 
 /// Applies migrations, then the idempotent seed. Runs on every startup.

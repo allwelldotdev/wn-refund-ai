@@ -20,6 +20,7 @@ use uuid::Uuid;
 
 use crate::AppState;
 use crate::error::{ApiError, ApiJson};
+use crate::rate_limit::SignInFailure;
 
 pub const SESSION_TTL: Duration = Duration::from_secs(24 * 3600);
 
@@ -120,6 +121,11 @@ async fn login(
     ApiJson(body): ApiJson<LoginBody>,
 ) -> Result<Json<Value>, ApiError> {
     let email = body.email.trim().to_lowercase();
+    // A paused email is refused before any password check.
+    state
+        .login_throttle
+        .check(&email)
+        .map_err(ApiError::SignInPaused)?;
     let account = db::auth::find_account(&state.db, &email).await?;
     let hash = account
         .as_ref()
@@ -136,8 +142,14 @@ async fn login(
     .map_err(anyhow::Error::from)?;
 
     let Some(account) = account.filter(|_| verified) else {
-        return Err(ApiError::InvalidCredentials);
+        return Err(match state.login_throttle.record_failure(&email) {
+            SignInFailure::AttemptsLeft(attempts_left) => {
+                ApiError::InvalidCredentials { attempts_left }
+            }
+            SignInFailure::Paused(pause) => ApiError::SignInPaused(pause),
+        });
     };
+    state.login_throttle.record_success(&email);
     let expires_at = chrono::Utc::now() + SESSION_TTL;
     let token = db::auth::create_session(&state.db, &account.principal, expires_at).await?;
     Ok(Json(

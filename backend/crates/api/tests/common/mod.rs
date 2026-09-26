@@ -99,6 +99,7 @@ impl TestApp {
             assistant: fake.clone(),
             ai: Arc::new(AiConfig::load().expect("default AI config")),
             rate: RateLimiter::default(),
+            login_throttle: Default::default(),
         };
         TestApp {
             router: build_router(state.clone()),

@@ -122,9 +122,86 @@ async fn demo_accounts_list_admins_then_customers(pool: PgPool) {
     let accounts = accounts.as_array().unwrap();
     assert_eq!(accounts.len(), 17);
     assert_eq!(accounts[0]["role"], "admin");
+    assert_eq!(accounts[0]["name"], "Ngozi Adeyemi");
+    assert_eq!(accounts[0]["title"], "Support admin");
+    assert_eq!(accounts[0]["expected_verdict"], json!(null));
     assert_eq!(
         accounts[2],
-        json!({ "name": "Amara Okafor", "email": "amara.okafor@example.com", "role": "customer", "scenario": "clean_damaged" })
+        json!({
+            "name": "Amara Okafor",
+            "email": "amara.okafor@example.com",
+            "role": "customer",
+            "scenario": "clean_damaged",
+            "title": "Damaged item",
+            "description": db::seed::SCENARIOS[0].summary,
+            "expected_verdict": "approved",
+            "order_ref": "ORD-10437",
+        })
     );
+    let keys: Vec<_> = accounts[2..]
+        .iter()
+        .map(|a| a["scenario"].as_str().unwrap())
+        .collect();
+    let matrix: Vec<_> = db::seed::SCENARIOS.iter().map(|s| s.key).collect();
+    assert_eq!(keys, matrix, "customers follow the scenario matrix");
     assert!(accounts.iter().all(|a| a.get("password_hash").is_none()));
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn repeated_failed_sign_ins_pause_the_email(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let attempt = |email: &'static str, password: &'static str| {
+        let body = json!({ "email": email, "password": password });
+        let app = &app;
+        async move {
+            app.call(Method::POST, "/api/auth/login", None, Some(&body))
+                .await
+        }
+    };
+    for left in [4, 3, 2, 1] {
+        let res = attempt("grace.liu@example.com", "wrong").await;
+        assert_eq!(res.status, StatusCode::UNAUTHORIZED);
+        assert_eq!(res.json()["error"]["attempts_left"], left);
+    }
+    let res = attempt("GRACE.LIU@example.com", "wrong").await;
+    assert_eq!(res.status, StatusCode::TOO_MANY_REQUESTS);
+    assert_eq!(res.error_code(), "rate_limited");
+    assert_eq!(res.headers["retry-after"], "300");
+
+    // While paused, even the right password is refused; other emails are not.
+    let res = attempt("grace.liu@example.com", "demo-2026").await;
+    assert_eq!(res.status, StatusCode::TOO_MANY_REQUESTS);
+    assert_eq!(
+        attempt("amara.okafor@example.com", "demo-2026")
+            .await
+            .status,
+        StatusCode::OK
+    );
+
+    // Unknown emails are counted the same way, so responses reveal nothing.
+    for _ in 0..4 {
+        assert_eq!(
+            attempt("nobody@example.com", "x").await.status,
+            StatusCode::UNAUTHORIZED
+        );
+    }
+    assert_eq!(
+        attempt("nobody@example.com", "x").await.status,
+        StatusCode::TOO_MANY_REQUESTS
+    );
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn a_successful_sign_in_resets_the_count(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let wrong = json!({ "email": "hana.sato@example.com", "password": "wrong" });
+    for _ in 0..3 {
+        app.call(Method::POST, "/api/auth/login", None, Some(&wrong))
+            .await;
+    }
+    app.login("hana.sato@example.com").await;
+    let res = app
+        .call(Method::POST, "/api/auth/login", None, Some(&wrong))
+        .await;
+    assert_eq!(res.json()["error"]["attempts_left"], 4);
 }
