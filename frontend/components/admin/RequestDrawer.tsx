@@ -30,6 +30,7 @@ import type {
 } from "@/lib/api-types";
 import { api } from "@/lib/bff";
 import { cn } from "@/lib/cn";
+import { splitSignals } from "@/lib/signals";
 import {
   REASON_LABELS,
   formatCents,
@@ -231,31 +232,22 @@ function Timeline({ d }: { d: RequestDetail }) {
   );
 }
 
-/** Splits text on signal spans (Unicode code points, as the API counts them); text stays plain. */
+/** Message text with matched spans underlined; everything stays plain text. */
 export function SignalText({ text, signals }: { text: string; signals: SignalView[] }) {
   if (!signals.length) return <>{text}</>;
-  const chars = Array.from(text);
-  const marked = new Array<boolean>(chars.length).fill(false);
-  for (const s of signals) for (let i = Math.max(0, s.start); i < Math.min(chars.length, s.end); i++) marked[i] = true;
-  const parts: ReactNode[] = [];
-  let i = 0;
-  while (i < chars.length) {
-    const on = marked[i];
-    let j = i;
-    while (j < chars.length && marked[j] === on) j++;
-    const chunk = chars.slice(i, j).join("");
-    parts.push(
-      on ? (
-        <span key={i} className="bg-denied-bg underline decoration-denied-icon decoration-wavy underline-offset-4">
-          {chunk}
-        </span>
-      ) : (
-        chunk
-      ),
-    );
-    i = j;
-  }
-  return <>{parts}</>;
+  return (
+    <>
+      {splitSignals(text, signals).map((seg, i) =>
+        seg.marked ? (
+          <span key={i} className="bg-denied-bg underline decoration-denied-icon decoration-wavy underline-offset-4">
+            {seg.text}
+          </span>
+        ) : (
+          seg.text
+        ),
+      )}
+    </>
+  );
 }
 
 function MessageThread({ messages }: { messages: DetailMessage[] }) {
