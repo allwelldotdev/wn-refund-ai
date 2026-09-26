@@ -15,7 +15,7 @@ async fn seeded(pool: PgPool) -> Db {
 }
 
 fn admin() -> Uuid {
-    seed::stable_id("admin", "admin@example.com")
+    seed::stable_id("admin", "ngozi.adeyemi@worknoon.example")
 }
 
 fn with_window(days: i64) -> Policy {
@@ -42,7 +42,7 @@ fn edit(rules: &Policy, base: Uuid) -> NewPolicyVersion<'_> {
 async fn edit_on_the_latest_version_creates_the_next_one(pool: PgPool) {
     let db = seeded(pool).await;
     let v1 = policy::latest_policy(&db).await.unwrap();
-    let rules = with_window(14);
+    let rules = with_window(5);
     let v2 = policy::insert_policy_version(&db, edit(&rules, v1.meta.id))
         .await
         .unwrap();
@@ -50,7 +50,7 @@ async fn edit_on_the_latest_version_creates_the_next_one(pool: PgPool) {
     assert_eq!(v2.rules, rules);
     assert_eq!(v2.meta.content_hash, rules.content_hash());
     assert_eq!(v2.meta.author_kind, "admin");
-    assert_eq!(v2.meta.author_name.as_deref(), Some("Sam Admin"));
+    assert_eq!(v2.meta.author_name.as_deref(), Some("Ngozi Adeyemi"));
     assert_eq!(v2.meta.change_note.as_deref(), Some("shorter window"));
 
     assert_eq!(policy::latest_policy(&db).await.unwrap(), v2);
@@ -68,17 +68,17 @@ async fn edit_on_the_latest_version_creates_the_next_one(pool: PgPool) {
 async fn stale_base_and_unchanged_rules_are_refused(pool: PgPool) {
     let db = seeded(pool).await;
     let v1 = policy::latest_policy(&db).await.unwrap();
-    let v2 = policy::insert_policy_version(&db, edit(&with_window(14), v1.meta.id))
+    let v2 = policy::insert_policy_version(&db, edit(&with_window(5), v1.meta.id))
         .await
         .unwrap();
 
-    let stale = policy::insert_policy_version(&db, edit(&with_window(10), v1.meta.id)).await;
+    let stale = policy::insert_policy_version(&db, edit(&with_window(3), v1.meta.id)).await;
     assert!(matches!(
         stale,
         Err(DbError::StaleBase { latest_id, latest_version: 2 }) if latest_id == v2.meta.id
     ));
 
-    let same = policy::insert_policy_version(&db, edit(&with_window(14), v2.meta.id)).await;
+    let same = policy::insert_policy_version(&db, edit(&with_window(5), v2.meta.id)).await;
     assert!(matches!(same, Err(DbError::NoOp)));
     assert_eq!(policy::list_policy_versions(&db).await.unwrap().len(), 2);
 }
@@ -87,7 +87,7 @@ async fn stale_base_and_unchanged_rules_are_refused(pool: PgPool) {
 async fn concurrent_edits_on_the_same_base_let_exactly_one_win(pool: PgPool) {
     let db = seeded(pool).await;
     let base = policy::latest_policy(&db).await.unwrap().meta.id;
-    let (a, b) = (with_window(14), with_window(21));
+    let (a, b) = (with_window(5), with_window(3));
     let (ra, rb) = tokio::join!(
         policy::insert_policy_version(&db, edit(&a, base)),
         policy::insert_policy_version(&db, edit(&b, base)),
@@ -107,7 +107,7 @@ async fn concurrent_edits_on_the_same_base_let_exactly_one_win(pool: PgPool) {
 async fn revert_copies_old_rules_and_records_the_source(pool: PgPool) {
     let db = seeded(pool).await;
     let v1 = policy::latest_policy(&db).await.unwrap();
-    policy::insert_policy_version(&db, edit(&with_window(14), v1.meta.id))
+    policy::insert_policy_version(&db, edit(&with_window(5), v1.meta.id))
         .await
         .unwrap();
     let v3 = policy::insert_policy_version(

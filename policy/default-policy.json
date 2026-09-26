@@ -1,10 +1,11 @@
 {
   "rules": [
     { "kind": "final_sale_not_refundable", "enabled": true },
-    { "kind": "refund_window", "enabled": true, "days": 30, "scope": { "kind": "all" } },
+    { "kind": "refund_window", "enabled": true, "days": 14, "scope": { "kind": "all" } },
+    { "kind": "refund_window", "enabled": true, "days": 7, "scope": { "kind": "category", "category": "Accessories" } },
     { "kind": "human_review_above", "enabled": true, "amount_cents": 50000 },
     { "kind": "damaged_or_incorrect_eligible", "enabled": true },
-    { "kind": "repeat_claim_limit", "enabled": true, "max_claims": 2, "lookback_days": 180 },
+    { "kind": "repeat_claim_limit", "enabled": true, "max_claims": 2, "lookback_days": 30 },
     { "kind": "conflicting_claim_escalates", "enabled": true }
   ]
 }

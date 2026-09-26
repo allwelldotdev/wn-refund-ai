@@ -22,21 +22,21 @@ async fn health_and_unknown_routes(pool: PgPool) {
 #[sqlx::test(migrations = "../../migrations")]
 async fn login_returns_a_token_and_principal(pool: PgPool) {
     let app = TestApp::new(pool).await;
-    let body = json!({ "email": "  Alice@Example.com ", "password": "demo1234" });
+    let body = json!({ "email": "  Amara.Okafor@Example.com ", "password": "demo-2026" });
     let res = app
         .call(Method::POST, "/api/auth/login", None, Some(&body))
         .await;
     assert_eq!(res.status, StatusCode::OK);
     let json = res.json();
     assert_eq!(json["principal"]["kind"], "customer");
-    assert_eq!(json["principal"]["name"], "Alice Nguyen");
+    assert_eq!(json["principal"]["name"], "Amara Okafor");
     let token = json["token"].as_str().unwrap();
 
     let me = app.get("/api/auth/me", token).await;
     assert_eq!(me.status, StatusCode::OK);
-    assert_eq!(me.json()["principal"]["email"], "alice@example.com");
+    assert_eq!(me.json()["principal"]["email"], "amara.okafor@example.com");
 
-    let admin = app.login("admin@example.com").await;
+    let admin = app.login("ngozi.adeyemi@worknoon.example").await;
     assert_eq!(
         app.get("/api/auth/me", &admin).await.json()["principal"]["kind"],
         "admin"
@@ -47,8 +47,8 @@ async fn login_returns_a_token_and_principal(pool: PgPool) {
 async fn bad_credentials_are_rejected_alike(pool: PgPool) {
     let app = TestApp::new(pool).await;
     for body in [
-        json!({ "email": "alice@example.com", "password": "wrong" }),
-        json!({ "email": "nobody@example.com", "password": "demo1234" }),
+        json!({ "email": "amara.okafor@example.com", "password": "wrong" }),
+        json!({ "email": "nobody@example.com", "password": "demo-2026" }),
     ] {
         let res = app
             .call(Method::POST, "/api/auth/login", None, Some(&body))
@@ -87,8 +87,8 @@ async fn missing_malformed_and_unknown_tokens_are_401(pool: PgPool) {
 #[sqlx::test(migrations = "../../migrations")]
 async fn logout_invalidates_the_session(pool: PgPool) {
     let app = TestApp::new(pool).await;
-    let token = app.login("ben@example.com").await;
-    let other = app.login("ben@example.com").await;
+    let token = app.login("sofia.rossi@example.com").await;
+    let other = app.login("sofia.rossi@example.com").await;
     let res = app.post("/api/auth/logout", &token, json!({})).await;
     assert_eq!(res.status, StatusCode::OK);
     assert_eq!(
@@ -101,7 +101,7 @@ async fn logout_invalidates_the_session(pool: PgPool) {
 #[sqlx::test(migrations = "../../migrations")]
 async fn expired_sessions_are_rejected(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;
-    let token = app.login("chloe@example.com").await;
+    let token = app.login("tomas.herrera@example.com").await;
     sqlx::query("UPDATE sessions SET expires_at = now() - interval '1 second'")
         .execute(&pool)
         .await
@@ -124,7 +124,7 @@ async fn demo_accounts_list_admins_then_customers(pool: PgPool) {
     assert_eq!(accounts[0]["role"], "admin");
     assert_eq!(
         accounts[2],
-        json!({ "name": "Alice Nguyen", "email": "alice@example.com", "role": "customer", "scenario": "clean_damaged" })
+        json!({ "name": "Amara Okafor", "email": "amara.okafor@example.com", "role": "customer", "scenario": "clean_damaged" })
     );
     assert!(accounts.iter().all(|a| a.get("password_hash").is_none()));
 }

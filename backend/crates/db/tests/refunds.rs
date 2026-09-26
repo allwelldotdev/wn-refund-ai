@@ -73,19 +73,19 @@ async fn an_item_is_approved_at_most_once(pool: PgPool) {
     let db = Db(pool.clone());
     seed::run(&db, DEFAULT_POLICY).await.unwrap();
     let policy = db::policy::latest_policy(&db).await.unwrap().meta.id;
-    let alice = seed::stable_id("customer", "alice@example.com");
+    let amara = seed::stable_id("customer", "amara.okafor@example.com");
     let request = |conversation_id, state| NewRefundRequest {
         conversation_id,
-        customer_id: alice,
-        order_id: Some(seed::stable_id("order", "ORD-1001")),
-        order_item_id: Some(seed::item_id("ORD-1001", 0)),
-        amount_cents: Some(8999),
+        customer_id: amara,
+        order_id: Some(seed::stable_id("order", "ORD-10437")),
+        order_item_id: Some(seed::item_id("ORD-10437", 0)),
+        amount_cents: Some(6200),
         reason_category: Some(ReasonCategory::Damaged),
         state,
     };
     let mut conn = pool.acquire().await.unwrap();
 
-    let a = conversation(&db, alice).await;
+    let a = conversation(&db, amara).await;
     let created = create_decided(
         &mut conn,
         &request(a, RequestState::Approved),
@@ -95,7 +95,7 @@ async fn an_item_is_approved_at_most_once(pool: PgPool) {
     .unwrap();
     assert_eq!(created.request_ref, "RR-1001");
 
-    let b = conversation(&db, alice).await;
+    let b = conversation(&db, amara).await;
     let dup = create_decided(
         &mut conn,
         &request(b, RequestState::Approved),
