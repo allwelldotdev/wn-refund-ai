@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Worknoon Support — Chat widget</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+:focus-visible{outline:2px solid #2457C5;outline-offset:2px}
+button,input,textarea{font-family:inherit}
+@keyframes wn-spin{to{transform:rotate(360deg)}}
+.wn-spin{animation:wn-spin 0.8s linear infinite;transform-origin:center}
+@keyframes wn-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.wn-in{animation:wn-in 200ms cubic-bezier(0.2,0,0,1)}
+@keyframes wn-blink{50%{opacity:0}}
+.wn-caret{display:inline-block;margin-left:1px;color:#48524D;animation:wn-blink 1s steps(1) infinite}
+@media (prefers-reduced-motion: reduce){.wn-spin,.wn-in,.wn-caret{animation:none}}
+</style>
+</helmet>
+<div role="dialog" aria-label="Order help chat" id="{{uid}}-panel" onKeyDown="{{onKey}}" style="{{rootStyle}}">
+
+<div style="flex-shrink: 0; padding: 12px 8px 0 16px; border-bottom: 1px solid #DCE0DB; display: flex; flex-direction: column; gap: 8px; background: #FFFFFF">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="width: 32px; height: 32px; border-radius: 8px; background: #1D2724; display: flex; align-items: center; justify-content: center; flex-shrink: 0">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6l4.5 12L12 8l4.5 10L21 6"></path></svg>
+</span>
+<div style="display: flex; flex-direction: column">
+<h2 style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600">Order help</h2>
+<span style="font-size: 12px; line-height: 16px; color: #5F6963">Refunds and order problems</span>
+</div>
+</div>
+<button type="button" onClick="{{close}}" aria-label="Close chat" style="width: 44px; height: 44px; border: 0; border-radius: 6px; background: transparent; color: #48524D; display: inline-flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="{{closeIcon}}"></path></svg>
+</button>
+</div>
+<nav aria-label="Chat views" style="display: flex; gap: 4px">
+<button type="button" onClick="{{toChat}}" aria-current="{{chatCurrent}}" style="{{chatTabStyle}}">Chat</button>
+<button type="button" onClick="{{toRequests}}" aria-current="{{reqCurrent}}" style="{{reqTabStyle}}">
+<span>Your requests</span>
+<span style="min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 999px; background: #EEF0ED; color: #48524D; font-size: 12px; line-height: 20px; font-weight: 500; text-align: center; font-variant-numeric: tabular-nums">{{reqCount}}</span>
+</button>
+</nav>
+</div>
+
+<sc-if value="{{isChat}}" hint-placeholder-val="{{ true }}">
+<div id="{{uid}}-thread" role="log" aria-live="polite" aria-label="Conversation" style="flex-grow: 1; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: #FFFFFF">
+<sc-for list="{{items}}" as="m" hint-placeholder-count="3">
+
+<sc-if value="{{m.isBot}}" hint-placeholder-val="{{ true }}">
+<div class="wn-in" style="flex-shrink: 0; display: flex; gap: 8px; align-items: flex-end; max-width: 90%">
+<span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 999px; background: #1D2724; display: flex; align-items: center; justify-content: center; flex-shrink: 0">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l4.5 12L12 8l4.5 10L21 6"></path></svg>
+</span>
+<div style="padding: 10px 12px; background: #EEF0ED; border-radius: 12px 12px 12px 4px; font-size: 14px; line-height: 20px; color: #151A18">
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0)">Assistant: </span>{{m.text}}</div>
+</div>
+</sc-if>
+
+<sc-if value="{{m.isUser}}" hint-placeholder-val="{{ false }}">
+<div class="wn-in" style="flex-shrink: 0; align-self: flex-end; max-width: 85%; display: flex; flex-direction: column; gap: 6px; align-items: flex-end">
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0)">You: </span>
+<sc-if value="{{m.hasOrder}}" hint-placeholder-val="{{ false }}">
+<div style="padding: 10px 12px; background: #1D2724; color: #FFFFFF; border-radius: 12px 12px 4px 12px; display: flex; flex-direction: column; gap: 2px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 18px; font-weight: 500">{{m.order.id}} · {{m.order.amount}}</span>
+<span style="font-size: 13px; line-height: 18px; color: #D2D7D2">{{m.order.items}}</span>
+</div>
+</sc-if>
+<sc-if value="{{m.hasText}}" hint-placeholder-val="{{ true }}">
+<div style="padding: 10px 12px; background: #1D2724; color: #FFFFFF; border-radius: 12px 12px 4px 12px; font-size: 14px; line-height: 20px; white-space: pre-wrap; overflow-wrap: anywhere">{{m.text}}</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{m.isChips}}" hint-placeholder-val="{{ false }}">
+<div role="group" aria-label="Your recent orders" class="wn-in" style="flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; padding-left: 32px">
+<sc-for list="{{m.chips}}" as="c" hint-placeholder-count="3">
+<div style="{{c.wrapStyle}}">
+<button type="button" onClick="{{c.pick}}" disabled="{{c.disabled}}" aria-pressed="{{c.pressed}}" aria-describedby="{{c.descId}}" style="{{c.style}}">
+<span style="display: flex; justify-content: space-between; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 18px; font-weight: 500; color: {{c.ink}}">
+<span>{{c.id}}</span><span style="font-variant-numeric: tabular-nums">{{c.amount}}</span>
+</span>
+<span style="font-size: 13px; line-height: 18px; color: {{c.ink}}">{{c.items}}</span>
+<span style="font-size: 12px; line-height: 16px; color: #5F6963">Ordered {{c.date}}{{c.unavailText}}</span>
+</button>
+<sc-if value="{{c.hasMarkers}}" hint-placeholder-val="{{ false }}">
+<div id="{{c.descId}}" style="display: flex; flex-direction: column; gap: 4px; padding: 0 12px 10px">
+<sc-for list="{{c.markers}}" as="k" hint-placeholder-count="1">
+<button type="button" onClick="{{k.go}}" aria-label="{{k.aria}}" style="min-height: 32px; padding: 4px 0; border: 0; background: transparent; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; text-align: left; cursor: pointer; color: #151A18">
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px 0 6px; border-radius: 999px; font-size: 12px; line-height: 16px; font-weight: 500; white-space: nowrap; color: {{k.st.fg}}; background: {{k.st.bg}}; border: 1px solid {{k.st.bd}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{k.st.ic}}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{k.st.icon}}"></path></svg>{{k.label}}</span>
+<span style="font-size: 12px; line-height: 16px; color: #48524D">{{k.name}}</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 16px; color: #2457C5; text-decoration: underline; text-underline-offset: 3px">{{k.ref}}</span>
+</button>
+</sc-for>
+</div>
+</sc-if>
+</div>
+</sc-for>
+<sc-if value="{{m.noChips}}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 13px; line-height: 18px; color: #48524D">No other orders are eligible right now.</span>
+</sc-if>
+<span style="font-size: 12px; line-height: 16px; color: #5F6963">Not listed? Describe the problem below and include the order ID.</span>
+</div>
+</sc-if>
+
+<sc-if value="{{m.isProc}}" hint-placeholder-val="{{ false }}">
+<div role="status" class="wn-in" style="flex-shrink: 0; border: 1px solid #C3D2EC; background: #F5F8FD; border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+<span style="display: flex; align-items: center; gap: 8px; font-size: 14px; line-height: 20px; font-weight: 600; color: #2F4F86">
+<svg class="wn-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2F5FA8" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke-opacity="0.25"></circle><path d="M21 12a9 9 0 0 0-9-9"></path></svg>
+Reviewing your request…
+</span>
+<span aria-label="Elapsed time" style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 16px; color: #48524D; font-variant-numeric: tabular-nums">{{elapsedText}}</span>
+</div>
+<ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{steps}}" as="s" hint-placeholder-count="3">
+<li style="display: flex; align-items: center; gap: 8px; font-size: 13px; line-height: 18px; color: {{s.color}}; font-weight: {{s.weight}}">
+<sc-if value="{{s.done}}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#151A18" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></sc-if>
+<sc-if value="{{s.active}}" hint-placeholder-val="{{ false }}"><svg class="wn-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2F5FA8" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke-opacity="0.25"></circle><path d="M21 12a9 9 0 0 0-9-9"></path></svg></sc-if>
+<sc-if value="{{s.todo}}" hint-placeholder-val="{{ true }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A938D" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="7"></circle></svg></sc-if>
+<span>{{s.label}}</span><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0)">{{s.sr}}</span>
+</li>
+</sc-for>
+</ol>
+<p style="margin: 0; font-size: 12px; line-height: 16px; color: #48524D">Usually 5–15 seconds. You can close this chat; the answer will be waiting here.</p>
+</div>
+</sc-if>
+
+<sc-if value="{{m.isApproved}}" hint-placeholder-val="{{ false }}">
+<article aria-labelledby="{{m.hid}}" aria-busy="{{m.busyStr}}" class="wn-in" style="flex-shrink: 0; border: 1px solid #B5DCC3; border-radius: 10px; background: #FFFFFF; overflow: hidden">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 14px; background: #E7F4EC; border-bottom: 1px solid #B5DCC3">
+<h3 id="{{m.hid}}" style="margin: 0; display: flex; align-items: center; gap: 6px; font-size: 14px; line-height: 20px; font-weight: 600; color: #17603A">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1F7A4A" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M8.5 12.5l2.5 2.5 4.5-5"></path></svg>
+Refund approved
+</h3>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 16px; color: #17603A">Ref {{m.v.ref}}</span>
+</div>
+<div style="padding: 14px; display: flex; flex-direction: column; gap: 12px">
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #151A18">{{m.explain}}<sc-if value="{{m.streaming}}" hint-placeholder-val="{{ false }}"><span class="wn-caret" aria-hidden="true">▍</span></sc-if></p>
+<sc-if value="{{m.streamDone}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 24px; line-height: 32px; font-weight: 500; font-variant-numeric: tabular-nums">{{m.v.amount}}</span>
+<span style="font-size: 13px; line-height: 18px; color: #48524D">Back to {{m.v.method}} · {{m.v.orderId}}</span>
+</div>
+<ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; border-top: 1px solid #EEF0ED">
+<sc-for list="{{m.v.lines}}" as="l" hint-placeholder-count="2">
+<li style="display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #EEF0ED; font-size: 13px; line-height: 18px"><span>{{l.name}}</span><span style="font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums">{{l.price}}</span></li>
+</sc-for>
+</ul>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h4 style="margin: 0; font-size: 13px; line-height: 18px; font-weight: 600">What happens next</h4>
+<ol style="margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 18px; color: #151A18">
+<sc-for list="{{m.v.steps}}" as="t" hint-placeholder-count="3"><li>{{t.text}}</li></sc-for>
+</ol>
+</div>
+</div>
+</sc-if>
+</div>
+</article>
+</sc-if>
+
+<sc-if value="{{m.isDenied}}" hint-placeholder-val="{{ false }}">
+<article aria-labelledby="{{m.hid}}" aria-busy="{{m.busyStr}}" class="wn-in" style="flex-shrink: 0; border: 1px solid #F1C2BC; border-radius: 10px; background: #FFFFFF; overflow: hidden">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 14px; background: #FCECEA; border-bottom: 1px solid #F1C2BC">
+<span style="display: flex; align-items: center; gap: 6px; font-size: 14px; line-height: 20px; font-weight: 600; color: #A1261B">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B42318" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M9 9l6 6M15 9l-6 6"></path></svg>
+Not refunded
+</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 16px; color: #A1261B">Ref {{m.v.ref}}</span>
+</div>
+<div style="padding: 14px; display: flex; flex-direction: column; gap: 10px">
+<h3 id="{{m.hid}}" style="margin: 0; font-size: 15px; line-height: 22px; font-weight: 600">{{m.v.title}}</h3>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #151A18">{{m.explain}}<sc-if value="{{m.streaming}}" hint-placeholder-val="{{ false }}"><span class="wn-caret" aria-hidden="true">▍</span></sc-if></p>
+<sc-if value="{{m.streamDone}}" hint-placeholder-val="{{ true }}">
+<span style="align-self: flex-start; font-size: 12px; line-height: 16px; color: #48524D; background: #EEF0ED; border-radius: 4px; padding: 2px 8px">{{m.v.policy}} · {{m.v.orderId}}</span>
+<sc-if value="{{m.canAppeal}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid #EEF0ED">
+<span style="font-size: 13px; line-height: 18px; color: #48524D">Think we got this wrong? A person can take a second look.</span>
+<button type="button" onClick="{{m.appeal}}" style="align-self: flex-start; height: 40px; padding: 0 14px; border-radius: 6px; border: 1px solid #C4CAC5; background: #FFFFFF; color: #151A18; font-size: 14px; line-height: 20px; font-weight: 500; cursor: pointer">Ask a specialist to review</button>
+</div>
+</sc-if>
+</sc-if>
+</div>
+</article>
+</sc-if>
+
+<sc-if value="{{m.isEscalated}}" hint-placeholder-val="{{ false }}">
+<article aria-labelledby="{{m.hid}}" aria-busy="{{m.busyStr}}" class="wn-in" style="flex-shrink: 0; border: 1px solid #EDCF98; border-radius: 10px; background: #FFFFFF; overflow: hidden">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 14px; background: #FDF2E0; border-bottom: 1px solid #EDCF98">
+<span style="display: flex; align-items: center; gap: 6px; font-size: 14px; line-height: 20px; font-weight: 600; color: #86480A">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5L2.8 19.5h18.4ZM12 10v4M12 17h.01"></path></svg>
+Escalated
+</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 16px; color: #86480A">Ref {{m.v.ref}}</span>
+</div>
+<div style="padding: 14px; display: flex; flex-direction: column; gap: 10px">
+<h3 id="{{m.hid}}" style="margin: 0; font-size: 15px; line-height: 22px; font-weight: 600">A support specialist will review this</h3>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #151A18">{{m.explain}}<sc-if value="{{m.streaming}}" hint-placeholder-val="{{ false }}"><span class="wn-caret" aria-hidden="true">▍</span></sc-if></p>
+<sc-if value="{{m.streamDone}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; background: #F6F7F5; border: 1px solid #DCE0DB; border-radius: 6px">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#48524D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 7v5l3 2"></path></svg>
+<div style="display: flex; flex-direction: column">
+<span style="font-size: 13px; line-height: 18px; font-weight: 600">Expected reply: {{m.v.eta}}</span>
+<span style="font-size: 13px; line-height: 18px; color: #48524D">{{m.v.etaDate}}</span>
+</div>
+</div>
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: #48524D">We'll reply in this chat and email {{m.v.email}}. You don't need to do anything else. · {{m.v.orderId}}</p>
+</div>
+</sc-if>
+</div>
+</article>
+</sc-if>
+
+<sc-if value="{{m.isError}}" hint-placeholder-val="{{ false }}">
+<div role="alert" class="wn-in" style="flex-shrink: 0; border: 1px solid #F1C2BC; background: #FCECEA; border-radius: 10px; padding: 14px; display: flex; gap: 10px">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B42318" stroke-width="2.25" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 8v5M12 16h.01"></path></svg>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 14px; line-height: 20px; font-weight: 600; color: #A1261B">We couldn't finish reviewing your request</span>
+<span style="font-size: 13px; line-height: 18px; color: #151A18">Something went wrong on our side. Your message is saved and nothing was submitted.</span>
+<button type="button" onClick="{{retry}}" style="align-self: flex-start; height: 40px; padding: 0 14px; border-radius: 6px; border: 1px solid #C4CAC5; background: #FFFFFF; color: #151A18; font-size: 14px; line-height: 20px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; cursor: pointer">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.3-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.5L20 16M20 20v-4h-4"></path></svg>
+Try again
+</button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{m.isRate}}" hint-placeholder-val="{{ false }}">
+<div role="status" class="wn-in" style="flex-shrink: 0; border: 1px solid #D2D7D2; background: #F6F7F5; border-radius: 10px; padding: 14px; display: flex; gap: 10px">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#48524D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><path d="M6 3h12M6 21h12M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9s10 4 10 9"></path></svg>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 14px; line-height: 20px; font-weight: 600">Please wait a moment</span>
+<span style="font-size: 13px; line-height: 18px; color: #48524D">You've sent 5 messages in the last minute. You can send another in <span style="font-family: 'IBM Plex Mono', monospace; color: #151A18; font-variant-numeric: tabular-nums">{{lockText}}</span>.</span>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{m.isExpired}}" hint-placeholder-val="{{ false }}">
+<div role="alert" class="wn-in" style="flex-shrink: 0; border: 1px solid #D2D7D2; background: #F6F7F5; border-radius: 10px; padding: 14px; display: flex; gap: 10px">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#48524D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><path d="M5 11h14v10H5ZM8 11V7.5a4 4 0 0 1 8 0V11"></path></svg>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 14px; line-height: 20px; font-weight: 600">Your session has ended</span>
+<span style="font-size: 13px; line-height: 18px; color: #48524D">You were signed out after 30 minutes without activity. Your conversation and unsent message are saved.</span>
+<a href="Login.dc.html" style="align-self: flex-start; height: 40px; padding: 0 16px; border-radius: 6px; background: #1D2724; color: #FFFFFF; font-size: 14px; line-height: 40px; font-weight: 500; text-decoration: none">Sign in again</a>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{m.isEmpty}}" hint-placeholder-val="{{ false }}">
+<div class="wn-in" style="flex-shrink: 0; margin: 16px 0; padding: 24px 16px; border: 1px dashed #C4CAC5; border-radius: 10px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px">
+<span style="width: 40px; height: 40px; border-radius: 999px; background: #EEF0ED; display: flex; align-items: center; justify-content: center">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#48524D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5ZM3.5 7.5L12 12l8.5-4.5M12 12v9"></path></svg>
+</span>
+<span style="font-size: 15px; line-height: 22px; font-weight: 600">No orders yet</span>
+<span style="font-size: 13px; line-height: 18px; color: #48524D; max-width: 280px">Orders from the last 60 days show up here so you can ask about them. Have a question anyway? Type it below.</span>
+</div>
+</sc-if>
+
+</sc-for>
+</div>
+
+<form onSubmit="{{send}}" style="{{composerStyle}}">
+<label for="{{uid}}-input" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0)">Describe the problem</label>
+<div style="display: flex; gap: 8px; align-items: flex-end">
+<textarea id="{{uid}}-input" rows="2" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onComposerKey}}" disabled="{{composerDisabled}}" placeholder="{{placeholder}}" aria-invalid="{{overStr}}" aria-describedby="{{uid}}-count {{uid}}-hint" style="{{textareaStyle}}"></textarea>
+<button type="button" onClick="{{send}}" aria-label="Send message" disabled="{{sendDisabled}}" style="{{sendStyle}}">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"></path></svg>
+</button>
+</div>
+<div style="display: flex; justify-content: space-between; gap: 8px; font-size: 12px; line-height: 16px">
+<span id="{{uid}}-hint" style="color: #5F6963">{{hint}}</span>
+<span id="{{uid}}-count" style="{{countStyle}}">{{countText}}</span>
+</div>
+</form>
+</sc-if>
+
+<sc-if value="{{isRequests}}" hint-placeholder-val="{{ false }}">
+<div style="flex-grow: 1; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: #FFFFFF">
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: #48524D">Refund requests from the last 60 days.</p>
+<ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px">
+<sc-for list="{{reqs}}" as="r" hint-placeholder-count="3">
+<li id="{{r.domId}}" tabindex="-1" style="{{r.style}}">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px">
+<span style="font-size: 14px; line-height: 20px; font-weight: 500">{{r.item}}</span>
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px 0 6px; border-radius: 999px; font-size: 12px; line-height: 16px; font-weight: 500; white-space: nowrap; color: {{r.st.fg}}; background: {{r.st.bg}}; border: 1px solid {{r.st.bd}}">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{r.st.ic}}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.st.icon}}"></path></svg>
+{{r.st.label}}
+</span>
+</div>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 16px; color: #48524D">{{r.ref}} · {{r.order}} · {{r.amount}}</span>
+<span style="font-size: 12px; line-height: 16px; color: #5F6963">Requested {{r.date}} · {{r.note}}</span>
+</li>
+</sc-for>
+</ul>
+<sc-if value="{{noReqs}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; padding: 24px 0; text-align: center; font-size: 14px; line-height: 20px; color: #48524D">No requests yet.</p>
+</sc-if>
+<button type="button" onClick="{{toChat}}" style="align-self: flex-start; margin-top: 4px; height: 40px; padding: 0 14px; border-radius: 6px; border: 1px solid #C4CAC5; background: #FFFFFF; color: #151A18; font-size: 14px; line-height: 20px; font-weight: 500; cursor: pointer">Start a new request</button>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"layout":{"editor":"enum","options":["panel","sheet"],"default":"panel"},"scenario":{"editor":"enum","options":["live","typing","processing","streaming","approved","denied","escalated","error","ratelimited","expired","noorders","requests"],"default":"live"},"preselect":{"editor":null},"preselectKey":{"editor":null},"startView":{"editor":null},"onClose":{"editor":null},"$preview":{"width":400,"height":600}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.uid = 'wn' + Math.random().toString(36).slice(2, 8);
+    this.iv = null;
+    this.nextRef = 5903;
+    this.state = this.init(props);
+  }
+  componentDidUpdate(prev, prevState) {
+    if (prev.preselectKey !== this.props.preselectKey || prev.scenario !== this.props.scenario) {
+      this.stop();
+      this.setState(this.init(this.props));
+      return;
+    }
+    if (prevState && prevState.msgs.length !== this.state.msgs.length) {
+      var t = document.getElementById(this.uid + '-thread');
+      if (t) t.scrollTop = t.scrollHeight;
+    }
+  }
+  componentDidMount() {
+    var t = document.getElementById(this.uid + '-thread');
+    if (t) t.scrollTop = t.scrollHeight;
+  }
+  componentWillUnmount() { this.stop(); }
+  stop() { if (this.iv) { clearInterval(this.iv); this.iv = null; } if (this.sv) { clearInterval(this.sv); this.sv = null; } }
+
+  ST() {
+    var C = 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0';
+    return {
+      approved: { label: 'Approved', fg: '#17603A', bg: '#E7F4EC', bd: '#B5DCC3', ic: '#1F7A4A', icon: C + 'M8.5 12.5l2.5 2.5 4.5-5' },
+      denied: { label: 'Denied', fg: '#A1261B', bg: '#FCECEA', bd: '#F1C2BC', ic: '#B42318', icon: C + 'M9 9l6 6M15 9l-6 6' },
+      escalated: { label: 'Escalated', fg: '#86480A', bg: '#FDF2E0', bd: '#EDCF98', ic: '#B45309', icon: 'M12 3.5L2.8 19.5h18.4ZM12 10v4M12 17h.01' },
+      processing: { label: 'Processing', fg: '#2F4F86', bg: '#EAF0FA', bd: '#C3D2EC', ic: '#2F5FA8', icon: 'M20 11a8 8 0 0 0-14.3-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.5L20 16M20 20v-4h-4' }
+    };
+  }
+  orders() {
+    return [
+      { id: 'ORD-10437', date: 'Sep 22, 2026', amount: '$86.00', recent: true, outcome: 'approved',
+        parts: [{ name: 'Worknoon Desk Lamp', price: '$62.00' }, { name: 'USB-C Hub', price: '$24.00' }],
+        explain: 'Both items arrived damaged, which our damaged-items rule covers, so you’ll get a full refund.',
+        problem: 'The desk lamp arrived with a cracked base and won’t switch on. The USB-C hub was in the same box and its connector is bent.' },
+      { id: 'ORD-10430', date: 'Sep 20, 2026', amount: '$104.00', recent: true, outcome: 'denied',
+        parts: [{ name: 'Meeting Room (4 hrs)', price: '$96.00' }, { name: 'Coffee add-on', price: '$8.00' }],
+        problem: 'We finished after 2 hours, so I’d like a refund for the 2 hours we didn’t use.' },
+      { id: 'ORD-10426', date: 'Sep 18, 2026', amount: '$950.00', recent: true, outcome: 'escalated',
+        parts: [{ name: 'Private Office, October deposit', price: '$950.00' }],
+        problem: 'My company is relocating me before October, so I need to cancel the private office and get the deposit back.' },
+      { id: 'ORD-10421', date: 'Sep 17, 2026', amount: '$180.00', recent: true, outcome: 'approved',
+        parts: [{ name: 'Flex Day Pass, 10-pack', price: '$180.00', state: 'progress', ref: 'REQ-5817' }],
+        problem: '' },
+      { id: 'ORD-10416', date: 'Sep 17, 2026', amount: '$42.00', recent: true, outcome: 'approved',
+        parts: [{ name: 'Coffee Subscription (September)', price: '$28.00' }, { name: 'Worknoon Mug', price: '$14.00', state: 'refunded', ref: 'REQ-5790' }],
+        explain: 'The coffee arrived damaged, which our damaged-items rule covers. Your mug was already refunded, so this covers the coffee.',
+        problem: 'The September coffee bag arrived torn open and half the beans spilled into the box.' },
+      { id: 'ORD-10331', date: 'Aug 26, 2026', amount: '$20.00', recent: false, outcome: 'expired',
+        parts: [{ name: 'Locker Rental, 1 month', price: '$20.00' }],
+        problem: 'The locker lock was jammed for most of the month.' }
+    ];
+  }
+  baseReqs() {
+    var S = this.ST();
+    return [
+      { ref: 'REQ-5817', order: 'ORD-10421', item: 'Flex Day Pass, 10-pack', amount: '$180.00', date: 'Sep 21', st: S.processing, note: 'arrives by Sep 28' },
+      { ref: 'REQ-5790', order: 'ORD-10416', item: 'Worknoon Mug', amount: '$14.00', date: 'Sep 18', st: S.approved, note: 'refunded Sep 18' },
+      { ref: 'REQ-5540', order: 'ORD-10298', item: 'Day Pass', amount: '$25.00', date: 'Aug 11', st: S.approved, note: 'refunded Aug 11' },
+      { ref: 'REQ-5391', order: 'ORD-10233', item: 'Printing Credits, 100 pages', amount: '$10.00', date: 'Jul 29', st: S.denied, note: 'credits already used' }
+    ];
+  }
+  avail(o, orderState) {
+    var os = (orderState || {})[o.id];
+    var parts = o.parts.map(function (p) { return (!p.state && os) ? Object.assign({}, p, { state: os.state, ref: os.ref }) : p; });
+    var free = parts.filter(function (p) { return !p.state; });
+    var sum = free.reduce(function (a, p) { return a + parseFloat(p.price.replace(/[$,]/g, '')); }, 0);
+    return { parts: parts, free: free, names: (free.length ? free : parts).map(function (p) { return p.name; }).join(', '), amount: '$' + sum.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','), selectable: free.length > 0 };
+  }
+  verdict(o, ref, appealed, failed, os) {
+    var a = this.avail(o, os || {});
+    var esc = function (reason) { return { kind: 'escalated', ref: ref, orderId: o.id, explain: reason, eta: 'within 1 business day', etaDate: 'By Fri, Sep 25, 5:00 PM', email: 'amara.okafor@example.com' }; };
+    if (failed) return esc('We couldn’t complete an automatic review, so a support specialist will review your request.');
+    if (appealed) return esc('You asked for a person to review the earlier decision on this order.');
+    if (o.outcome === 'approved') return { kind: 'approved', ref: ref, orderId: o.id, amount: a.amount, method: 'Visa ending 4242', lines: a.free, explain: o.explain,
+      steps: [{ text: 'We send the refund today.' }, { text: 'It shows on your statement within 3–5 business days.' }, { text: 'No need to return the items.' }] };
+    if (o.outcome === 'denied') return { kind: 'denied', ref: ref, orderId: o.id, title: 'We can’t refund this booking', policy: 'Policy v7 · Refund window',
+      explain: 'Room bookings can be refunded up to 24 hours before they start. Yours started Sep 20 at 10:00 and you checked in, so unused time can’t be refunded.' };
+    if (o.outcome === 'expired') return { kind: 'denied', ref: ref, orderId: o.id, title: 'This order is past the refund window', policy: 'Policy v7 · Refund window',
+      explain: 'Refunds are available for 14 days after purchase. ' + o.id + ' was placed on Aug 26, 29 days ago.' };
+    return esc('Refunds over $500 are checked by a person before they’re paid.');
+  }
+  reqFrom(v, o, os) {
+    var S = this.ST();
+    var a = this.avail(o, os || {});
+    var map = { approved: [S.approved, 'refund sent today'], denied: [S.denied, 'reason in chat'], escalated: [S.escalated, 'reply by Sep 25'] };
+    return { ref: v.ref, order: o.id, item: a.names, amount: v.amount || a.amount, date: 'Sep 24', st: map[v.kind][0], note: map[v.kind][1] };
+  }
+  init(props) {
+    var sc = props.scenario || 'live';
+    var self = this;
+    var O = this.orders();
+    var byId = function (id) { return O.filter(function (o) { return o.id === id; })[0]; };
+    var s = { view: props.startView === 'requests' ? 'requests' : 'chat', msgs: [], selected: null, draft: '', phase: 'idle', elapsed: 0, block: null, lock: 0, reqs: this.baseReqs(), orderState: {}, stream: null, focusReq: null, lastOrder: null, lastText: '', noOrders: false };
+    var greet = { k: 'bot', text: 'Hi Amara. Which order do you need help with? Pick one, or just tell me what happened.' };
+    var pickMsgs = function (o) { var a = self.avail(o, {}); return [{ k: 'user', order: { id: o.id, amount: a.amount, items: a.names } }, { k: 'bot', text: 'What went wrong with ' + o.id + '? A sentence or two is enough.' }]; };
+    if (sc === 'noorders') {
+      s.msgs = [{ k: 'bot', text: 'Hi there. How can we help?' }, { k: 'empty' }];
+      s.noOrders = true; s.reqs = [];
+      return s;
+    }
+    s.msgs = [greet, { k: 'chips' }];
+    if (sc === 'requests') { s.view = 'requests'; return s; }
+    var o = byId(props.preselect) || null;
+    if (sc === 'live') {
+      if (o && this.avail(o, {}).selectable) { s.msgs = s.msgs.concat(pickMsgs(o)); s.selected = o.id; }
+      return s;
+    }
+    var pickFor = { typing: 'ORD-10437', processing: 'ORD-10437', streaming: 'ORD-10437', approved: 'ORD-10437', denied: 'ORD-10430', escalated: 'ORD-10426', error: 'ORD-10430', ratelimited: 'ORD-10437', expired: 'ORD-10437' };
+    o = byId(pickFor[sc]);
+    s.msgs = s.msgs.concat(pickMsgs(o));
+    s.selected = o.id;
+    if (sc === 'typing') {
+      s.draft = 'The desk lamp arrived with a cracked base and won’t switch on at all. I tried two different sockets and a different cable. The USB-C hub came in the same box and its connector is bent, so it won’t go into my laptop. The outer box looked fine, so I think it happened at the warehouse. I’d like a refund for both, or a replacement lamp if that’s faster. I’m at the Yaba location most days if you need me to bring them in. I have photos of both items if needed.';
+      return s;
+    }
+    var userMsg = { k: 'user', text: o.problem };
+    if (sc === 'expired') { s.draft = o.problem; s.msgs.push({ k: 'expired' }); s.block = 'expired'; return s; }
+    s.msgs.push(userMsg);
+    s.lastOrder = o.id; s.lastText = o.problem;
+    if (sc === 'processing') { s.msgs.push({ k: 'proc' }); s.phase = 'processing'; s.elapsed = 4; return s; }
+    if (sc === 'ratelimited') { s.msgs.push({ k: 'bot', text: 'Thanks. Could you add a photo of the damage? You can describe it below for now.' }); s.msgs.push({ k: 'rate' }); s.block = 'ratelimit'; s.lock = 45; return s; }
+    var v = this.verdict(o, 'REQ-5903', false, sc === 'error');
+    s.msgs.push({ k: 'verdict', v: v, orderId: o.id });
+    if (sc === 'streaming') { s.stream = { i: s.msgs.length - 1, n: Math.round(v.explain.length * 0.55) }; s.phase = 'streaming'; return s; }
+    s.reqs = [this.reqFrom(v, o)].concat(s.reqs);
+    if (v.kind !== 'denied') s.orderState[o.id] = { state: 'progress', ref: v.ref };
+    s.selected = null;
+    return s;
+  }
+  startReview(o, text, appealed) {
+    var self = this;
+    this.stop();
+    var msgs = this.state.msgs.filter(function (m) { return m.k !== 'error'; }).concat([{ k: 'proc' }]);
+    this.setState({ msgs: msgs, phase: 'processing', elapsed: 0, lastOrder: o.id, lastText: text });
+    this.iv = setInterval(function () {
+      var e = self.state.elapsed + 1;
+      if (e < 7) { self.setState({ elapsed: e }); return; }
+      self.stop();
+      var ref = 'REQ-' + (self.nextRef++);
+      var v = self.verdict(o, ref, appealed, false, self.state.orderState);
+      var rest = self.state.msgs.filter(function (m) { return m.k !== 'proc'; });
+      rest.push({ k: 'verdict', v: v, orderId: o.id });
+      var req = self.reqFrom(v, o, self.state.orderState);
+      self.setState({ msgs: rest, phase: 'streaming', elapsed: 0, stream: { i: rest.length - 1, n: 0 } });
+      self.sv = setInterval(function () {
+        var stc = self.state.stream; if (!stc) { self.stop(); return; }
+        var n = stc.n + 3;
+        if (n < v.explain.length) { self.setState({ stream: { i: stc.i, n: n } }); return; }
+        self.stop();
+        var os = Object.assign({}, self.state.orderState);
+        if (v.kind !== 'denied') os[o.id] = { state: 'progress', ref: v.ref };
+        var after = self.state.msgs.concat([{ k: 'bot', text: 'Need help with another order? Choose one below or type your question.' }, { k: 'chips' }]);
+        var reqs = [req].concat(self.state.reqs.filter(function (r) { return !(r.order === o.id && r.date === 'Sep 24'); }));
+        self.setState({ msgs: after, phase: 'idle', stream: null, selected: null, reqs: reqs, orderState: os });
+      }, 30);
+    }, 1000);
+  }
+  renderVals() {
+    var self = this;
+    var st = this.state;
+    var S = this.ST();
+    var O = this.orders();
+    var sheet = this.props.layout === 'sheet';
+    var busy = st.phase === 'processing' || st.phase === 'streaming';
+    var LIMIT = 500;
+    var len = st.draft.length;
+    var over = len > LIMIT;
+    var composerDisabled = busy || !!st.block;
+
+    var pickOrder = function (o) {
+      return function () {
+        var av = self.avail(o, st.orderState);
+        if (busy || st.selected || st.block || !av.selectable) return;
+        var msgs = st.msgs.concat([{ k: 'user', order: { id: o.id, amount: av.amount, items: av.names } }, { k: 'bot', text: 'What went wrong with ' + o.id + '? A sentence or two is enough.' }]);
+        self.setState({ msgs: msgs, selected: o.id }, function () {
+          var el = document.getElementById(self.uid + '-input'); if (el) el.focus();
+        });
+      };
+    };
+    var send = function (e) {
+      if (e && e.preventDefault) e.preventDefault();
+      var text = st.draft.trim();
+      if (!text || over || composerDisabled) return;
+      var o = null;
+      if (st.selected) o = O.filter(function (x) { return x.id === st.selected; })[0];
+      if (!o) {
+        var mm = text.toUpperCase().match(/ORD-\d{5}/);
+        if (mm) o = O.filter(function (x) { return x.id === mm[0]; })[0] || null;
+      }
+      if (o && !self.avail(o, st.orderState).selectable) {
+        var blocked = self.avail(o, st.orderState).parts[0];
+        self.setState({ msgs: st.msgs.concat([{ k: 'user', text: text }, { k: 'bot', text: o.id + ' already has a refund ' + (blocked.state === 'refunded' ? 'completed' : 'in progress') + ' (' + blocked.ref + '). You can follow it in Your requests.' }]), draft: '' });
+        return;
+      }
+      var msgs = st.msgs.concat([{ k: 'user', text: text }]);
+      if (!o) {
+        msgs = msgs.concat([{ k: 'bot', text: st.noOrders ? 'Thanks. I can’t find any orders on your account, so a specialist will reply here within 1 business day.' : 'Got it. Which order is this about? Pick one below, or reply with the order ID.' }]);
+        if (!st.noOrders) msgs.push({ k: 'chips' });
+        self.setState({ msgs: msgs, draft: '' });
+        return;
+      }
+      self.setState({ msgs: msgs, draft: '' }, function () { self.startReview(o, text, false); });
+    };
+
+    var lastChips = -1;
+    st.msgs.forEach(function (m, i) { if (m.k === 'chips') lastChips = i; });
+    var eligible = O.filter(function (o) { return o.recent; });
+    var goReq = function (ref) { return function () { self.setState({ view: 'requests', focusReq: ref }, function () { var el = document.getElementById(self.uid + '-req-' + ref); if (el) { el.focus(); if (el.scrollIntoView) el.scrollIntoView({ block: 'nearest' }); } }); }; };
+    var MK = { progress: ['Refund in progress', S.processing], refunded: ['Refunded', S.approved] };
+
+    var items = st.msgs.map(function (m, i) {
+      var active = i === lastChips && !busy && !st.block;
+      var chips = m.k === 'chips' ? eligible.map(function (o) {
+        var av = self.avail(o, st.orderState);
+        var sel = st.selected === o.id && i === lastChips;
+        var blocked = !av.selectable;
+        var dis = !active || (!!st.selected && !sel) || blocked;
+        var markers = av.parts.filter(function (p) { return p.state; }).map(function (p) {
+          return { label: MK[p.state][0], st: MK[p.state][1], name: p.name, ref: p.ref, go: goReq(p.ref), aria: MK[p.state][0] + ': ' + p.name + '. View ' + p.ref + ' in Your requests' };
+        });
+        return { id: o.id, amount: av.amount, items: av.names, date: o.date, pick: pickOrder(o), disabled: dis || sel, pressed: sel ? 'true' : 'false',
+          hasMarkers: markers.length > 0, markers: markers, descId: self.uid + '-mk-' + o.id + '-' + i,
+          unavailText: blocked ? ' · not selectable' : '', ink: blocked ? '#5F6963' : '#151A18',
+          wrapStyle: 'border-radius: 10px; background: ' + (blocked ? '#F6F7F5' : '#FFFFFF') + '; ' + (sel ? 'border: 1.5px solid #151A18' : blocked ? 'border: 1px dashed #C4CAC5' : 'border: 1px solid #C4CAC5') + '; ' + (dis && !sel && !blocked ? 'opacity: 0.55' : ''),
+          style: 'width: 100%; min-height: 44px; text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 0; border-radius: 10px; background: transparent; font-family: inherit; ' + (dis && !sel ? 'cursor: default' : 'cursor: pointer') };
+      }) : [];
+      var v = m.v || {};
+      var streamingNow = !!(st.stream && st.stream.i === i);
+      var explain = v.explain || '';
+      return {
+        explain: streamingNow ? explain.slice(0, st.stream.n) : explain, streaming: streamingNow, streamDone: !streamingNow, busyStr: streamingNow ? 'true' : 'false',
+        isBot: m.k === 'bot', isUser: m.k === 'user', isChips: m.k === 'chips', isProc: m.k === 'proc',
+        isApproved: m.k === 'verdict' && v.kind === 'approved', isDenied: m.k === 'verdict' && v.kind === 'denied', isEscalated: m.k === 'verdict' && v.kind === 'escalated',
+        isError: m.k === 'error', isRate: m.k === 'rate', isExpired: m.k === 'expired', isEmpty: m.k === 'empty',
+        text: m.text || '', hasText: !!m.text, hasOrder: !!m.order, order: m.order || {},
+        chips: chips, noChips: m.k === 'chips' && chips.length === 0,
+        v: v, hid: self.uid + '-v' + i,
+        canAppeal: m.k === 'verdict' && v.kind === 'denied' && !busy && !st.block && !m.appealed,
+        appeal: function () {
+          var o = O.filter(function (x) { return x.id === v.orderId; })[0];
+          if (!o || busy) return;
+          var msgs = st.msgs.map(function (x) { return x === m ? Object.assign({}, x, { appealed: true }) : x; });
+          msgs.push({ k: 'user', text: 'Please have a person review this decision.' });
+          self.setState({ msgs: msgs }, function () { self.startReview(o, 'appeal', true); });
+        }
+      };
+    });
+    items.forEach(function (it, i) { if (st.msgs[i].appealed) it.canAppeal = false; });
+
+    var procOrder = st.lastOrder || st.selected || 'your order';
+    var labels = ['Reading your message', 'Checking ' + procOrder, 'Applying the refund policy'];
+    var stepIdx = st.elapsed >= 4 ? 2 : st.elapsed >= 2 ? 1 : 0;
+    var steps = labels.map(function (l, i) {
+      var done = i < stepIdx, act = i === stepIdx;
+      return { label: l, done: done, active: act, todo: !done && !act, sr: done ? ' (done)' : act ? ' (in progress)' : ' (waiting)', color: done || act ? '#151A18' : '#5F6963', weight: act ? '500' : '400' };
+    });
+
+    var lm = Math.floor(st.lock / 60), ls = st.lock % 60;
+    var hint = st.phase === 'streaming' ? 'Writing the reply…' : busy ? 'Waiting for the review to finish…' : st.block === 'ratelimit' ? 'Sending is paused for a moment.' : st.block === 'expired' ? 'Sign in again to send.' : 'Enter to send · Shift+Enter for a new line';
+    var countStyle = 'font-family: \'IBM Plex Mono\', monospace; font-variant-numeric: tabular-nums; ' + (over ? 'color: #A1261B; font-weight: 600' : len >= 450 ? 'color: #151A18; font-weight: 600' : 'color: #5F6963');
+    var countText = over ? len + ' / ' + LIMIT + ' · ' + (len - LIMIT) + ' over' : len >= 450 ? len + ' / ' + LIMIT + ' · ' + (LIMIT - len) + ' left' : len + ' / ' + LIMIT;
+    var sendDisabled = !st.draft.trim() || over || composerDisabled;
+    var tab = function (on) { return 'height: 40px; padding: 0 10px; margin-bottom: -1px; border: 0; border-bottom: 2px solid ' + (on ? '#151A18' : 'transparent') + '; background: transparent; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; line-height: 20px; font-weight: ' + (on ? '600' : '500') + '; color: ' + (on ? '#151A18' : '#48524D') + '; cursor: pointer'; };
+    var close = function () { if (self.props.onClose) self.props.onClose(); };
+
+    return {
+      uid: this.uid,
+      rootStyle: sheet
+        ? 'position: absolute; inset: 0; box-sizing: border-box; display: flex; flex-direction: column; background: #FFFFFF; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; color: #151A18; -webkit-font-smoothing: antialiased; padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left)'
+        : 'width: 400px; height: 600px; box-sizing: border-box; display: flex; flex-direction: column; background: #FFFFFF; border: 1px solid #DCE0DB; border-radius: 14px; overflow: hidden; box-shadow: 0 16px 40px -8px rgb(21 26 24 / 0.18), 0 4px 12px -4px rgb(21 26 24 / 0.08); font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; color: #151A18; -webkit-font-smoothing: antialiased',
+      composerStyle: 'flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; padding: 12px 16px ' + (sheet ? 'calc(12px + env(safe-area-inset-bottom))' : '12px') + '; border-top: 1px solid #DCE0DB; background: #FFFFFF',
+      closeIcon: sheet ? 'M6 9l6 6 6-6' : 'M6 6l12 12M18 6L6 18',
+      onKey: function (e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } },
+      close: close,
+      isChat: st.view === 'chat',
+      isRequests: st.view === 'requests',
+      toChat: function () { self.setState({ view: 'chat' }); },
+      toRequests: function () { self.setState({ view: 'requests' }); },
+      chatCurrent: st.view === 'chat' ? 'page' : 'false',
+      reqCurrent: st.view === 'requests' ? 'page' : 'false',
+      chatTabStyle: tab(st.view === 'chat'),
+      reqTabStyle: tab(st.view === 'requests'),
+      reqCount: st.reqs.length,
+      reqs: st.reqs.map(function (r) { var on = st.focusReq === r.ref; return Object.assign({}, r, { domId: self.uid + '-req-' + r.ref, style: 'border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; outline: none; ' + (on ? 'border: 1.5px solid #151A18; background: #F1F4F0' : 'border: 1px solid #DCE0DB') }); }),
+      noReqs: st.reqs.length === 0,
+      items: items,
+      steps: steps,
+      elapsedText: '0:' + (st.elapsed < 10 ? '0' : '') + st.elapsed,
+      lockText: lm + ':' + (ls < 10 ? '0' : '') + ls,
+      retry: function () {
+        var o = O.filter(function (x) { return x.id === st.lastOrder; })[0];
+        if (o) self.startReview(o, st.lastText, false);
+      },
+      draft: st.draft,
+      onDraft: function (e) { self.setState({ draft: e.target.value }); },
+      onComposerKey: function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } },
+      send: send,
+      composerDisabled: composerDisabled,
+      placeholder: st.selected ? 'Describe what went wrong' : 'Describe the problem, or pick an order above',
+      overStr: over ? 'true' : 'false',
+      textareaStyle: 'flex-grow: 1; min-height: 44px; max-height: 120px; box-sizing: border-box; padding: 10px 12px; border-radius: 6px; font-size: ' + (sheet ? '16px' : '14px') + '; line-height: 20px; color: #151A18; resize: none; ' +
+        (over ? 'border: 1.5px solid #B42318; ' : 'border: 1px solid #858F89; ') + (composerDisabled ? 'background: #EEF0ED; color: #5F6963; cursor: not-allowed' : 'background: #FFFFFF'),
+      sendDisabled: sendDisabled,
+      sendStyle: 'width: 44px; height: 44px; flex-shrink: 0; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; ' +
+        (sendDisabled ? 'border: 1px solid #DCE0DB; background: #EEF0ED; color: #8A938D; cursor: not-allowed' : 'border: 1px solid #1D2724; background: #1D2724; color: #FFFFFF; cursor: pointer'),
+      hint: hint,
+      countStyle: countStyle,
+      countText: countText
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Worknoon — My orders</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+:focus-visible{outline:2px solid #2457C5;outline-offset:2px}
+button,input,textarea{font-family:inherit}
+@keyframes wn-spin{to{transform:rotate(360deg)}}
+.wn-spin{animation:wn-spin 0.8s linear infinite;transform-origin:center}
+@keyframes wn-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.wn-in{animation:wn-in 200ms cubic-bezier(0.2,0,0,1)}
+@keyframes wn-blink{50%{opacity:0}}
+.wn-caret{display:inline-block;margin-left:1px;color:#48524D;animation:wn-blink 1s steps(1) infinite}
+@media (prefers-reduced-motion: reduce){.wn-spin,.wn-in,.wn-caret{animation:none}}
+</style>
+</helmet>
+<div style="{{rootStyle}}">
+
+<header style="{{topbarStyle}}">
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="width: 28px; height: 28px; border-radius: 6px; background: #1D2724; display: flex; align-items: center; justify-content: center">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6l4.5 12L12 8l4.5 10L21 6"></path></svg>
+</span>
+<span style="font-size: 16px; line-height: 24px; font-weight: 600; letter-spacing: -0.01em">Worknoon Support</span>
+</div>
+<div style="display: flex; align-items: center; gap: 12px">
+<span style="display: flex; align-items: center; gap: 8px; font-size: 14px; line-height: 20px">
+<span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 999px; background: #EEF0ED; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #48524D">AO</span>
+<span><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0)">Signed in as </span>{{displayName}}</span>
+</span>
+<a href="Login.dc.html" style="height: 44px; padding: 0 12px; border-radius: 6px; display: inline-flex; align-items: center; font-size: 14px; line-height: 20px; font-weight: 500; color: #151A18; text-decoration: underline; text-underline-offset: 3px">Sign out</a>
+</div>
+</header>
+
+<main style="{{mainStyle}}">
+<div style="{{containerStyle}}">
+<div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h1 style="{{h1Style}}">My orders</h1>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">Orders from the last 60 days.</p>
+</div>
+<button type="button" onClick="{{openRequests}}" style="height: 44px; padding: 0 4px; border: 0; background: transparent; color: #2457C5; font-size: 14px; line-height: 20px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; cursor: pointer">Your refund requests (4)</button>
+</div>
+
+<sc-if value="{{desktop}}" hint-placeholder-val="{{ true }}">
+<div style="background: #FFFFFF; border: 1px solid #DCE0DB; border-radius: 10px; box-shadow: 0 1px 2px rgb(21 26 24 / 0.06)">
+<table style="width: 100%; border-collapse: collapse; font-size: 14px; line-height: 20px">
+<caption style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0)">Your orders, newest first</caption>
+<thead>
+<tr style="background: #F6F7F5; border-bottom: 1px solid #DCE0DB">
+<th scope="col" style="text-align: left; padding: 12px 20px; font-size: 12px; line-height: 16px; font-weight: 600; color: #48524D; text-transform: uppercase; letter-spacing: 0.05em; border-radius: 10px 0 0 0">Order</th>
+<th scope="col" style="text-align: left; padding: 12px 16px; font-size: 12px; line-height: 16px; font-weight: 600; color: #48524D; text-transform: uppercase; letter-spacing: 0.05em">Date</th>
+<th scope="col" style="text-align: left; padding: 12px 16px; font-size: 12px; line-height: 16px; font-weight: 600; color: #48524D; text-transform: uppercase; letter-spacing: 0.05em">Items</th>
+<th scope="col" style="text-align: right; padding: 12px 16px; font-size: 12px; line-height: 16px; font-weight: 600; color: #48524D; text-transform: uppercase; letter-spacing: 0.05em">Total</th>
+<th scope="col" style="text-align: left; padding: 12px 16px; font-size: 12px; line-height: 16px; font-weight: 600; color: #48524D; text-transform: uppercase; letter-spacing: 0.05em">Delivery</th>
+<th scope="col" style="padding: 12px 20px; border-radius: 0 10px 0 0"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0)">Help</span></th>
+</tr>
+</thead>
+<tbody>
+<sc-for list="{{orders}}" as="o" hint-placeholder-count="5">
+<tr style="border-bottom: 1px solid #EEF0ED">
+<td style="padding: 14px 20px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 500">{{o.id}}</td>
+<td style="padding: 14px 16px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #48524D; white-space: nowrap">{{o.date}}</td>
+<td style="padding: 14px 16px">{{o.items}}</td>
+<td style="padding: 14px 16px; text-align: right; font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-variant-numeric: tabular-nums">{{o.total}}</td>
+<td style="padding: 14px 16px; color: #48524D">
+<span style="display: inline-flex; align-items: center; gap: 6px; white-space: nowrap">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5F6963" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{o.dIcon}}"></path></svg>
+{{o.delivery}}
+</span>
+</td>
+<td style="padding: 8px 20px; text-align: right">
+<button type="button" onClick="{{o.help}}" aria-label="{{o.aria}}" style="min-height: 44px; padding: 0 4px; border: 0; background: transparent; color: #2457C5; font-size: 14px; line-height: 20px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; white-space: nowrap">{{o.helpText}}</button>
+</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</sc-if>
+
+<sc-if value="{{mobile}}" hint-placeholder-val="{{ false }}">
+<ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px">
+<sc-for list="{{orders}}" as="o" hint-placeholder-count="5">
+<li style="background: #FFFFFF; border: 1px solid #DCE0DB; border-radius: 10px; padding: 14px 16px 6px; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 18px">
+<span style="font-weight: 500">{{o.id}}</span><span style="color: #48524D">{{o.date}}</span>
+</div>
+<span style="font-size: 15px; line-height: 22px">{{o.items}}</span>
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; line-height: 18px; color: #48524D">
+<span style="display: inline-flex; align-items: center; gap: 6px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5F6963" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{o.dIcon}}"></path></svg>
+{{o.delivery}}
+</span>
+<span style="font-family: 'IBM Plex Mono', monospace; color: #151A18; font-variant-numeric: tabular-nums">{{o.total}}</span>
+</div>
+<button type="button" onClick="{{o.help}}" aria-label="{{o.aria}}" style="align-self: flex-start; min-height: 44px; padding: 0; border: 0; background: transparent; color: #2457C5; font-size: 14px; line-height: 20px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; cursor: pointer">{{o.helpText}}</button>
+</li>
+</sc-for>
+</ul>
+</sc-if>
+</div>
+</main>
+
+<sc-if value="{{showLauncher}}" hint-placeholder-val="{{ true }}">
+<button id="wn-launcher" type="button" onClick="{{openChat}}" aria-expanded="false" aria-controls="wn-chat" style="{{launcherStyle}}">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4Z"></path></svg>
+<span>Need help with an order?</span>
+</button>
+</sc-if>
+
+<div id="wn-chat" style="{{panelWrapStyle}}">
+<dc-import name="ChatPanel" layout="{{panelLayout}}" scenario="{{chatScenario}}" preselect="{{preselect}}" preselect-key="{{key}}" start-view="{{startView}}" on-close="{{closeChat}}" hint-size="{{panelHint}}"></dc-import>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"layout":{"editor":"enum","options":["desktop","mobile"],"default":"desktop"},"startOpen":{"editor":"boolean","default":false},"chatScenario":{"editor":"enum","options":["live","typing","processing","streaming","approved","denied","escalated","error","ratelimited","expired","noorders","requests"],"default":"live"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { open: !!props.startOpen, key: 0, preselect: '', startView: 'chat' };
+  }
+  componentDidUpdate(prev) {
+    if (prev.startOpen !== this.props.startOpen) this.setState({ open: !!this.props.startOpen });
+  }
+  renderVals() {
+    var self = this;
+    var st = this.state;
+    var mobile = this.props.layout === 'mobile';
+    var ICON = {
+      box: 'M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5ZM3.5 7.5L12 12l8.5-4.5M12 12v9',
+      check: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M8.5 12.5l2.5 2.5 4.5-5',
+      cal: 'M4 6h16v14H4ZM4 10h16M8 3v4M16 3v4',
+      x: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M9 9l6 6M15 9l-6 6',
+      clock: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 7v5l3 2'
+    };
+    var openFor = function (id, view) {
+      return function () {
+        self.setState({ open: true, key: st.key + 1, preselect: id || '', startView: view || 'chat' });
+      };
+    };
+    var data = [
+      { id: 'ORD-10437', date: 'Sep 22, 2026', items: 'Worknoon Desk Lamp, USB-C Hub', total: '$86.00', delivery: 'Delivered Sep 23', dIcon: ICON.box },
+      { id: 'ORD-10430', date: 'Sep 20, 2026', items: 'Meeting Room (4 hrs), Coffee add-on', total: '$104.00', delivery: 'Used Sep 20', dIcon: ICON.check },
+      { id: 'ORD-10426', date: 'Sep 18, 2026', items: 'Private Office, October deposit', total: '$950.00', delivery: 'Confirmed, starts Oct 1', dIcon: ICON.cal },
+      { id: 'ORD-10421', date: 'Sep 17, 2026', items: 'Flex Day Pass, 10-pack', total: '$180.00', delivery: 'Cancelled', dIcon: ICON.x, req: true },
+      { id: 'ORD-10416', date: 'Sep 17, 2026', items: 'Coffee Subscription (September), Worknoon Mug', total: '$42.00', delivery: 'Delivered Sep 18', dIcon: ICON.box },
+      { id: 'ORD-10331', date: 'Aug 26, 2026', items: 'Locker Rental, 1 month', total: '$20.00', delivery: 'Active until Sep 26', dIcon: ICON.clock }
+    ];
+    var orders = data.map(function (o) {
+      return Object.assign({}, o, {
+        help: o.req ? openFor('', 'requests') : openFor(o.id, 'chat'),
+        helpText: o.req ? 'View refund request' : 'Get help with this order',
+        aria: o.req ? 'View refund request for ' + o.id : 'Get help with order ' + o.id
+      });
+    });
+    var font = 'font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; color: #151A18; -webkit-font-smoothing: antialiased; ';
+    return {
+      desktop: !mobile,
+      mobile: mobile,
+      displayName: mobile ? 'Amara O.' : 'Amara Okafor',
+      rootStyle: (mobile ? 'width: 390px; height: 844px; ' : 'width: 1440px; height: 900px; ') + 'position: relative; overflow: hidden; box-sizing: border-box; background: #F6F7F5; display: flex; flex-direction: column; ' + font,
+      topbarStyle: 'flex-shrink: 0; height: ' + (mobile ? '56px; padding: 0 8px 0 16px' : '64px; padding: 0 64px') + '; display: flex; justify-content: space-between; align-items: center; background: #FFFFFF; border-bottom: 1px solid #DCE0DB',
+      mainStyle: 'flex-grow: 1; min-height: 0; overflow-y: auto; ' + (mobile ? 'padding: 20px 16px 104px' : 'padding: 40px 64px 120px'),
+      containerStyle: 'display: flex; flex-direction: column; gap: 20px; ' + (mobile ? '' : 'max-width: 1120px; margin: 0 auto'),
+      h1Style: 'margin: 0; font-weight: 600; letter-spacing: -0.01em; ' + (mobile ? 'font-size: 22px; line-height: 30px' : 'font-size: 24px; line-height: 32px'),
+      orders: orders,
+      openRequests: openFor('', 'requests'),
+      openChat: function () { self.setState({ open: true }); },
+      closeChat: function () {
+        self.setState({ open: false }, function () { var b = document.getElementById('wn-launcher'); if (b) b.focus(); });
+      },
+      showLauncher: !st.open,
+      launcherStyle: 'position: absolute; z-index: 10; right: ' + (mobile ? '16px' : '24px') + '; bottom: ' + (mobile ? 'calc(16px + env(safe-area-inset-bottom))' : '24px') + '; height: 48px; padding: 0 20px 0 16px; border-radius: 999px; border: 1px solid #1D2724; background: #1D2724; color: #FFFFFF; display: inline-flex; align-items: center; gap: 8px; font-size: 15px; line-height: 20px; font-weight: 500; cursor: pointer; box-shadow: 0 4px 12px -2px rgb(21 26 24 / 0.10), 0 2px 4px -2px rgb(21 26 24 / 0.06)',
+      panelWrapStyle: (st.open ? 'display: block; ' : 'display: none; ') + (mobile ? 'position: absolute; inset: 0; z-index: 20; background: #FFFFFF' : 'position: absolute; z-index: 20; right: 24px; bottom: 24px; width: 400px; height: 600px'),
+      panelLayout: mobile ? 'sheet' : 'panel',
+      panelHint: mobile ? '390px,844px' : '400px,600px',
+      chatScenario: this.props.chatScenario || 'live',
+      preselect: st.preselect,
+      key: st.key,
+      startView: st.startView
+    };
+  }
+}
+</script>
+</body>
+</html>

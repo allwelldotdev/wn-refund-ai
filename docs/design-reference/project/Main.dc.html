@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Worknoon Support — Foundations</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;color:#151A18;background:#F6F7F5;-webkit-font-smoothing:antialiased}
+a{color:#2457C5}a:hover{color:#1A4299}
+:focus-visible{outline:2px solid #2457C5;outline-offset:2px}
+@keyframes wn-pulse{0%{transform:scale(1)}50%{transform:scale(1.03)}100%{transform:scale(1)}}
+.wn-motion{animation:wn-pulse 2s cubic-bezier(0.2,0,0,1) infinite}
+@media (prefers-reduced-motion: reduce){.wn-motion{animation:none}}
+</style>
+</helmet>
+<div style="width: 1440px; height: 3260px; box-sizing: border-box; padding: 80px; background: #F6F7F5; display: flex; flex-direction: column; gap: 72px">
+
+<header style="display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 32px; border-bottom: 1px solid #DCE0DB">
+<div style="display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 10px">
+<div style="width: 28px; height: 28px; border-radius: 6px; background: #1D2724; display: flex; align-items: center; justify-content: center">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6l4.5 12L12 8l4.5 10L21 6"></path></svg>
+</div>
+<span style="font-size: 16px; font-weight: 600; letter-spacing: -0.01em">Worknoon Support</span>
+</div>
+<h1 style="margin: 0; font-size: 40px; line-height: 48px; font-weight: 600; letter-spacing: -0.02em">Design system — Foundations</h1>
+<p style="margin: 0; font-size: 16px; line-height: 24px; color: #48524D; max-width: 720px">Tokens for an AI-assisted refund desk. Light theme only. Every value maps 1:1 to a Tailwind v4 <code style="font-family: 'IBM Plex Mono', monospace; font-size: 14px">@theme</code> variable, shown beside it.</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end; font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #5F6963">
+<span>v0.1 · Sep 23, 2026</span>
+<span>Next.js App Router · TypeScript · Tailwind v4</span>
+</div>
+</header>
+
+<section style="display: flex; flex-direction: column; gap: 32px" aria-labelledby="h-color">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #5F6963">01</span>
+<h2 id="h-color" style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 600">Color</h2>
+<p style="margin: 0; font-size: 15px; line-height: 22px; color: #48524D; max-width: 760px">Cool-green neutrals carry the interface. Ink is the only action color, so status hues never compete with buttons. All text pairs meet WCAG AA (4.5:1); input borders and icons meet 3:1.</p>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 14px">
+<h3 style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600; color: #48524D; text-transform: uppercase; letter-spacing: 0.06em">Neutrals &amp; text</h3>
+<div style="display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 16px">
+<sc-for list="{{neutrals}}" as="s" hint-placeholder-count="9">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="height: 72px; border-radius: 10px; border: 1px solid #DCE0DB; background: {{s.hex}}"></div>
+<span style="font-size: 14px; line-height: 20px; font-weight: 600">{{s.name}}</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 16px; color: #48524D">{{s.tw}}</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 16px; color: #5F6963">{{s.hex}}</span>
+<span style="font-size: 12px; line-height: 16px; color: #5F6963">{{s.note}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 14px">
+<h3 style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600; color: #48524D; text-transform: uppercase; letter-spacing: 0.06em">Action &amp; interaction</h3>
+<div style="display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 16px">
+<sc-for list="{{actions}}" as="s" hint-placeholder-count="6">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="height: 72px; border-radius: 10px; border: 1px solid #DCE0DB; background: {{s.hex}}"></div>
+<span style="font-size: 14px; line-height: 20px; font-weight: 600">{{s.name}}</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 16px; color: #48524D">{{s.tw}}</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 16px; color: #5F6963">{{s.hex}}</span>
+<span style="font-size: 12px; line-height: 16px; color: #5F6963">{{s.note}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 14px">
+<h3 style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600; color: #48524D; text-transform: uppercase; letter-spacing: 0.06em">Refund status — always label + icon + color</h3>
+<div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px">
+<sc-for list="{{statuses}}" as="s" hint-placeholder-count="5">
+<div style="background: #FFFFFF; border: 1px solid #DCE0DB; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 1px 2px rgb(21 26 24 / 0.06)">
+<span style="align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px 0 8px; border-radius: 999px; font-size: 13px; line-height: 16px; font-weight: 500; color: {{s.fg}}; background: {{s.bg}}; border: 1px solid {{s.bd}}">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{s.ic}}" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{s.icon}}"></path></svg>
+{{s.label}}
+</span>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px">
+<div style="display: flex; flex-direction: column; gap: 4px"><div style="height: 28px; border-radius: 4px; background: {{s.fg}}"></div><span style="font-size: 11px; line-height: 14px; color: #5F6963">fg</span></div>
+<div style="display: flex; flex-direction: column; gap: 4px"><div style="height: 28px; border-radius: 4px; background: {{s.ic}}"></div><span style="font-size: 11px; line-height: 14px; color: #5F6963">icon</span></div>
+<div style="display: flex; flex-direction: column; gap: 4px"><div style="height: 28px; border-radius: 4px; background: {{s.bg}}; border: 1px solid #DCE0DB"></div><span style="font-size: 11px; line-height: 14px; color: #5F6963">bg</span></div>
+<div style="display: flex; flex-direction: column; gap: 4px"><div style="height: 28px; border-radius: 4px; background: {{s.bd}}"></div><span style="font-size: 11px; line-height: 14px; color: #5F6963">border</span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 16px; color: #48524D">
+<span>status-{{s.key}}-*</span>
+<span style="color: #5F6963">fg on bg {{s.ratio}} · AA</span>
+</div>
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: #48524D">{{s.use}}</p>
+</div>
+</sc-for>
+</div>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 32px" aria-labelledby="h-type">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #5F6963">02</span>
+<h2 id="h-type" style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 600">Type</h2>
+<p style="margin: 0; font-size: 15px; line-height: 22px; color: #48524D; max-width: 760px">IBM Plex Sans for interface text, Plex Mono (tabular figures) for order IDs, amounts and timestamps. Load both with <code style="font-family: 'IBM Plex Mono', monospace; font-size: 14px">next/font/google</code> as CSS variables.</p>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #DCE0DB; border-radius: 10px; display: flex; flex-direction: column">
+<sc-for list="{{types}}" as="t" hint-placeholder-count="9">
+<div style="display: grid; grid-template-columns: 220px minmax(0, 1fr) 220px; gap: 24px; align-items: center; padding: 18px 24px; border-bottom: 1px solid #EEF0ED">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #151A18">{{t.tw}}</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 16px; color: #5F6963">{{t.spec}}</span>
+</div>
+<span style="font-family: {{t.ff}}; font-size: {{t.size}}px; line-height: {{t.lh}}px; font-weight: {{t.w}}; letter-spacing: {{t.ls}}; font-variant-numeric: tabular-nums">{{t.sample}}</span>
+<span style="font-size: 13px; line-height: 18px; color: #5F6963">{{t.use}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 48px" aria-label="Spacing, radius and elevation">
+<div style="display: flex; flex-direction: column; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #5F6963">03</span>
+<h2 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 600">Spacing</h2>
+<p style="margin: 0; font-size: 15px; line-height: 22px; color: #48524D">4 px base. Matches Tailwind's default <code style="font-family: 'IBM Plex Mono', monospace; font-size: 14px">--spacing: 0.25rem</code>, so <code style="font-family: 'IBM Plex Mono', monospace; font-size: 14px">p-4</code> = 16 px. Use only these steps.</p>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #DCE0DB; border-radius: 10px; padding: 16px 24px; display: flex; flex-direction: column; gap: 10px">
+<sc-for list="{{spacing}}" as="p" hint-placeholder-count="10">
+<div style="display: grid; grid-template-columns: 56px 64px minmax(0, 1fr) 150px; gap: 16px; align-items: center">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px">{{p.k}}</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #5F6963">{{p.px}} px</span>
+<div style="height: 12px; width: {{p.px}}px; background: #3E4A45; border-radius: 2px"></div>
+<span style="font-size: 12px; line-height: 16px; color: #5F6963">{{p.use}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 48px">
+<div style="display: flex; flex-direction: column; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #5F6963">04</span>
+<h2 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 600">Radius</h2>
+</div>
+<div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px">
+<sc-for list="{{radii}}" as="r" hint-placeholder-count="5">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="height: 80px; background: #FFFFFF; border: 1.5px solid #858F89; border-radius: {{r.v}}"></div>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 18px">{{r.tw}}</span>
+<span style="font-size: 12px; line-height: 16px; color: #5F6963">{{r.label}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #5F6963">05</span>
+<h2 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 600">Elevation</h2>
+<p style="margin: 0; font-size: 15px; line-height: 22px; color: #48524D">Shadows are tinted with ink, never pure black. Borders do most of the separating; shadow marks what floats.</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; padding: 24px; background: #EEF0ED; border-radius: 10px">
+<sc-for list="{{shadows}}" as="s" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="height: 88px; background: #FFFFFF; border-radius: 10px; box-shadow: {{s.v}}"></div>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 18px">{{s.tw}}</span>
+<span style="font-size: 12px; line-height: 16px; color: #48524D">{{s.use}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+</section>
+
+<section style="display: grid; grid-template-columns: 5fr 7fr; gap: 48px" aria-label="Focus, motion and Tailwind mapping">
+<div style="display: flex; flex-direction: column; gap: 48px">
+<div style="display: flex; flex-direction: column; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #5F6963">06</span>
+<h2 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 600">Focus ring</h2>
+<p style="margin: 0; font-size: 15px; line-height: 22px; color: #48524D">2 px focus blue, 2 px offset, on <code style="font-family: 'IBM Plex Mono', monospace; font-size: 14px">:focus-visible</code> only. 6.5:1 against white, and it sits outside the control so it reads on every fill.</p>
+</div>
+<div style="display: flex; gap: 20px; align-items: center; padding: 28px; background: #FFFFFF; border: 1px solid #DCE0DB; border-radius: 10px; flex-wrap: wrap">
+<button type="button" style="height: 40px; padding: 0 16px; border-radius: 6px; border: 0; background: #1D2724; color: #FFFFFF; font: 500 14px/20px 'IBM Plex Sans', sans-serif; outline: 2px solid #2457C5; outline-offset: 2px">Approve refund</button>
+<button type="button" style="height: 40px; padding: 0 16px; border-radius: 6px; border: 1px solid #858F89; background: #FFFFFF; color: #151A18; font: 500 14px/20px 'IBM Plex Sans', sans-serif; outline: 2px solid #2457C5; outline-offset: 2px">View order</button>
+<a href="#h-color" style="font-size: 14px; line-height: 20px; font-weight: 500; outline: 2px solid #2457C5; outline-offset: 2px; border-radius: 2px">Refund policy</a>
+</div>
+<code style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #48524D; background: #EEF0ED; padding: 10px 12px; border-radius: 6px">focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus</code>
+</div>
+<div style="display: flex; flex-direction: column; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #5F6963">07</span>
+<h2 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 600">Motion</h2>
+<p style="margin: 0; font-size: 15px; line-height: 22px; color: #48524D">Short and functional: state changes, drawers, toasts. Under <code style="font-family: 'IBM Plex Mono', monospace; font-size: 14px">prefers-reduced-motion</code>, transitions drop to 0 ms, spinners and skeleton shimmer stop, and labels ("Processing…") carry the meaning.</p>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #DCE0DB; border-radius: 10px; display: flex; flex-direction: column">
+<sc-for list="{{motion}}" as="m" hint-placeholder-count="4">
+<div style="display: grid; grid-template-columns: 180px 150px minmax(0, 1fr); gap: 16px; padding: 12px 20px; border-bottom: 1px solid #EEF0ED; align-items: center">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px">{{m.tw}}</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #48524D">{{m.v}}</span>
+<span style="font-size: 13px; line-height: 18px; color: #5F6963">{{m.use}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #5F6963">08</span>
+<h2 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 600">Tailwind v4 mapping — app/globals.css</h2>
+</div>
+<pre style="margin: 0; padding: 24px 28px; background: #151A18; color: #E6EAE7; border-radius: 10px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; white-space: pre; overflow: hidden">@import "tailwindcss";
+
+@theme {
+  --color-*: initial;             /* drop default palette */
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+
+  --color-canvas: #F6F7F5;        --color-surface: #FFFFFF;
+  --color-muted: #EEF0ED;         --color-border: #DCE0DB;
+  --color-border-strong: #858F89;
+  --color-ink: #151A18;           --color-ink-muted: #48524D;
+  --color-ink-subtle: #5F6963;    --color-ink-disabled: #8A938D;
+  --color-primary: #1D2724;       --color-primary-hover: #0E1412;
+  --color-danger: #B42318;        --color-danger-hover: #912018;
+  --color-focus: #2457C5;         --color-scrim: rgb(21 26 24 / 0.45);
+
+  --color-status-approved-fg: #17603A;   --color-status-approved-bg: #E7F4EC;
+  --color-status-denied-fg: #A1261B;     --color-status-denied-bg: #FCECEA;
+  --color-status-escalated-fg: #86480A;  --color-status-escalated-bg: #FDF2E0;
+  --color-status-pending-fg: #454F4A;    --color-status-pending-bg: #EEF0ED;
+  --color-status-processing-fg: #2F4F86; --color-status-processing-bg: #EAF0FA;
+  /* + -icon and -border for each status (see swatches) */
+
+  --text-display: 2rem;      --text-display--line-height: 2.5rem;
+  --text-title-lg: 1.5rem;   --text-title-lg--line-height: 2rem;
+  --text-title: 1.25rem;     --text-title--line-height: 1.75rem;
+  --text-body: 1rem;         --text-body--line-height: 1.5rem;
+  --text-body-sm: 0.875rem;  --text-body-sm--line-height: 1.25rem;
+  --text-caption: 0.75rem;   --text-caption--line-height: 1rem;
+
+  --radius-sm: 4px;  --radius-md: 6px;  --radius-lg: 10px;  --radius-xl: 14px;
+
+  --shadow-xs: 0 1px 2px rgb(21 26 24 / 0.06);
+  --shadow-sm: 0 1px 2px rgb(21 26 24 / 0.06), 0 1px 3px rgb(21 26 24 / 0.08);
+  --shadow-md: 0 4px 12px -2px rgb(21 26 24 / 0.10), 0 2px 4px -2px rgb(21 26 24 / 0.06);
+  --shadow-lg: 0 16px 40px -8px rgb(21 26 24 / 0.18), 0 4px 12px -4px rgb(21 26 24 / 0.08);
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}</pre>
+</div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":3260}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var CIRCLE = 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0';
+    return {
+      neutrals: [
+        { name: 'Canvas', hex: '#F6F7F5', tw: 'bg-canvas', note: 'App background' },
+        { name: 'Surface', hex: '#FFFFFF', tw: 'bg-surface', note: 'Cards, tables, inputs' },
+        { name: 'Muted', hex: '#EEF0ED', tw: 'bg-muted', note: 'Row hover, wells, chips' },
+        { name: 'Border', hex: '#DCE0DB', tw: 'border-border', note: 'Dividers, card edges' },
+        { name: 'Border strong', hex: '#858F89', tw: 'border-border-strong', note: 'Input edges · 3.3:1' },
+        { name: 'Ink', hex: '#151A18', tw: 'text-ink', note: 'Body, headings · 17.6:1' },
+        { name: 'Ink muted', hex: '#48524D', tw: 'text-ink-muted', note: 'Secondary text · 8.1:1' },
+        { name: 'Ink subtle', hex: '#5F6963', tw: 'text-ink-subtle', note: 'Captions, meta · 5.7:1' },
+        { name: 'Ink disabled', hex: '#8A938D', tw: 'text-ink-disabled', note: 'Disabled only (exempt)' }
+      ],
+      actions: [
+        { name: 'Primary', hex: '#1D2724', tw: 'bg-primary', note: 'Main action · white 15.4:1' },
+        { name: 'Primary hover', hex: '#0E1412', tw: 'bg-primary-hover', note: 'Hover / pressed' },
+        { name: 'Danger', hex: '#B42318', tw: 'bg-danger', note: 'Destructive · white 6.6:1' },
+        { name: 'Danger hover', hex: '#912018', tw: 'bg-danger-hover', note: 'Hover / pressed' },
+        { name: 'Focus', hex: '#2457C5', tw: 'outline-focus', note: 'Focus ring, links · 6.5:1' },
+        { name: 'Scrim', hex: 'rgb(21 26 24 / 0.45)', tw: 'bg-scrim', note: 'Behind drawer + modal' }
+      ],
+      statuses: [
+        { key: 'approved', label: 'Approved', fg: '#17603A', bg: '#E7F4EC', bd: '#B5DCC3', ic: '#1F7A4A', ratio: '6.7:1', icon: CIRCLE + 'M8.5 12.5l2.5 2.5 4.5-5', use: 'Refund granted by AI within policy, or by an admin.' },
+        { key: 'denied', label: 'Denied', fg: '#A1261B', bg: '#FCECEA', bd: '#F1C2BC', ic: '#B42318', ratio: '6.5:1', icon: CIRCLE + 'M9 9l6 6M15 9l-6 6', use: 'Outside policy. Always shown with the reason.' },
+        { key: 'escalated', label: 'Escalated', fg: '#86480A', bg: '#FDF2E0', bd: '#EDCF98', ic: '#B45309', ratio: '6.4:1', icon: 'M12 3.5L2.8 19.5h18.4ZM12 10v4M12 17h.01', use: 'AI unsure or a large refund. Needs a person.' },
+        { key: 'pending', label: 'Pending', fg: '#454F4A', bg: '#EEF0ED', bd: '#D2D7D2', ic: '#5F6963', ratio: '7.4:1', icon: CIRCLE + 'M12 7v5l3 2', use: 'Request received, not yet assessed.' },
+        { key: 'processing', label: 'Processing', fg: '#2F4F86', bg: '#EAF0FA', bd: '#C3D2EC', ic: '#2F5FA8', ratio: '7.1:1', icon: 'M20 11a8 8 0 0 0-14.3-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.5L20 16M20 20v-4h-4', use: 'Approved; payout in flight to the original method.' }
+      ],
+      types: [
+        { tw: 'text-display', spec: '32/40 · 600 · -0.02em', size: 32, lh: 40, w: 600, ls: '-0.02em', ff: "'IBM Plex Sans', sans-serif", sample: 'Refund requests', use: 'Page title, one per screen' },
+        { tw: 'text-title-lg', spec: '24/32 · 600 · -0.01em', size: 24, lh: 32, w: 600, ls: '-0.01em', ff: "'IBM Plex Sans', sans-serif", sample: 'Escalations queue', use: 'Section headings' },
+        { tw: 'text-title', spec: '20/28 · 600', size: 20, lh: 28, w: 600, ls: '0', ff: "'IBM Plex Sans', sans-serif", sample: 'Refund for ORD-10418', use: 'Drawer, modal and card titles' },
+        { tw: 'text-title-sm', spec: '16/24 · 600', size: 16, lh: 24, w: 600, ls: '0', ff: "'IBM Plex Sans', sans-serif", sample: 'Policy match', use: 'Card sub-heads, group labels' },
+        { tw: 'text-body', spec: '16/24 · 400', size: 16, lh: 24, w: 400, ls: '0', ff: "'IBM Plex Sans', sans-serif", sample: 'Your refund of $96.00 has been sent to the Visa ending 4242.', use: 'Customer chat, long-form copy' },
+        { tw: 'text-body-sm', spec: '14/20 · 400', size: 14, lh: 20, w: 400, ls: '0', ff: "'IBM Plex Sans', sans-serif", sample: 'Requested within 14 days of purchase. Booking not used.', use: 'Admin tables, form help, dense UI' },
+        { tw: 'text-body-sm font-medium', spec: '14/20 · 500', size: 14, lh: 20, w: 500, ls: '0', ff: "'IBM Plex Sans', sans-serif", sample: 'Refund reason', use: 'Field labels, buttons, tabs' },
+        { tw: 'text-caption', spec: '12/16 · 500', size: 12, lh: 16, w: 500, ls: '0.01em', ff: "'IBM Plex Sans', sans-serif", sample: 'Updated 4 min ago', use: 'Timestamps, meta, table footers' },
+        { tw: 'font-mono text-body-sm', spec: 'Plex Mono 13/20 · tabular', size: 13, lh: 20, w: 500, ls: '0', ff: "'IBM Plex Mono', monospace", sample: 'ORD-10421 · $1,200.00 · 2026-09-21', use: 'IDs, amounts, dates' }
+      ],
+      spacing: [
+        { k: '1', px: 4, use: 'Icon to label' },
+        { k: '2', px: 8, use: 'Chip, badge padding' },
+        { k: '3', px: 12, use: 'Input padding-x' },
+        { k: '4', px: 16, use: 'Field stack, button pad' },
+        { k: '5', px: 20, use: 'Card padding (dense)' },
+        { k: '6', px: 24, use: 'Card padding' },
+        { k: '8', px: 32, use: 'Section inner gap' },
+        { k: '10', px: 40, use: 'Page gutter (tablet)' },
+        { k: '12', px: 48, use: 'Between sections' },
+        { k: '16', px: 64, use: 'Page gutter (desktop)' }
+      ],
+      radii: [
+        { tw: 'rounded-sm', v: '4px', label: '4 px · checkbox, code' },
+        { tw: 'rounded-md', v: '6px', label: '6 px · buttons, inputs' },
+        { tw: 'rounded-lg', v: '10px', label: '10 px · cards, toasts' },
+        { tw: 'rounded-xl', v: '14px', label: '14 px · modal' },
+        { tw: 'rounded-full', v: '999px', label: 'Badges, avatars' }
+      ],
+      shadows: [
+        { tw: 'shadow-xs', v: '0 1px 2px rgb(21 26 24 / 0.06)', use: 'Cards at rest' },
+        { tw: 'shadow-sm', v: '0 1px 2px rgb(21 26 24 / 0.06), 0 1px 3px rgb(21 26 24 / 0.08)', use: 'Raised / hover card' },
+        { tw: 'shadow-md', v: '0 4px 12px -2px rgb(21 26 24 / 0.10), 0 2px 4px -2px rgb(21 26 24 / 0.06)', use: 'Menus, toasts' },
+        { tw: 'shadow-lg', v: '0 16px 40px -8px rgb(21 26 24 / 0.18), 0 4px 12px -4px rgb(21 26 24 / 0.08)', use: 'Drawer, modal' }
+      ],
+      motion: [
+        { tw: 'duration-120', v: '120ms', use: 'Hover, press, focus' },
+        { tw: 'duration-200', v: '200ms', use: 'Toast in, tab indicator' },
+        { tw: 'duration-300', v: '300ms', use: 'Drawer and modal enter' },
+        { tw: 'ease-standard', v: 'cubic-bezier(.2,0,0,1)', use: 'All enter / move transitions' },
+        { tw: 'motion-reduce:*', v: '0ms, no loops', use: 'Static skeleton; spinner becomes a still icon' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

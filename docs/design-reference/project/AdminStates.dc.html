@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Admin — loading, empty, error</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+:focus-visible{outline:2px solid #2457C5;outline-offset:2px}
+button,input,select,textarea{font-family:inherit}
+@keyframes wn-spin{to{transform:rotate(360deg)}}
+.wn-spin{animation:wn-spin 0.8s linear infinite;transform-origin:center}
+@keyframes wn-pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+.wn-sk{background:#E4E7E3;border-radius:4px;animation:wn-pulse 1.6s cubic-bezier(0.2,0,0,1) infinite}
+.wn-tip{position:relative;cursor:help}
+.wn-tip::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);width:max-content;max-width:240px;padding:6px 10px;border-radius:6px;background:#151A18;color:#FFFFFF;font-size:12px;line-height:16px;font-weight:400;text-transform:none;letter-spacing:0;white-space:normal;text-align:left;opacity:0;pointer-events:none;transition:opacity 120ms;z-index:20}
+.wn-tip:hover::after,.wn-tip:focus-visible::after{opacity:1}
+@media (prefers-reduced-motion: reduce){.wn-spin,.wn-sk{animation:none}.wn-tip::after{transition:none}}
+</style>
+</helmet>
+<div style="width: 4856px; height: 2280px; box-sizing: border-box; padding: 64px 80px; background: #F6F7F5; font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; color: #151A18; display: grid; grid-template-columns: repeat(4, 1138px); column-gap: 48px; row-gap: 56px; align-items: start">
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Overview <span style="font-weight: 400; color: #48524D">· Loading</span></h2>
+<div style="position: relative; width: 1136px; height: 640px; border: 1px solid #DCE0DB; border-radius: 10px; overflow: hidden">
+<dc-import name="Admin" layout="bare" section="overview" section-state="loading" hint-size="1136px,640px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Requests <span style="font-weight: 400; color: #48524D">· Loading</span></h2>
+<div style="position: relative; width: 1136px; height: 640px; border: 1px solid #DCE0DB; border-radius: 10px; overflow: hidden">
+<dc-import name="Admin" layout="bare" section="requests" section-state="loading" hint-size="1136px,640px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Escalations <span style="font-weight: 400; color: #48524D">· Loading</span></h2>
+<div style="position: relative; width: 1136px; height: 640px; border: 1px solid #DCE0DB; border-radius: 10px; overflow: hidden">
+<dc-import name="Admin" layout="bare" section="escalations" section-state="loading" hint-size="1136px,640px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Policy <span style="font-weight: 400; color: #48524D">· Loading</span></h2>
+<div style="position: relative; width: 1136px; height: 640px; border: 1px solid #DCE0DB; border-radius: 10px; overflow: hidden">
+<dc-import name="Admin" layout="bare" section="policy" section-state="loading" hint-size="1136px,640px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Overview <span style="font-weight: 400; color: #48524D">· Empty</span></h2>
+<div style="position: relative; width: 1136px; height: 640px; border: 1px solid #DCE0DB; border-radius: 10px; overflow: hidden">
+<dc-import name="Admin" layout="bare" section="overview" section-state="empty" hint-size="1136px,640px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Requests <span style="font-weight: 400; color: #48524D">· Empty</span></h2>
+<div style="position: relative; width: 1136px; height: 640px; border: 1px solid #DCE0DB; border-radius: 10px; overflow: hidden">
+<dc-import name="Admin" layout="bare" section="requests" section-state="empty" hint-size="1136px,640px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Escalations <span style="font-weight: 400; color: #48524D">· Empty</span></h2>
+<div style="position: relative; width: 1136px; height: 640px; border: 1px solid #DCE0DB; border-radius: 10px; overflow: hidden">
+<dc-import name="Admin" layout="bare" section="escalations" section-state="empty" hint-size="1136px,640px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Policy <span style="font-weight: 400; color: #48524D">· Empty</span></h2>
+<div style="position: relative; width: 1136px; height: 640px; border: 1px solid #DCE0DB; border-radius: 10px; overflow: hidden">
+<dc-import name="Admin" layout="bare" section="policy" section-state="empty" hint-size="1136px,640px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Overview <span style="font-weight: 400; color: #48524D">· Error</span></h2>
+<div style="position: relative; width: 1136px; height: 640px; border: 1px solid #DCE0DB; border-radius: 10px; overflow: hidden">
+<dc-import name="Admin" layout="bare" section="overview" section-state="error" hint-size="1136px,640px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Requests <span style="font-weight: 400; color: #48524D">· Error</span></h2>
+<div style="position: relative; width: 1136px; height: 640px; border: 1px solid #DCE0DB; border-radius: 10px; overflow: hidden">
+<dc-import name="Admin" layout="bare" section="requests" section-state="error" hint-size="1136px,640px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Escalations <span style="font-weight: 400; color: #48524D">· Error</span></h2>
+<div style="position: relative; width: 1136px; height: 640px; border: 1px solid #DCE0DB; border-radius: 10px; overflow: hidden">
+<dc-import name="Admin" layout="bare" section="escalations" section-state="error" hint-size="1136px,640px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Policy <span style="font-weight: 400; color: #48524D">· Error</span></h2>
+<div style="position: relative; width: 1136px; height: 640px; border: 1px solid #DCE0DB; border-radius: 10px; overflow: hidden">
+<dc-import name="Admin" layout="bare" section="policy" section-state="error" hint-size="1136px,640px"></dc-import>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":4856,"height":2280}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

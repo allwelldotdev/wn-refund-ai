@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Worknoon Support — Sign in</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+:focus-visible{outline:2px solid #2457C5;outline-offset:2px}
+button,input{font-family:inherit}
+@keyframes wn-spin{to{transform:rotate(360deg)}}
+.wn-spin{animation:wn-spin 0.8s linear infinite;transform-origin:center}
+@media (prefers-reduced-motion: reduce){.wn-spin{animation:none}}
+</style>
+</helmet>
+<div style="{{rootStyle}}">
+
+<sc-if value="{{showChrome}}" hint-placeholder-val="{{ true }}">
+<header style="{{topbarStyle}}">
+<a href="#signin" aria-label="Worknoon Support home" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #151A18">
+<span style="width: 28px; height: 28px; border-radius: 6px; background: #1D2724; display: flex; align-items: center; justify-content: center">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6l4.5 12L12 8l4.5 10L21 6"></path></svg>
+</span>
+<span style="font-size: 16px; line-height: 24px; font-weight: 600; letter-spacing: -0.01em">Worknoon Support</span>
+</a>
+</header>
+</sc-if>
+
+<main style="{{mainStyle}}">
+
+<sc-if value="{{showChrome}}" hint-placeholder-val="{{ true }}">
+<div style="{{introStyle}}">
+<h1 style="{{h1Style}}">Refund support for Worknoon orders</h1>
+<p style="margin: 0; font-size: 16px; line-height: 24px; color: #48524D">Customers describe the problem in chat and an AI assistant applies the refund policy. Anything it can't decide goes to a support admin, who can also review every decision.</p>
+</div>
+</sc-if>
+
+<section id="signin" aria-labelledby="signin-title" style="{{cardStyle}}">
+<h2 id="signin-title" style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600">Sign in</h2>
+
+<sc-if value="{{isExpired}}" hint-placeholder-val="{{ false }}">
+<div role="status" style="display: flex; gap: 12px; padding: 14px 16px; border-radius: 10px; background: #EEF0ED; border: 1px solid #D2D7D2">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#48524D" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 7v5l3 2"></path></svg>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 14px; line-height: 20px; font-weight: 600">Your session expired</span>
+<span style="font-size: 14px; line-height: 20px; color: #48524D">You were signed out after 30 minutes without activity. Sign in again to go back to where you were.</span>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isInvalid}}" hint-placeholder-val="{{ false }}">
+<div role="alert" style="display: flex; gap: 12px; padding: 14px 16px; border-radius: 10px; background: #FCECEA; border: 1px solid #F1C2BC">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B42318" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 8v5M12 16h.01"></path></svg>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 14px; line-height: 20px; font-weight: 600; color: #A1261B">Email or password is incorrect</span>
+<span style="font-size: 14px; line-height: 20px; color: #151A18">Check both and try again. {{attemptsText}}</span>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isLimited}}" hint-placeholder-val="{{ false }}">
+<div role="alert" style="display: flex; gap: 12px; padding: 14px 16px; border-radius: 10px; background: #FCECEA; border: 1px solid #F1C2BC">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B42318" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><path d="M5 11h14v10H5ZM8 11V7.5a4 4 0 0 1 8 0V11"></path></svg>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 14px; line-height: 20px; font-weight: 600; color: #A1261B">Too many sign-in attempts</span>
+<span style="font-size: 14px; line-height: 20px; color: #151A18">For your security, sign-in is paused. Try again in <span style="font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums">{{lockText}}</span>.</span>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isSuccess}}" hint-placeholder-val="{{ false }}">
+<div role="status" style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; gap: 12px; padding: 14px 16px; border-radius: 10px; background: #E7F4EC; border: 1px solid #B5DCC3">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1F7A4A" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M8.5 12.5l2.5 2.5 4.5-5"></path></svg>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 14px; line-height: 20px; font-weight: 600; color: #17603A">Signed in as {{who.name}}</span>
+<span style="font-size: 14px; line-height: 20px; color: #151A18">{{who.roleText}} account. Opening {{who.dest}}…</span>
+</div>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; line-height: 18px; color: #5F6963">
+<span>Redirect to <span style="font-family: 'IBM Plex Mono', monospace; color: #151A18">{{who.route}}</span></span>
+<button type="button" onClick="{{reset}}" style="height: 32px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: #151A18; font-size: 13px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; cursor: pointer">Back to sign-in (demo)</button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{showForm}}" hint-placeholder-val="{{ true }}">
+<form onSubmit="{{submit}}" onKeyDown="{{formKey}}" novalidate="true" aria-busy="{{busyStr}}" style="display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="signin-email" style="font-size: 14px; line-height: 20px; font-weight: 500">Email</label>
+<input id="signin-email" name="email" type="email" autocomplete="username" inputmode="email" spellcheck="false" value="{{email}}" onChange="{{onEmail}}" readOnly="{{busy}}" aria-invalid="{{emailInvalid}}" aria-describedby="{{emailDesc}}" placeholder="you@company.com" style="{{emailStyle}}">
+<sc-if value="{{emailErr}}" hint-placeholder-val="{{ false }}">
+<span id="signin-email-err" style="display: flex; gap: 6px; align-items: flex-start; font-size: 13px; line-height: 18px; color: #A1261B">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B42318" stroke-width="2.25" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 8v5M12 16h.01"></path></svg>
+<span>{{emailErr}}</span>
+</span>
+</sc-if>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="signin-password" style="font-size: 14px; line-height: 20px; font-weight: 500">Password</label>
+<div style="position: relative; display: flex">
+<input id="signin-password" name="password" type="{{pwType}}" autocomplete="current-password" value="{{password}}" onChange="{{onPassword}}" readOnly="{{busy}}" aria-invalid="{{pwInvalid}}" aria-describedby="{{pwDesc}}" style="{{pwStyle}}">
+<button type="button" onClick="{{togglePw}}" aria-pressed="{{showPwStr}}" aria-controls="signin-password" aria-label="{{pwToggleLabel}}" style="position: absolute; right: 4px; top: 4px; height: 36px; min-width: 56px; padding: 0 10px; border: 0; border-radius: 4px; background: transparent; color: #48524D; font-size: 13px; line-height: 16px; font-weight: 500; cursor: pointer">{{pwToggleText}}</button>
+</div>
+<sc-if value="{{pwErr}}" hint-placeholder-val="{{ false }}">
+<span id="signin-password-err" style="display: flex; gap: 6px; align-items: flex-start; font-size: 13px; line-height: 18px; color: #A1261B">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B42318" stroke-width="2.25" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 8v5M12 16h.01"></path></svg>
+<span>{{pwErr}}</span>
+</span>
+</sc-if>
+</div>
+<button id="signin-submit" type="button" onClick="{{submit}}" disabled="{{submitDisabled}}" aria-busy="{{busyStr}}" style="{{submitStyle}}">
+<sc-if value="{{busy}}" hint-placeholder-val="{{ false }}">
+<svg class="wn-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke-opacity="0.25"></circle><path d="M21 12a9 9 0 0 0-9-9"></path></svg>
+</sc-if>
+<span>{{submitText}}</span>
+</button>
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: #5F6963">Your account decides where you land: customers go to their refund chat, support staff to the admin dashboard.</p>
+</form>
+</sc-if>
+
+<sc-if value="{{showDemo}}" hint-placeholder-val="{{ true }}">
+<a href="#demo" style="display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding-top: 16px; border-top: 1px solid #EEF0ED; width: 100%; font-size: 14px; line-height: 20px; font-weight: 500; text-decoration: none">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"></path></svg>
+Reviewing the project? Use a demo account
+</a>
+</sc-if>
+</section>
+
+<sc-if value="{{showDemo}}" hint-placeholder-val="{{ true }}">
+<section id="demo" aria-labelledby="demo-title" style="{{demoStyle}}">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+<h2 id="demo-title" style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Demo accounts</h2>
+<span style="display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 4px; background: #FFFFFF; border: 1px solid #C4CAC5; font-size: 12px; line-height: 16px; font-weight: 500; color: #48524D">For reviewers</span>
+</div>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">Pick an account to fill the sign-in form, then press Sign in. Every demo account uses the password <span style="font-family: 'IBM Plex Mono', monospace; color: #151A18; background: #FFFFFF; padding: 1px 6px; border-radius: 4px; border: 1px solid #DCE0DB">demo-2026</span>.</p>
+</div>
+
+<div style="display: flex; gap: 12px; padding: 12px 14px; border-radius: 10px; background: #FFFFFF; border: 1px solid #DCE0DB">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#48524D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><path d="M3 5h8v14H3ZM13 5h8v14h-8Z"></path></svg>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #151A18">Each browser tab has its own session. Open the customer and admin views side by side in separate tabs.</p>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<h3 style="margin: 0; font-size: 12px; line-height: 16px; font-weight: 600; color: #48524D; text-transform: uppercase; letter-spacing: 0.06em">Admins</h3>
+<div style="{{adminGridStyle}}">
+<sc-for list="{{admins}}" as="a" hint-placeholder-count="2">
+<button type="button" onClick="{{a.pick}}" disabled="{{busy}}" aria-pressed="{{a.pressed}}" style="{{a.style}}">
+<span style="display: flex; justify-content: space-between; align-items: center; gap: 8px">
+<span style="font-size: 15px; line-height: 22px; font-weight: 600; color: #151A18">{{a.scenario}}</span>
+<span style="display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; background: #1D2724; color: #FFFFFF; font-size: 12px; line-height: 16px; font-weight: 500">Admin</span>
+</span>
+<span style="font-size: 13px; line-height: 18px; color: #48524D">{{a.desc}}</span>
+<span style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding-top: 4px">
+<span style="font-size: 13px; line-height: 18px; color: #151A18">{{a.name}} · <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #5F6963">{{a.email}}</span></span>
+<sc-if value="{{a.selected}}" hint-placeholder-val="{{ false }}">
+<span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: #151A18"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg>Filled</span>
+</sc-if>
+</span>
+</button>
+</sc-for>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<h3 style="margin: 0; font-size: 12px; line-height: 16px; font-weight: 600; color: #48524D; text-transform: uppercase; letter-spacing: 0.06em">Customers · by scenario</h3>
+<div style="{{custGridStyle}}">
+<sc-for list="{{customers}}" as="c" hint-placeholder-count="6">
+<button type="button" onClick="{{c.pick}}" disabled="{{busy}}" aria-pressed="{{c.pressed}}" style="{{c.style}}">
+<span style="display: flex; justify-content: space-between; align-items: center; gap: 8px">
+<span style="font-size: 15px; line-height: 22px; font-weight: 600; color: #151A18">{{c.scenario}}</span>
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px 0 6px; border-radius: 999px; font-size: 12px; line-height: 16px; font-weight: 500; white-space: nowrap; color: {{c.st.fg}}; background: {{c.st.bg}}; border: 1px solid {{c.st.bd}}">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{c.st.ic}}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{c.st.icon}}"></path></svg>
+{{c.st.label}}
+</span>
+</span>
+<span style="font-size: 13px; line-height: 18px; color: #48524D">{{c.desc}}</span>
+<span style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding-top: 4px">
+<span style="font-size: 13px; line-height: 18px; color: #151A18">{{c.name}} · <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #5F6963">{{c.order}}</span></span>
+<sc-if value="{{c.selected}}" hint-placeholder-val="{{ false }}">
+<span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: #151A18"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg>Filled</span>
+</sc-if>
+</span>
+</button>
+</sc-for>
+</div>
+</div>
+<p role="status" style="margin: 0; min-height: 18px; font-size: 13px; line-height: 18px; color: #48524D">{{filledMsg}}</p>
+</section>
+</sc-if>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;layout&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;desktop&quot;,&quot;mobile&quot;,&quot;card&quot;],&quot;default&quot;:&quot;desktop&quot;},&quot;scenario&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;default&quot;,&quot;submitting&quot;,&quot;invalid&quot;,&quot;expired&quot;,&quot;ratelimited&quot;],&quot;default&quot;:&quot;default&quot;},&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:1720}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = this.initialFor(props.scenario || 'default');
+    this.timer = null;
+    this.tick = null;
+  }
+  initialFor(sc) {
+    var s = { email: '', password: '', showPw: false, phase: 'idle', error: null, banner: null, fails: 0, emailErr: '', pwErr: '', picked: null, filledMsg: '', lockLeft: 0, who: null };
+    if (sc === 'submitting') { s.email = 'grace.liu@example.com'; s.password = 'demo-2026'; s.phase = 'submitting'; s.picked = 'grace'; }
+    if (sc === 'invalid') { s.email = 'grace.liu@example.com'; s.error = 'invalid'; s.fails = 3; }
+    if (sc === 'expired') { s.email = 'ngozi.adeyemi@worknoon.example'; s.banner = 'expired'; }
+    if (sc === 'ratelimited') { s.email = 'daniel.mercer@example.com'; s.error = 'ratelimited'; s.fails = 5; s.lockLeft = 272; }
+    return s;
+  }
+  componentDidUpdate(prev) {
+    if (prev.scenario !== this.props.scenario) { this.clearTimers(); this.setState(this.initialFor(this.props.scenario || 'default')); }
+  }
+  componentWillUnmount() { this.clearTimers(); }
+  clearTimers() {
+    if (this.timer) { clearTimeout(this.timer); this.timer = null; }
+    if (this.tick) { clearInterval(this.tick); this.tick = null; }
+  }
+  accounts() {
+    var CIRCLE = 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0';
+    var S = {
+      approved: { label: 'Approved', fg: '#17603A', bg: '#E7F4EC', bd: '#B5DCC3', ic: '#1F7A4A', icon: CIRCLE + 'M8.5 12.5l2.5 2.5 4.5-5' },
+      denied: { label: 'Denied', fg: '#A1261B', bg: '#FCECEA', bd: '#F1C2BC', ic: '#B42318', icon: CIRCLE + 'M9 9l6 6M15 9l-6 6' },
+      escalated: { label: 'Escalated', fg: '#86480A', bg: '#FDF2E0', bd: '#EDCF98', ic: '#B45309', icon: 'M12 3.5L2.8 19.5h18.4ZM12 10v4M12 17h.01' },
+      pending: { label: 'Pending', fg: '#454F4A', bg: '#EEF0ED', bd: '#D2D7D2', ic: '#5F6963', icon: CIRCLE + 'M12 7v5l3 2' }
+    };
+    return [
+      { id: 'ngozi', admin: true, name: 'Ngozi Adeyemi', email: 'ngozi.adeyemi@worknoon.example', scenario: 'Support lead', desc: 'Manages refund policy and makes the final call on escalations.' },
+      { id: 'sam', admin: true, name: 'Sam Whitfield', email: 'sam.whitfield@worknoon.example', scenario: 'Support agent', desc: 'Reviews AI decisions and works the escalation queue. Cannot edit policy.' },
+      { id: 'amara', admin: false, name: 'Amara Okafor', email: 'amara.okafor@example.com', order: 'ORD-10421', scenario: 'Within policy', desc: 'Unused day passes, 2 days after purchase. AI approves on its own.', st: S.approved },
+      { id: 'hana', admin: false, name: 'Hana Sato', email: 'hana.sato@example.com', order: 'ORD-10315', scenario: 'Damaged item', desc: 'Coffee delivery arrived torn. Customer is asked for a photo.', st: S.pending },
+      { id: 'tomas', admin: false, name: 'Tomás Herrera', email: 'tomas.herrera@example.com', order: 'ORD-10397', scenario: 'Final sale', desc: 'Discounted locker rental marked non-refundable at checkout.', st: S.denied },
+      { id: 'grace', admin: false, name: 'Grace Liu', email: 'grace.liu@example.com', order: 'ORD-10388', scenario: 'Over $500', desc: '$1,200.00 office deposit. Large refunds need review, so it goes to an admin.', st: S.escalated },
+      { id: 'olivia', admin: false, name: 'Olivia Grant', email: 'olivia.grant@example.com', order: 'ORD-10274', scenario: 'Expired window', desc: 'Podcast studio booked Aug 1. Past the 14-day refund window.', st: S.denied },
+      { id: 'daniel', admin: false, name: 'Daniel Mercer', email: 'daniel.mercer@example.com', order: 'ORD-10418', scenario: 'Unclear claim', desc: 'Says the room was double-booked; no record of it. AI is unsure.', st: S.escalated }
+    ];
+  }
+  renderVals() {
+    var self = this;
+    var st = this.state;
+    var layout = this.props.layout || 'desktop';
+    var mobile = layout === 'mobile';
+    var cardOnly = layout === 'card';
+    var busy = st.phase === 'submitting';
+    var success = st.phase === 'success';
+    var limited = st.error === 'ratelimited';
+    var FAIL_LIMIT = 5;
+    var accts = this.accounts();
+
+    var pick = function (a) {
+      return function () {
+        var next = { email: a.email, password: 'demo-2026', picked: a.id, emailErr: '', pwErr: '', banner: null, filledMsg: 'Filled in ' + a.name + (a.admin ? ' (admin)' : ' (' + a.scenario + ')') + '. Press Sign in.' };
+        if (!limited) next.error = null;
+        self.setState(next, function () {
+          if (!mobile) { var b = document.getElementById('signin-submit'); if (b && !b.disabled) b.focus(); }
+          else { var f = document.getElementById('signin'); if (f && f.scrollIntoView) f.scrollIntoView({ block: 'start' }); }
+        });
+      };
+    };
+    var decorate = function (a) {
+      var sel = st.picked === a.id;
+      return Object.assign({}, a, {
+        pick: pick(a), selected: sel, pressed: sel ? 'true' : 'false',
+        style: 'width: 100%; min-height: 44px; text-align: left; display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 10px; background: #FFFFFF; font-family: inherit; cursor: ' + (busy ? 'not-allowed' : 'pointer') + '; opacity: ' + (busy ? '0.6' : '1') + '; border: ' + (sel ? '1.5px solid #151A18' : '1px solid #DCE0DB') + '; box-shadow: ' + (sel ? '0 1px 2px rgb(21 26 24 / 0.06), 0 1px 3px rgb(21 26 24 / 0.08)' : '0 1px 2px rgb(21 26 24 / 0.06)')
+      });
+    };
+
+    var submit = function (e) {
+      if (e && e.preventDefault) e.preventDefault();
+      if (busy || limited) return;
+      var email = (st.email || '').trim();
+      var emailErr = '', pwErr = '';
+      if (!email) emailErr = 'Enter your email address.';
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) emailErr = 'Enter an email like name@company.com.';
+      if (!st.password) pwErr = 'Enter your password.';
+      if (emailErr || pwErr) {
+        self.setState({ emailErr: emailErr, pwErr: pwErr, error: null }, function () {
+          var el = document.getElementById(emailErr ? 'signin-email' : 'signin-password'); if (el) el.focus();
+        });
+        return;
+      }
+      self.setState({ phase: 'submitting', error: null, emailErr: '', pwErr: '', banner: null });
+      self.timer = setTimeout(function () {
+        self.timer = null;
+        var match = accts.filter(function (a) { return a.email.toLowerCase() === email.toLowerCase(); })[0];
+        if (match && self.state.password === 'demo-2026') {
+          self.setState({ phase: 'success', who: { name: match.name, roleText: match.admin ? 'Admin' : 'Customer', dest: match.admin ? 'the admin dashboard' : 'your refund chat', route: match.admin ? '/admin' : '/chat' } });
+          return;
+        }
+        var fails = self.state.fails + 1;
+        if (fails >= FAIL_LIMIT) {
+          self.setState({ phase: 'idle', fails: fails, error: 'ratelimited', password: '', lockLeft: 300 });
+          self.tick = setInterval(function () {
+            var left = self.state.lockLeft - 1;
+            if (left <= 0) { clearInterval(self.tick); self.tick = null; self.setState({ lockLeft: 0, error: null, fails: 0 }); }
+            else self.setState({ lockLeft: left });
+          }, 1000);
+        } else {
+          self.setState({ phase: 'idle', fails: fails, error: 'invalid', password: '' }, function () {
+            var el = document.getElementById('signin-password'); if (el) el.focus();
+          });
+        }
+      }, 1200);
+    };
+
+    var left = FAIL_LIMIT - st.fails;
+    var attemptsText = left <= 2 ? (left === 1 ? '1 attempt left before a 5-minute pause.' : left + ' attempts left before a 5-minute pause.') : '';
+    var m = Math.floor(st.lockLeft / 60), s = st.lockLeft % 60;
+    var lockText = m + ':' + (s < 10 ? '0' : '') + s;
+
+    var inputBase = 'width: 100%; box-sizing: border-box; height: ' + (mobile ? '44px' : '40px') + '; padding: 0 12px; border-radius: 6px; font-size: ' + (mobile ? '16px' : '14px') + '; color: #151A18; background: ' + (busy ? '#F6F7F5' : '#FFFFFF') + '; ';
+    var invalidAll = st.error === 'invalid';
+    var emailBad = !!st.emailErr || invalidAll;
+    var pwBad = !!st.pwErr || invalidAll;
+    var border = function (bad) { return bad ? 'border: 1.5px solid #B42318; ' : 'border: 1px solid #858F89; '; };
+
+    var btnDisabled = limited;
+    var submitStyle = 'width: 100%; height: 44px; border-radius: 6px; font-size: 15px; line-height: 20px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 8px; ' +
+      (btnDisabled ? 'border: 1px solid #DCE0DB; background: #EEF0ED; color: #8A938D; cursor: not-allowed' : 'border: 1px solid #1D2724; background: #1D2724; color: #FFFFFF; cursor: ' + (busy ? 'progress' : 'pointer'));
+
+    var rootStyle = cardOnly
+      ? 'width: 440px; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; color: #151A18; -webkit-font-smoothing: antialiased'
+      : mobile
+        ? 'width: 390px; height: 2240px; box-sizing: border-box; background: #FFFFFF; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; color: #151A18; -webkit-font-smoothing: antialiased; display: flex; flex-direction: column'
+        : 'width: 1440px; height: 1720px; box-sizing: border-box; background: #F6F7F5; font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; color: #151A18; -webkit-font-smoothing: antialiased; display: flex; flex-direction: column';
+
+    return {
+      rootStyle: rootStyle,
+      showChrome: !cardOnly,
+      showDemo: !cardOnly,
+      topbarStyle: mobile ? 'height: 56px; padding: 0 16px; display: flex; align-items: center; border-bottom: 1px solid #DCE0DB' : 'height: 72px; padding: 0 64px; display: flex; align-items: center; border-bottom: 1px solid #DCE0DB; background: #FFFFFF',
+      mainStyle: cardOnly ? 'display: flex; flex-direction: column' : mobile ? 'display: flex; flex-direction: column; gap: 24px; padding: 24px 0 0' : 'display: flex; flex-direction: column; align-items: center; gap: 32px; padding: 64px 64px 80px',
+      introStyle: mobile ? 'display: flex; flex-direction: column; gap: 8px; padding: 0 16px' : 'width: 560px; display: flex; flex-direction: column; gap: 10px; text-align: center',
+      h1Style: mobile ? 'margin: 0; font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -0.01em' : 'margin: 0; font-size: 32px; line-height: 40px; font-weight: 600; letter-spacing: -0.02em',
+      cardStyle: mobile
+        ? 'display: flex; flex-direction: column; gap: 20px; padding: 0 16px 8px'
+        : 'width: 440px; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px; padding: 32px; background: #FFFFFF; border: 1px solid #DCE0DB; border-radius: 14px; box-shadow: 0 1px 2px rgb(21 26 24 / 0.06), 0 1px 3px rgb(21 26 24 / 0.08)',
+      demoStyle: mobile
+        ? 'display: flex; flex-direction: column; gap: 20px; padding: 28px 16px 40px; background: #EEF0ED; border-top: 1px solid #DCE0DB'
+        : 'width: 920px; box-sizing: border-box; margin-top: 24px; display: flex; flex-direction: column; gap: 20px; padding: 32px; background: #EEF0ED; border: 1px solid #DCE0DB; border-radius: 14px',
+      adminGridStyle: 'display: grid; gap: 12px; grid-template-columns: ' + (mobile ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))'),
+      custGridStyle: 'display: grid; gap: 12px; grid-template-columns: ' + (mobile ? 'minmax(0, 1fr)' : 'repeat(3, minmax(0, 1fr))'),
+      admins: accts.filter(function (a) { return a.admin; }).map(decorate),
+      customers: accts.filter(function (a) { return !a.admin; }).map(decorate),
+      filledMsg: st.filledMsg,
+
+      isExpired: st.banner === 'expired' && !success,
+      isInvalid: st.error === 'invalid' && !success,
+      isLimited: limited && !success,
+      isSuccess: success,
+      showForm: !success,
+      who: st.who || { name: '', roleText: '', dest: '', route: '' },
+      reset: function () { self.clearTimers(); self.setState(self.initialFor('default')); },
+      attemptsText: attemptsText,
+      lockText: lockText,
+
+      email: st.email,
+      password: st.password,
+      onEmail: function (e) { self.setState({ email: e.target.value, emailErr: '', picked: null }); },
+      onPassword: function (e) { self.setState({ password: e.target.value, pwErr: '' }); },
+      togglePw: function () { self.setState({ showPw: !st.showPw }); },
+      pwType: st.showPw ? 'text' : 'password',
+      showPwStr: st.showPw ? 'true' : 'false',
+      pwToggleText: st.showPw ? 'Hide' : 'Show',
+      pwToggleLabel: st.showPw ? 'Hide password' : 'Show password',
+      emailErr: st.emailErr,
+      pwErr: st.pwErr,
+      emailInvalid: emailBad ? 'true' : 'false',
+      pwInvalid: pwBad ? 'true' : 'false',
+      emailDesc: st.emailErr ? 'signin-email-err' : '',
+      pwDesc: st.pwErr ? 'signin-password-err' : '',
+      emailStyle: inputBase + border(emailBad),
+      pwStyle: inputBase + 'padding-right: 68px; ' + border(pwBad),
+
+      busy: busy,
+      busyStr: busy ? 'true' : 'false',
+      submit: submit,
+      formKey: function (e) { if (e.key === 'Enter' && e.target && e.target.tagName === 'INPUT') { e.preventDefault(); submit(); } },
+      submitDisabled: btnDisabled,
+      submitStyle: submitStyle,
+      submitText: busy ? 'Signing in…' : 'Sign in'
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chat widget — states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+:focus-visible{outline:2px solid #2457C5;outline-offset:2px}
+button,input,textarea{font-family:inherit}
+@keyframes wn-spin{to{transform:rotate(360deg)}}
+.wn-spin{animation:wn-spin 0.8s linear infinite;transform-origin:center}
+@keyframes wn-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.wn-in{animation:wn-in 200ms cubic-bezier(0.2,0,0,1)}
+@keyframes wn-blink{50%{opacity:0}}
+.wn-caret{display:inline-block;margin-left:1px;color:#48524D;animation:wn-blink 1s steps(1) infinite}
+@media (prefers-reduced-motion: reduce){.wn-spin,.wn-in,.wn-caret{animation:none}}
+</style>
+</helmet>
+<div style="width: 2800px; height: 1720px; box-sizing: border-box; padding: 64px 80px; background: #F6F7F5; font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; color: #151A18; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); column-gap: 48px; row-gap: 72px; align-items: start">
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px; min-height: 96px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #5F6963">A</span>
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Greeting + order chips</h2>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">Recent orders as chips. Items already refunded or with a refund in progress are marked, can't be picked, and link to Your requests.</p>
+</div>
+<div style="position: relative; width: 400px; height: 600px">
+<dc-import name="ChatPanel" layout="panel" scenario="live" hint-size="400px,600px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px; min-height: 96px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #5F6963">B</span>
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Composer near the limit</h2>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">Counter turns bold at 450 characters, red when over 500. Send is disabled when over.</p>
+</div>
+<div style="position: relative; width: 400px; height: 600px">
+<dc-import name="ChatPanel" layout="panel" scenario="typing" hint-size="400px,600px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px; min-height: 96px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #5F6963">C</span>
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Reviewing</h2>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">Spinner, elapsed time and three named steps that tick over, so it never looks stuck. Steps still update with reduced motion.</p>
+</div>
+<div style="position: relative; width: 400px; height: 600px">
+<dc-import name="ChatPanel" layout="panel" scenario="processing" hint-size="400px,600px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px; min-height: 96px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #5F6963">D</span>
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Verdict — approved</h2>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">After streaming: explanation, amount, refund method, line items, next steps, reference.</p>
+</div>
+<div style="position: relative; width: 400px; height: 600px">
+<dc-import name="ChatPanel" layout="panel" scenario="approved" hint-size="400px,600px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px; min-height: 96px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #5F6963">E</span>
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Verdict — denied</h2>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">Plain-language reason, the policy it came from, and a way to ask a person.</p>
+</div>
+<div style="position: relative; width: 400px; height: 600px">
+<dc-import name="ChatPanel" layout="panel" scenario="denied" hint-size="400px,600px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px; min-height: 96px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #5F6963">F</span>
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Verdict — escalated</h2>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">Who handles it, the expected reply time, and where the reply will arrive.</p>
+</div>
+<div style="position: relative; width: 400px; height: 600px">
+<dc-import name="ChatPanel" layout="panel" scenario="escalated" hint-size="400px,600px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px; min-height: 96px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #5F6963">G</span>
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Automatic review failed</h2>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">No error shown. A normal Escalated card says a specialist will review. Internal retries stay invisible.</p>
+</div>
+<div style="position: relative; width: 400px; height: 600px">
+<dc-import name="ChatPanel" layout="panel" scenario="error" hint-size="400px,600px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px; min-height: 96px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #5F6963">H</span>
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Rate limit</h2>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">Neutral notice with a countdown; the composer is paused, not cleared.</p>
+</div>
+<div style="position: relative; width: 400px; height: 600px">
+<dc-import name="ChatPanel" layout="panel" scenario="ratelimited" hint-size="400px,600px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px; min-height: 96px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #5F6963">I</span>
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Session expired</h2>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">Sign in again goes to the sign-in page; the unsent message is kept.</p>
+</div>
+<div style="position: relative; width: 400px; height: 600px">
+<dc-import name="ChatPanel" layout="panel" scenario="expired" hint-size="400px,600px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px; min-height: 96px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #5F6963">J</span>
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">No orders</h2>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">Empty state for a new customer; free text still goes to a specialist.</p>
+</div>
+<div style="position: relative; width: 400px; height: 600px">
+<dc-import name="ChatPanel" layout="panel" scenario="noorders" hint-size="400px,600px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px; min-height: 96px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #5F6963">K</span>
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Your requests</h2>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">Past requests with status badges and reference IDs.</p>
+</div>
+<div style="position: relative; width: 400px; height: 600px">
+<dc-import name="ChatPanel" layout="panel" scenario="requests" hint-size="400px,600px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px; min-height: 96px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #5F6963">L</span>
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Verdict — streaming</h2>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">Badge and reference appear first, so the outcome is clear. The explanation streams in with a cursor; details follow when it ends.</p>
+</div>
+<div style="position: relative; width: 400px; height: 600px">
+<dc-import name="ChatPanel" layout="panel" scenario="streaming" hint-size="400px,600px"></dc-import>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2800,"height":1720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
