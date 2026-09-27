@@ -1,9 +1,12 @@
 "use client";
 
-import { Pill } from "@/components/ui/Badge";
+import { useState } from "react";
+
+import { Pill, type Tone } from "@/components/ui/Badge";
+import { Icon, type IconName } from "@/components/ui/Icon";
 import type { ConversationSummary, Order } from "@/lib/api-types";
 import { cn } from "@/lib/cn";
-import { orderAvailability } from "@/lib/customer";
+import { orderAvailability, type ItemMarker } from "@/lib/customer";
 import { formatCents, formatDate } from "@/lib/format";
 
 type OrderChipsProps = {
@@ -15,18 +18,32 @@ type OrderChipsProps = {
   onShowRequest: (requestRef: string) => void;
 };
 
+const FIRST = 5;
+const MOST = 8;
+
+const MARKER_STYLE: Record<ItemMarker["kind"], { tone: Tone; icon: IconName }> = {
+  approved: { tone: "approved", icon: "check-circle" },
+  denied: { tone: "denied", icon: "x-circle" },
+  review: { tone: "escalated", icon: "clock" },
+};
+
 /**
- * The customer's orders as pickable chips. Orders whose items are all
- * refunded or under review can't be picked; their markers link to the
- * matching row in Your requests.
+ * The customer's newest orders as pickable chips: five, then up to eight.
+ * Orders whose items all have a request can't be picked; each marker opens
+ * that request in Your requests.
  */
 export function OrderChips({ orders, conversations, selectedId, disabled, onPick, onShowRequest }: OrderChipsProps) {
+  const [expanded, setExpanded] = useState(false);
   const rows = orders.map((order) => ({ order, ...orderAvailability(order, conversations) }));
   const anyOpen = rows.some((r) => !r.blocked);
+  const shown = rows.slice(0, expanded ? MOST : FIRST);
+  const more = Math.min(rows.length, MOST) - FIRST;
+  const hidden = rows.length - shown.length;
+  const example = orders.at(-1)?.ref ?? "ORD-10385";
   return (
     <div className="ml-8 flex animate-wn-in flex-col gap-2">
       <div role="group" aria-label="Your orders" className="flex flex-col gap-2">
-        {rows.map(({ order, markers, free, blocked, freeCents }) => {
+        {shown.map(({ order, markers, free, blocked, freeCents }) => {
           const selected = selectedId === order.id;
           const markerId = `markers-${order.id}`;
           const names = (blocked ? order.items : free)
@@ -57,16 +74,16 @@ export function OrderChips({ orders, conversations, selectedId, disabled, onPick
                 <span className="text-meta">{names}</span>
                 <span className="text-caption text-ink-subtle">
                   Ordered {formatDate(order.placed_at)}
-                  {blocked ? " · not selectable" : ""}
+                  {blocked ? " · not available for a new request" : ""}
                 </span>
               </button>
               {markers.length ? (
                 <ul id={markerId} className="flex flex-col gap-1 pl-1">
                   {markers.map((m) => {
-                    const label = m.kind === "refunded" ? "Refunded" : "Under review";
+                    const { label } = m;
                     const content = (
                       <>
-                        <Pill tone={m.kind === "refunded" ? "approved" : "info"} icon={m.kind === "refunded" ? "check-circle" : "clock"} size="sm">
+                        <Pill tone={MARKER_STYLE[m.kind].tone} icon={MARKER_STYLE[m.kind].icon} size="sm">
                           {label}
                         </Pill>
                         <span className="text-caption text-ink-muted">{m.item.name}</span>
@@ -96,8 +113,20 @@ export function OrderChips({ orders, conversations, selectedId, disabled, onPick
           );
         })}
       </div>
+      {!expanded && more > 0 ? (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="inline-flex min-h-9 items-center gap-1.5 self-start rounded-md border border-border-control bg-surface px-3 text-meta font-medium text-ink hover:border-border-strong"
+        >
+          <Icon name="chevron-down" size={14} />
+          Show {more} more {more === 1 ? "order" : "orders"}
+        </button>
+      ) : null}
       <p className="text-caption text-ink-subtle">
-        {anyOpen ? "Not listed? Describe the problem below and include the order ID." : "No other orders are eligible right now."}
+        {!anyOpen
+          ? "No other orders are eligible right now."
+          : `${expanded && hidden > 0 ? `${hidden} more ${hidden === 1 ? "order isn't" : "orders aren't"} shown. ` : ""}Not listed? Type the order number (like ${example}) and what went wrong.`}
       </p>
     </div>
   );

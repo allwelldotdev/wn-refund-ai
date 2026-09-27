@@ -93,9 +93,11 @@ type PaginationProps = {
   /** Mobile shows "Page X of Y" instead of numbered buttons. */
   compact?: boolean;
   summaryId?: string;
+  /** What is counted, e.g. "orders": "Showing 1–10 of 23 orders". */
+  noun?: string;
 };
 
-export function Pagination({ page, pageSize, total, onPage, label, compact, summaryId }: PaginationProps) {
+export function Pagination({ page, pageSize, total, onPage, label, compact, summaryId, noun }: PaginationProps) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(total, page * pageSize);
@@ -103,6 +105,7 @@ export function Pagination({ page, pageSize, total, onPage, label, compact, summ
     <nav aria-label={label} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 text-meta text-ink-muted">
       <p id={summaryId} tabIndex={-1} aria-live="polite" className="outline-none">
         Showing {from}–{to} of {total}
+        {noun ? ` ${noun}` : ""}
       </p>
       <div className="flex items-center gap-2">
         <Button size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>

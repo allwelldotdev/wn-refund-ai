@@ -21,6 +21,7 @@ const PATHS = {
   minus: "M6 12h12",
   plus: "M12 5v14M5 12h14",
   "chevron-down": "M6 9l6 6 6-6",
+  "chevron-left": "M15 6l-6 6 6 6",
   "arrow-down": "M12 5v14M6 13l6 6 6-6",
   "arrow-up": "M12 19V5M6 11l6-6 6 6",
   search: "M4 11a7 7 0 1 0 14 0a7 7 0 1 0-14 0M20 20l-3.5-3.5",

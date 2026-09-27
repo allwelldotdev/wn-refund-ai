@@ -9,13 +9,14 @@ import { Chip } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { BrandMark, Icon } from "@/components/ui/Icon";
 import { Alert, Avatar, EmptyState, Skeleton } from "@/components/ui/Surface";
-import { TD, TH, THead, TR, Table } from "@/components/ui/Table";
+import { Pagination, TD, TH, THead, TR, Table } from "@/components/ui/Table";
 import type { ConversationSummary, Order, Principal } from "@/lib/api-types";
 import { api } from "@/lib/bff";
 import { customerRequests, fulfilment, orderAvailability } from "@/lib/customer";
 import { formatCents, formatDate, formatShortDate } from "@/lib/format";
 
 const noSubscription = () => () => {};
+const PAGE_SIZE = 10;
 
 function subscribeWide(cb: () => void) {
   const mq = window.matchMedia("(min-width: 640px)");
@@ -41,6 +42,8 @@ export function SupportPage({ principal }: { principal: Principal }) {
   const [open, setOpen] = useState(initialChat !== null || params.get("view") === "requests");
   const [view, setView] = useState<"chat" | "requests">(initialView);
   const [focusRef, setFocusRef] = useState<string | null>(null);
+  const [detailRef, setDetailRef] = useState<string | null>(params.get("req"));
+  const [page, setPage] = useState(1);
   const [target, setTarget] = useState<ThreadTarget>({
     key: 0,
     conversationId: initialChat && initialChat !== "new" ? initialChat : null,
@@ -50,12 +53,13 @@ export function SupportPage({ principal }: { principal: Principal }) {
   const launcher = useRef<HTMLButtonElement>(null);
 
   const writeUrl = useCallback(
-    (next: { open: boolean; view: "chat" | "requests"; conversationId: string | null; orderId: string | null }) => {
+    (next: { open: boolean; view: "chat" | "requests"; conversationId: string | null; orderId: string | null; req?: string | null }) => {
       const q = new URLSearchParams();
       if (next.open) {
         q.set("chat", next.conversationId ?? "new");
         if (!next.conversationId && next.orderId) q.set("order", next.orderId);
         if (next.view === "requests") q.set("view", "requests");
+        if (next.view === "requests" && next.req) q.set("req", next.req);
       }
       router.replace(q.size ? `/support?${q}` : "/support", { scroll: false });
     },
@@ -84,17 +88,20 @@ export function SupportPage({ principal }: { principal: Principal }) {
     writeUrl({ open: true, view: "chat", ...t });
   }
 
-  function showRequests(ref: string | null) {
+  /** Your requests: the list, or one request's read-only detail. */
+  function showRequests(ref: string | null, focus: string | null = null) {
     if (!open) remember();
     setView("requests");
-    setFocusRef(ref);
+    setDetailRef(ref);
+    setFocusRef(focus);
     setOpen(true);
-    writeUrl({ open: true, view: "requests", conversationId: target.conversationId, orderId: target.orderId });
+    writeUrl({ open: true, view: "requests", conversationId: target.conversationId, orderId: target.orderId, req: ref });
   }
 
   function close() {
     setOpen(false);
     setFocusRef(null);
+    setDetailRef(null);
     writeUrl({ open: false, view: "chat", conversationId: null, orderId: null });
     const back = opener.current && document.contains(opener.current) ? opener.current : launcher.current;
     window.setTimeout(() => back?.focus(), 0);
@@ -156,10 +163,18 @@ export function SupportPage({ principal }: { principal: Principal }) {
           <EmptyState icon="box" title="No orders yet">
             Orders you place show up here so you can ask about them.
           </EmptyState>
-        ) : wide ? (
-          <OrdersTable orders={orders.data} conversations={conversations.data} onHelp={openThread} onShowRequest={showRequests} />
         ) : (
-          <OrdersList orders={orders.data} conversations={conversations.data} onHelp={openThread} onShowRequest={showRequests} />
+          <div className="flex flex-col rounded-lg sm:border sm:border-border sm:bg-surface sm:shadow-xs">
+            {wide ? (
+              <OrdersTable orders={pageOf(orders.data, page)} conversations={conversations.data} onHelp={openThread} onShowRequest={showRequests} />
+            ) : (
+              <OrdersList orders={pageOf(orders.data, page)} conversations={conversations.data} onHelp={openThread} onShowRequest={showRequests} />
+            )}
+            {orders.data.length > PAGE_SIZE ? (
+              <Pagination page={page} pageSize={PAGE_SIZE} total={orders.data.length} onPage={setPage}
+                label="Orders pages" noun="orders" compact={!wide} />
+            ) : null}
+          </div>
         )}
       </main>
 
@@ -186,6 +201,7 @@ export function SupportPage({ principal }: { principal: Principal }) {
             target={target}
             view={view}
             focusRef={focusRef}
+            detailRef={detailRef}
             orders={{ data: orders.data, isError: orders.isError }}
             conversations={{
               data: conversations.data,
@@ -193,8 +209,10 @@ export function SupportPage({ principal }: { principal: Principal }) {
               isError: conversations.isError,
               refetch: () => void conversations.refetch(),
             }}
-            onView={(v, ref) => {
-              if (v === "requests") showRequests(ref ?? null);
+            onShowRequest={(ref) => showRequests(ref)}
+            onBackToList={(ref) => showRequests(null, ref)}
+            onView={(v) => {
+              if (v === "requests") showRequests(null);
               else {
                 setView("chat");
                 writeUrl({ open: true, view: "chat", conversationId: target.conversationId, orderId: target.orderId });
@@ -208,6 +226,10 @@ export function SupportPage({ principal }: { principal: Principal }) {
       ) : null}
     </div>
   );
+}
+
+function pageOf(orders: Order[], page: number) {
+  return orders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 }
 
 function abbreviate(name: string) {
@@ -268,7 +290,7 @@ function Delivery({ order }: { order: Order }) {
 
 function OrdersTable({ orders, conversations, onHelp, onShowRequest }: OrdersViewProps) {
   return (
-    <div className="rounded-lg border border-border bg-surface shadow-xs">
+    <div>
       <Table caption="Your orders, newest first">
         <THead>
           <TH>Order</TH>

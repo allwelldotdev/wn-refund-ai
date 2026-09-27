@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { customerRequests, fulfilment, itemMarkers, orderAvailability } from "@/lib/customer";
+import { customerRequests, fulfilment, isClosed, itemMarkers, orderAvailability } from "@/lib/customer";
 import { formatShortDate } from "@/lib/format";
 
 import { designConversations, designOrders } from "./fixtures/design";
@@ -15,7 +15,7 @@ describe("customer order markers", () => {
   it("blocks an order whose only item is waiting for a person (ORD-10421)", () => {
     const a = orderAvailability(byRef("ORD-10421"), designConversations);
     expect(a.blocked).toBe(true);
-    expect(a.markers).toMatchObject([{ kind: "review", request: { ref: "REQ-5817" } }]);
+    expect(a.markers).toMatchObject([{ kind: "review", label: "Under review", request: { ref: "REQ-5817" } }]);
   });
 
   it("keeps the coffee pickable when only the mug was refunded (ORD-10416)", () => {
@@ -24,12 +24,20 @@ describe("customer order markers", () => {
     expect(a.free.map((i) => i.name)).toEqual(["Coffee Subscription (September)"]);
     expect(a.freeCents).toBe(2800);
     expect(itemMarkers(byRef("ORD-10416"), designConversations)).toMatchObject([
-      { kind: "refunded", item: { name: "Worknoon Mug" }, request: { ref: "REQ-5790" } },
+      { kind: "approved", label: "Approved after review", item: { name: "Worknoon Mug" }, request: { ref: "REQ-5790" } },
     ]);
   });
 
-  it("leaves denied items selectable (ORD-10430)", () => {
-    expect(orderAvailability(byRef("ORD-10430"), designConversations)).toMatchObject({ blocked: false, markers: [] });
+  it("blocks a denied item but keeps the rest of its order pickable (ORD-10430)", () => {
+    const a = orderAvailability(byRef("ORD-10430"), designConversations);
+    expect(a.blocked).toBe(false);
+    expect(a.markers).toMatchObject([{ kind: "denied", label: "Denied", item: { name: "Meeting Room (4 hrs)" } }]);
+    expect(a.free.map((i) => i.name)).toEqual(["Coffee add-on"]);
+  });
+
+  it("closes answered requests but not escalated ones", () => {
+    const [escalated, denied, reviewed] = customerRequests(designConversations).map((r) => r.request);
+    expect([isClosed(escalated), isClosed(denied), isClosed(reviewed), isClosed(null)]).toEqual([false, true, true, false]);
   });
 
   it("words fulfilment by what was bought", () => {

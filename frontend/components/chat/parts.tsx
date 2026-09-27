@@ -204,11 +204,19 @@ function VerdictDetails({
   }
   if (verdict === "denied") {
     return (
-      <div className="flex flex-wrap items-center gap-2 text-meta text-ink-muted">
-        <button type="button" onClick={onShowPolicy} className="link font-medium">
-          Read the refund policy
-        </button>
-        {item ? <span>· {item}</span> : null}
+      <div className="flex flex-col gap-2.5">
+        <div className="flex flex-wrap items-center gap-2 text-meta text-ink-muted">
+          <button type="button" onClick={onShowPolicy} className="link font-medium">
+            Read the refund policy
+          </button>
+          {item ? <span>· {item}</span> : null}
+        </div>
+        <p className="flex items-center gap-1.5 border-t border-muted pt-2.5 text-meta text-ink-muted">
+          <Icon name="lock" size={14} />
+          {request.state === "resolved_denied"
+            ? "A support specialist reviewed this request. This decision is final."
+            : "This decision is final."}
+        </p>
       </div>
     );
   }
@@ -274,5 +282,21 @@ export function SignInAgainLink({ href }: { href: string }) {
     <a href={href} className={buttonClasses("primary", "sm")}>
       Sign in again
     </a>
+  );
+}
+
+/** The widget's footer once there is nothing to type: a single way forward. */
+export function StartNewFooter({ onStart, caption }: { onStart: () => void; caption?: string }) {
+  return (
+    <div className="flex shrink-0 flex-col gap-2 border-t border-border bg-surface px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      {caption ? <p className="text-center text-caption text-ink-muted">{caption}</p> : null}
+      <button
+        type="button"
+        onClick={onStart}
+        className="h-12 w-full rounded-md border border-primary bg-primary text-[15px] leading-5 font-medium text-white hover:bg-primary-hover"
+      >
+        Start new request
+      </button>
+    </div>
   );
 }
