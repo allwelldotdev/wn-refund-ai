@@ -130,6 +130,8 @@ export function useChatThread(initialConversationId: string | null, onConversati
           controller.signal,
         );
         writeDraft(target, "");
+        // A first message was typed before the conversation existed.
+        if (!conversationId) writeDraft(null, "");
         await refresh(target);
         if (verdict && replyId) setAnimateId(replyId);
         setOutgoing(null);
@@ -142,6 +144,11 @@ export function useChatThread(initialConversationId: string | null, onConversati
         } else if (isApiError(err, 401)) {
           writeDraft(id, msg.text);
           setNotice({ kind: "expired" });
+          setDraftState(msg.text);
+          setOutgoing(null);
+        } else if (isApiError(err, 409) && err.code === "request_closed" && id) {
+          // Decided in another tab: re-read so the closed footer replaces the composer.
+          await refresh(id);
           setDraftState(msg.text);
           setOutgoing(null);
         } else {

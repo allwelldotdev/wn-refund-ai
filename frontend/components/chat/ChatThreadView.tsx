@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, Skeleton } from "@/components/ui/Surface";
 import type { ConversationSummary, Message, Order } from "@/lib/api-types";
+import { customerRequests, isClosed, orderAvailability } from "@/lib/customer";
 import { firstName, formatCents } from "@/lib/format";
 
 import { Composer } from "./Composer";
@@ -16,9 +17,11 @@ import {
   RateLimitNotice,
   ReviewingCard,
   SignInAgainLink,
+  StartNewFooter,
   UserBubble,
   VerdictCard,
 } from "./parts";
+import { EarlierRequest } from "./RequestTranscript";
 import { useChatThread } from "./useChatThread";
 
 type ChatThreadViewProps = {
@@ -44,7 +47,6 @@ export function ChatThreadView(props: ChatThreadViewProps) {
   const thread = useChatThread(props.conversationId, props.onConversationCreated);
   const { detail, phase, outgoing, notice, setNotice, draft, setDraft } = thread;
   const [picked, setPicked] = useState<string | null>(preselectOrderId);
-  const [playedId, setPlayedId] = useState<string | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -56,6 +58,7 @@ export function ChatThreadView(props: ChatThreadViewProps) {
   const orderSent = customerMessages.some((m) => m.order_id !== null) || (outgoing?.orderId ?? null) !== null;
   const pickedOrder = picked ? (orderById.get(picked) ?? null) : null;
   const busy = phase !== "idle";
+  const closed = isClosed(request);
   const paused = notice?.kind === "rate" || notice?.kind === "expired";
 
   // Lift the rate-limit pause when its countdown ends.
@@ -83,6 +86,18 @@ export function ChatThreadView(props: ChatThreadViewProps) {
     const orderId = picked && !orderSent ? picked : null;
     void thread.send({ text, clientMsgId: crypto.randomUUID(), orderId, saved: false });
   }
+
+  // An order picked before the first message: earlier requests on its other items.
+  const earlier = (order: Order) => {
+    const { markers, free } = orderAvailability(order, conversations);
+    const known = customerRequests(conversations);
+    return markers.flatMap((m) => {
+      const conversationId = known.find((k) => k.request.id === m.request?.id)?.conversationId;
+      return m.request && conversationId
+        ? [<EarlierRequest key={`earlier-${m.request.id}`} conversationId={conversationId} request={m.request} order={order} free={free} onShowRequest={onShowRequest} />]
+        : [];
+    });
+  };
 
   const entries: ReactNode[] = [];
   const greeting =
@@ -118,6 +133,7 @@ export function ChatThreadView(props: ChatThreadViewProps) {
     } else if (pickedOrder) {
       const s = orderSummary(pickedOrder);
       entries.push(<OrderBubble key="picked" orderRef={pickedOrder.ref} amount={s.amount} items={s.items} />);
+      entries.push(...earlier(pickedOrder));
       entries.push(
         <BotBubble key="picked-prompt">What went wrong with {pickedOrder.ref}? A sentence or two is enough.</BotBubble>,
       );
@@ -150,7 +166,7 @@ export function ChatThreadView(props: ChatThreadViewProps) {
     } else if (m.assistant_kind === "verdict" && request) {
       entries.push(
         <VerdictCard key={m.id} id={m.id} body={m.body} request={request} animate={thread.animateId === m.id}
-          onShowPolicy={onShowPolicy} onDone={thread.animateId === m.id ? () => setPlayedId(m.id) : undefined} />,
+          onShowPolicy={onShowPolicy} />,
       );
     } else {
       entries.push(<BotBubble key={m.id}>{m.body}</BotBubble>);
@@ -177,6 +193,7 @@ export function ChatThreadView(props: ChatThreadViewProps) {
     if (pickedOrder) {
       const s = orderSummary(pickedOrder);
       entries.push(<OrderBubble key="late-pick" orderRef={pickedOrder.ref} amount={s.amount} items={s.items} />);
+      entries.push(...earlier(pickedOrder));
       entries.push(<BotBubble key="late-pick-prompt">Got it: {pickedOrder.ref}. Send a short message to continue.</BotBubble>);
     } else {
       entries.push(
@@ -184,16 +201,6 @@ export function ChatThreadView(props: ChatThreadViewProps) {
           disabled={busy} onPick={pick} onShowRequest={onShowRequest} />,
       );
     }
-  }
-
-  // After a decision, another order starts a new conversation (one request each).
-  const played = thread.animateId === null || playedId === thread.animateId;
-  if (request && !busy && played && orders?.length) {
-    entries.push(<BotBubble key="another">Need help with another order? Choose one below, or add a note to this request.</BotBubble>);
-    entries.push(
-      <OrderChips key="another-chips" orders={orders} conversations={conversations} selectedId={null}
-        disabled={false} onPick={(o) => onNewThread(o.id)} onShowRequest={onShowRequest} />,
-    );
   }
 
   if (notice?.kind === "rate") entries.push(<RateLimitNotice key="rate" until={notice.until} />);
@@ -219,7 +226,7 @@ export function ChatThreadView(props: ChatThreadViewProps) {
   }
 
   const placeholder = request
-    ? "Add a note to this request"
+    ? "Add details for the specialist"
     : pickedOrder && !orderSent
       ? "Describe what went wrong"
       : "Describe the problem, or pick an order above";
@@ -240,8 +247,12 @@ export function ChatThreadView(props: ChatThreadViewProps) {
         className="flex min-h-0 flex-grow flex-col gap-3 overflow-y-auto px-4 py-4 [&>*]:shrink-0">
         {entries}
       </div>
-      <Composer ref={inputRef} value={draft} onChange={setDraft} onSend={send} placeholder={placeholder}
-        blocked={busy || paused} hint={hint} large={large} />
+      {closed ? (
+        <StartNewFooter caption="This request is closed. The full chat is saved in Your requests." onStart={() => onNewThread(null)} />
+      ) : (
+        <Composer ref={inputRef} value={draft} onChange={setDraft} onSend={send} placeholder={placeholder}
+          blocked={busy || paused} hint={hint} large={large} />
+      )}
     </>
   );
 }

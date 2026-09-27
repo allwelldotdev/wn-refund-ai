@@ -11,7 +11,7 @@ use db::conversations::ConversationSummary;
 use db::messages::Message;
 use db::orders::Order;
 use domain::prescan::{MAX_MESSAGE_CHARS, prescan};
-use domain::types::SignalScope;
+use domain::types::{RequestState, SignalScope};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use tokio::sync::mpsc;
@@ -122,6 +122,17 @@ async fn post_message(
         db::messages::find_message_by_client_id(&state.db, req.client_msg_id).await?
     {
         return duplicate(existing, conversation_id);
+    }
+    // Approved and denied requests are closed; an escalated one stays open so
+    // the customer can add details for the specialist.
+    if let Some(request) =
+        db::refunds::find_request_for_conversation(&state.db, conversation_id).await?
+        && request.state != RequestState::Escalated
+    {
+        return Err(ApiError::conflict(
+            "request_closed",
+            "This request is closed. Start a new request to ask about something else.",
+        ));
     }
 
     let mut tx = state.db.0.begin().await.map_err(DbError::from)?;

@@ -350,7 +350,7 @@ async fn a_repeated_client_msg_id_is_acknowledged_not_reprocessed(pool: PgPool) 
 }
 
 #[sqlx::test(migrations = "../../migrations")]
-async fn messages_after_the_verdict_get_a_holding_reply(pool: PgPool) {
+async fn an_answered_request_is_closed_to_new_messages(pool: PgPool) {
     let app = TestApp::new(pool).await;
     let amara = app.login("amara.okafor@example.com").await;
     let conv = app.new_conversation(&amara).await;
@@ -361,10 +361,50 @@ async fn messages_after_the_verdict_get_a_holding_reply(pool: PgPool) {
     let res = app
         .say(&amara, &conv, "Actually, can you make it a store credit?")
         .await;
+    assert_eq!(res.status, StatusCode::CONFLICT);
+    assert_eq!(res.error_code(), "request_closed");
+    assert_eq!(app.fake.calls_for(Stage::Intake).len(), 1);
+    let got = app
+        .get(&format!("/api/conversations/{conv}"), &amara)
+        .await
+        .json();
+    assert_eq!(got["messages"].as_array().unwrap().len(), 2);
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn details_added_to_an_escalated_request_get_a_holding_reply(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let grace = app.login("grace.liu@example.com").await;
+    let conv = app.new_conversation(&grace).await;
+    app.fake.push_intake(Ok(complete_intake(
+        "ORD-10388",
+        ReasonCategory::ChangedMind,
+    )));
+    let res = app
+        .say(
+            &grace,
+            &conv,
+            "Please cancel ORD-10388 and return the deposit.",
+        )
+        .await;
+    let request_ref = res.event("request_updated")["ref"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+
+    let res = app
+        .say(
+            &grace,
+            &conv,
+            "I have the relocation letter if you need it.",
+        )
+        .await;
     assert_eq!(res.event("reply_start")["kind"], "holding");
     assert_eq!(
         res.event("reply_done")["body"],
-        "Thanks for the update. Your request RR-1001 has already been approved; a support agent will see this message."
+        format!(
+            "Thanks for the update. Your request {request_ref} has already been escalated to our support team; a support agent will see this message."
+        )
     );
     assert!(!res.event_names().contains(&"request_updated".to_owned()));
     assert_eq!(app.fake.calls_for(Stage::Intake).len(), 1);

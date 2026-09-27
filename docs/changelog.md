@@ -2,6 +2,20 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.4.0] — 2026-09-27
+### New
+- Once a request is approved or denied, the chat replaces the message box with a "Start new request" button; a request still with a specialist stays open so you can add details.
+- Your requests now opens each request as a read-only chat that shows its status and says when a decision is final.
+- In My orders, "View refund request" now opens that request directly.
+
+### Fixed
+- A message typed in a new chat no longer reappears as a draft in the next new chat after it was sent.
+
+### Improved
+- Items that already have a request can no longer be picked again in the chat, and show their status (Approved, Denied, Under review, or "… after review").
+- The chat shows five orders at first with a "Show more" option, and picking an order shows any earlier request filed on it.
+- My orders now shows ten orders per page.
+
 ## [0.3.0] — 2026-09-27
 ### New
 - Asking about an item that already has a request now shows that request's status instead of opening a second one.

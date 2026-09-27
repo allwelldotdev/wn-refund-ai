@@ -25,9 +25,14 @@ type ChatWidgetProps = {
   target: ThreadTarget;
   view: "chat" | "requests";
   focusRef: string | null;
+  detailRef: string | null;
   orders: { data: Order[] | undefined; isError: boolean };
   conversations: { data: ConversationSummary[] | undefined; isPending: boolean; isError: boolean; refetch: () => void };
-  onView: (view: "chat" | "requests", focusRef?: string | null) => void;
+  onView: (view: "chat" | "requests") => void;
+  /** A request's read-only detail, or the list when `null`. */
+  onShowRequest: (ref: string | null) => void;
+  /** Back from a detail to the list, focusing that row. */
+  onBackToList: (ref: string) => void;
   onOpenThread: (target: Omit<ThreadTarget, "key">) => void;
   onConversationCreated: (id: string) => void;
   onClose: () => void;
@@ -110,17 +115,21 @@ export function ChatWidget(props: ChatWidgetProps) {
           large={layout === "sheet"}
           onConversationCreated={props.onConversationCreated}
           onNewThread={(orderId) => onOpenThread({ conversationId: null, orderId })}
-          onShowRequest={(ref) => onView("requests", ref)}
+          onShowRequest={props.onShowRequest}
           onShowPolicy={() => setPolicyOpen(true)}
         />
       ) : (
         <RequestsView
           conversations={conversations.data}
+          orders={orders.data}
           loading={conversations.isPending}
           error={conversations.isError}
           onRetry={conversations.refetch}
           focusRef={props.focusRef}
-          onOpen={(id) => onOpenThread({ conversationId: id, orderId: null })}
+          detailRef={props.detailRef}
+          onOpenDetail={props.onShowRequest}
+          onBack={props.onBackToList}
+          onOpenChat={(id) => onOpenThread({ conversationId: id, orderId: null })}
           onNewRequest={() => onOpenThread({ conversationId: null, orderId: null })}
         />
       )}

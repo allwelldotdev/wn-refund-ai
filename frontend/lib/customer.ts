@@ -2,8 +2,9 @@ import type { ConversationSummary, Order, OrderItem, RequestSummary } from "./ap
 
 export type ItemMarker = {
   item: OrderItem;
-  /** Refunded (approved), or under review by a person (escalated). */
-  kind: "refunded" | "review";
+  /** Approved (refunded), denied, or with a person (escalated). */
+  kind: "approved" | "denied" | "review";
+  label: string;
   request: RequestSummary | null;
 };
 
@@ -21,25 +22,33 @@ export function customerRequests(conversations: ConversationSummary[] | undefine
     .sort((a, b) => b.request.created_at.localeCompare(a.request.created_at));
 }
 
+const MARKERS: Record<RequestSummary["state"], Pick<ItemMarker, "kind" | "label">> = {
+  approved: { kind: "approved", label: "Approved" },
+  resolved_approved: { kind: "approved", label: "Approved after review" },
+  denied: { kind: "denied", label: "Denied" },
+  resolved_denied: { kind: "denied", label: "Denied after review" },
+  escalated: { kind: "review", label: "Under review" },
+};
+
 /**
- * Items that can't start a new request: refunded ones (`active_refund`) and
- * ones waiting for a person. Denied items stay selectable, because the
- * policy's repeat-claim rule decides what a second request gets.
+ * Items that can't start a new request: every item that already has one, in
+ * any state (the assistant would only report that request), and any item the
+ * orders API marks refunded.
  */
 export function itemMarkers(order: Order, conversations: ConversationSummary[] | undefined): ItemMarker[] {
   const requests = customerRequests(conversations).map((r) => r.request);
-  const find = (item: OrderItem, states: RequestSummary["state"][]) =>
-    requests.find((r) => r.order_ref === order.ref && r.item_name === item.name && states.includes(r.state)) ?? null;
   const markers: ItemMarker[] = [];
   for (const item of order.items) {
-    if (item.active_refund) {
-      markers.push({ item, kind: "refunded", request: find(item, ["approved", "resolved_approved"]) });
-    } else {
-      const open = find(item, ["escalated"]);
-      if (open) markers.push({ item, kind: "review", request: open });
-    }
+    const request = requests.find((r) => r.order_ref === order.ref && r.item_name === item.name) ?? null;
+    if (request) markers.push({ item, ...MARKERS[request.state], request });
+    else if (item.active_refund) markers.push({ item, ...MARKERS.approved, request: null });
   }
   return markers;
+}
+
+/** Answered requests are closed to new messages; an escalated one stays open. */
+export function isClosed(request: RequestSummary | null): boolean {
+  return request !== null && request.state !== "escalated";
 }
 
 /** Items still open to a new request, and whether the whole order is blocked. */
