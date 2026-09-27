@@ -119,7 +119,8 @@ async fn the_case_file_tags_messages_and_shows_the_audit(pool: PgPool) {
     )
     .await;
     let amara = app.login("amara.okafor@example.com").await;
-    app.say(&amara, &conv, "Thanks! When will it arrive?").await;
+    let closed = app.say(&amara, &conv, "Thanks! When will it arrive?").await;
+    assert_eq!(closed.error_code(), "request_closed");
     let admin = app.login("ngozi.adeyemi@worknoon.example").await;
 
     let res = app
@@ -146,8 +147,6 @@ async fn the_case_file_tags_messages_and_shows_the_audit(pool: PgPool) {
         [
             ("customer", &json!("used_in_decision")),
             ("assistant", &Value::Null),
-            ("customer", &json!("after_decision")),
-            ("assistant", &Value::Null),
         ]
     );
     assert_eq!(d["timeline"][0]["kind"], "decided");
@@ -161,6 +160,24 @@ async fn the_case_file_tags_messages_and_shows_the_audit(pool: PgPool) {
     assert_eq!(raw["decision_audit"]["verdict"], "approved");
     assert_eq!(raw["escalation_review"], Value::Null);
     assert_eq!(raw["events"].as_array().unwrap().len(), 1);
+
+    // Only an escalated request takes more messages; they are tagged as such.
+    let (conv, grace_ref) = decided(
+        &app,
+        "grace.liu@example.com",
+        "ORD-10388",
+        ReasonCategory::ChangedMind,
+        "Please cancel ORD-10388 and return the deposit.",
+    )
+    .await;
+    let grace = app.login("grace.liu@example.com").await;
+    app.say(&grace, &conv, "I can send the relocation letter.")
+        .await;
+    let d = app
+        .get(&format!("/api/admin/requests/{grace_ref}"), &admin)
+        .await
+        .json();
+    assert_eq!(d["messages"][2]["tag"], "after_decision");
 
     for path in [
         "/api/admin/requests/RR-9999",
