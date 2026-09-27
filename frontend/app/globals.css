@@ -173,6 +173,27 @@
   textarea {
     font-family: inherit;
   }
+  /* Tailwind v4 gives buttons the arrow cursor; the design wants a pointer on
+     every enabled control and not-allowed on disabled ones. Utilities such as
+     `cursor-progress` still win, being in a later layer. */
+  button:not(:disabled),
+  a[href],
+  select:not(:disabled),
+  label[for],
+  [role="button"],
+  [role="tab"],
+  [role="switch"],
+  input[type="checkbox"]:not(:disabled) {
+    cursor: pointer;
+  }
+  button:disabled,
+  select:disabled,
+  input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+  }
+  input[readonly] {
+    cursor: default;
+  }
   :focus-visible {
     outline: 2px solid var(--color-focus);
     outline-offset: 2px;
