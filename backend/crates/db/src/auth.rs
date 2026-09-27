@@ -181,7 +181,7 @@ pub async fn list_demo_accounts(db: &Db) -> Result<Vec<DemoAccount>, DbError> {
                             i,
                             s.title,
                             s.summary,
-                            Some(s.expected_verdict),
+                            s.files_request().then_some(s.expected_verdict),
                             s.target_order_ref,
                         )
                     }),

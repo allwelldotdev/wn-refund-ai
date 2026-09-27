@@ -13,7 +13,7 @@ use axum::Router;
 use axum::body::{Body, Bytes};
 use axum::http::{HeaderMap, Method, Request, StatusCode, header};
 use db::Db;
-use domain::intake::{IntakeOutput, IntakeStatus, MissingField};
+use domain::intake::{IntakeOutput, IntakeStatus, Intent, MissingField};
 use domain::types::ReasonCategory;
 use http_body_util::BodyExt;
 use serde_json::Value;
@@ -220,6 +220,7 @@ pub fn order_id(order_ref: &str) -> Uuid {
 /// What a correct intake returns for the first item of a seeded order.
 pub fn complete_intake(order_ref: &str, reason: ReasonCategory) -> IntakeOutput {
     IntakeOutput {
+        intent: Intent::RefundRequest,
         status: IntakeStatus::Complete,
         missing: vec![],
         order_id: Some(order_id(order_ref)),
@@ -235,6 +236,7 @@ pub fn complete_intake(order_ref: &str, reason: ReasonCategory) -> IntakeOutput 
 
 pub fn needs_info_intake(missing: Vec<MissingField>) -> IntakeOutput {
     IntakeOutput {
+        intent: Intent::RefundRequest,
         status: IntakeStatus::NeedsInfo,
         missing,
         order_id: None,

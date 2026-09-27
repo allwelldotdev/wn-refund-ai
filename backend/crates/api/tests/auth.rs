@@ -145,6 +145,12 @@ async fn demo_accounts_list_admins_then_customers(pool: PgPool) {
     let matrix: Vec<_> = db::seed::SCENARIOS.iter().map(|s| s.key).collect();
     assert_eq!(keys, matrix, "customers follow the scenario matrix");
     assert!(accounts.iter().all(|a| a.get("password_hash").is_none()));
+    // Its item already has a request, so the chat files nothing new.
+    let refunded = accounts
+        .iter()
+        .find(|a| a["scenario"] == "already_refunded")
+        .unwrap();
+    assert_eq!(refunded["expected_verdict"], json!(null));
 }
 
 #[sqlx::test(migrations = "../../migrations")]

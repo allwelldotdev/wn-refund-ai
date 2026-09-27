@@ -93,10 +93,15 @@ string_enum! {
 }
 
 string_enum! {
+    /// The last three file no request: the item already has one (said where it
+    /// stands), the customer needs nothing else, or the message was off-topic.
     pub enum AssistantKind {
         Clarify = "clarify",
         Verdict = "verdict",
         Holding = "holding",
+        ExistingRequest = "existing_request",
+        Closing = "closing",
+        Redirect = "redirect",
     }
 }
 
@@ -141,15 +146,22 @@ mod tests {
     use super::*;
     use std::str::FromStr;
 
-    const MIGRATION: &str = include_str!("../../../migrations/0001_initial.sql");
+    /// Oldest first. A later migration that redefines a CHECK replaces it.
+    const MIGRATIONS: &[&str] = &[
+        include_str!("../../../migrations/0001_initial.sql"),
+        include_str!("../../../migrations/0002_assistant_scope.sql"),
+    ];
 
-    /// The quoted values of the first `CHECK (<column> IN (...))` in the migration.
+    /// The quoted values of the first `CHECK (<column> IN (...))` in the newest
+    /// migration that has one.
     fn check_values(column: &str) -> Vec<String> {
         let needle = format!("CHECK ({column} IN");
-        let at = MIGRATION
-            .find(&needle)
-            .unwrap_or_else(|| panic!("no `{needle}` in migration"));
-        let rest = &MIGRATION[at + needle.len()..];
+        let (sql, at) = MIGRATIONS
+            .iter()
+            .rev()
+            .find_map(|sql| sql.find(&needle).map(|at| (sql, at)))
+            .unwrap_or_else(|| panic!("no `{needle}` in migrations"));
+        let rest = &sql[at + needle.len()..];
         let open = rest.find('(').unwrap();
         let close = rest.find(')').unwrap();
         rest[open + 1..close]

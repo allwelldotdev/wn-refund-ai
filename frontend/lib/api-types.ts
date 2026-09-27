@@ -28,7 +28,7 @@ export type Flag =
   | "clarification_limit"
   | "no_rule_fired";
 export type ReviewStatus = "pending" | "drafted" | "failed";
-export type AssistantKind = "clarify" | "verdict" | "holding";
+export type AssistantKind = "clarify" | "verdict" | "holding" | "existing_request" | "closing" | "redirect";
 export type OrderStatus = "processing" | "shipped" | "delivered";
 
 export const REQUEST_STATES: RequestState[] = [

@@ -1,5 +1,7 @@
 //! Refund requests, their decision audit, and escalation reviews.
 
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use domain::engine::{Facts, FiredRule, PriorClaim};
 use domain::intake::IntakeOutput;
@@ -165,6 +167,35 @@ pub async fn find_request_for_conversation(
         })
     })
     .transpose()
+}
+
+/// The newest request for each of the customer's items that has one, in any
+/// state, keyed by order item id.
+pub async fn item_requests(
+    db: &Db,
+    customer_id: Uuid,
+) -> Result<HashMap<Uuid, domain::intake::ExistingRequest>, DbError> {
+    let rows = sqlx::query!(
+        r#"SELECT DISTINCT ON (order_item_id)
+                  order_item_id AS "order_item_id!", ref, state,
+                  COALESCE(resolved_at, created_at) AS "decided_at!"
+           FROM refund_requests
+           WHERE customer_id = $1 AND order_item_id IS NOT NULL
+           ORDER BY order_item_id, created_at DESC"#,
+        customer_id,
+    )
+    .fetch_all(&db.0)
+    .await?;
+    rows.into_iter()
+        .map(|r| {
+            let request = domain::intake::ExistingRequest {
+                request_ref: r.r#ref,
+                state: parse_enum(&r.state)?,
+                decided_at: r.decided_at,
+            };
+            Ok((r.order_item_id, request))
+        })
+        .collect()
 }
 
 /// The customer's other requests, in any state, dated by creation.

@@ -4,6 +4,7 @@
 
 use std::fmt;
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::intake::MissingField;
@@ -40,6 +41,46 @@ impl Target {
     }
 }
 
+/// An earlier request for the item the customer is asking about. `status` is
+/// a preformatted clause ("was approved on Sep 18, 2026") the model copies.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PriorRequest {
+    #[serde(rename = "ref")]
+    pub request_ref: String,
+    pub order_ref: String,
+    pub item_name: String,
+    pub state: RequestState,
+    pub status: String,
+}
+
+impl PriorRequest {
+    pub fn new(
+        request_ref: impl Into<String>,
+        order_ref: impl Into<String>,
+        item_name: impl Into<String>,
+        state: RequestState,
+        decided_at: DateTime<Utc>,
+    ) -> Self {
+        let on = decided_at.format("%b %-d, %Y");
+        let status = match state {
+            RequestState::Approved => format!("was approved on {on}"),
+            RequestState::Denied => format!("was denied on {on}"),
+            RequestState::Escalated => {
+                format!("has been with our support team for review since {on}")
+            }
+            RequestState::ResolvedApproved => format!("was approved after review on {on}"),
+            RequestState::ResolvedDenied => format!("was denied after review on {on}"),
+        };
+        Self {
+            request_ref: request_ref.into(),
+            order_ref: order_ref.into(),
+            item_name: item_name.into(),
+            state,
+            status,
+        }
+    }
+}
+
 /// Serialized as the responder's user content. Customer text is never included.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(tag = "mode", rename_all = "snake_case")]
@@ -56,13 +97,20 @@ pub enum ResponderInput {
         reasons: Vec<String>,
         policy_prose: String,
     },
+    /// The item already has a request: say where it stands and ask whether
+    /// there is anything else. Nothing is filed.
+    ExistingRequest { request: PriorRequest },
+    /// The customer needs nothing else. Nothing is filed.
+    Closing,
+    /// An off-topic message: decline it and steer back to refunds.
+    Redirect,
 }
 
 impl ResponderInput {
     pub fn target(&self) -> Option<&Target> {
         match self {
-            ResponderInput::Clarify { .. } => None,
             ResponderInput::Verdict { target, .. } => target.as_ref(),
+            _ => None,
         }
     }
 
@@ -80,17 +128,25 @@ impl ResponderInput {
                     .filter(|_| *verdict == Verdict::Approved)
                     .map(|t| t.amount_cents),
             },
+            ResponderInput::ExistingRequest { request } => {
+                ReplyExpectation::ExistingRequest(request.clone())
+            }
+            ResponderInput::Closing => ReplyExpectation::Closing,
+            ResponderInput::Redirect => ReplyExpectation::Redirect,
         }
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ReplyExpectation {
     Clarify,
     Verdict {
         verdict: Verdict,
         amount_cents: Option<i64>,
     },
+    ExistingRequest(PriorRequest),
+    Closing,
+    Redirect,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -141,16 +197,34 @@ pub fn validate_reply(reply: &str, expectation: &ReplyExpectation) -> Result<(),
     }
 
     let lower = reply.to_lowercase();
-    let (required, forbidden): (&str, &[&str]) = match expectation {
-        ReplyExpectation::Clarify => ("?", &["approved", "denied", "escalated"]),
+    const OUTCOMES: &[&str] = &["approved", "denied", "escalated"];
+    let (required, forbidden): (Vec<&str>, &[&str]) = match expectation {
+        ReplyExpectation::Clarify => (vec!["?"], OUTCOMES),
         ReplyExpectation::Verdict { verdict, .. } => match verdict {
-            Verdict::Approved => ("approved", &["not approved", "denied", "escalated"]),
-            Verdict::Denied => ("denied", &["approved", "escalated"]),
-            Verdict::Escalated => ("escalated", &["approved", "denied"]),
+            Verdict::Approved => (vec!["approved"], &["not approved", "denied", "escalated"]),
+            Verdict::Denied => (vec!["denied"], &["approved", "escalated"]),
+            Verdict::Escalated => (vec!["escalated"], &["approved", "denied"]),
         },
+        // Names the earlier request and its real outcome, then asks a question.
+        ReplyExpectation::ExistingRequest(prior) => {
+            let mut required = vec![prior.request_ref.as_str(), "?"];
+            let forbidden: &[&str] = match prior.state {
+                RequestState::Approved | RequestState::ResolvedApproved => {
+                    required.push("approved");
+                    &["not approved", "denied", "escalated"]
+                }
+                RequestState::Denied | RequestState::ResolvedDenied => {
+                    required.push("denied");
+                    &["approved", "escalated"]
+                }
+                RequestState::Escalated => &["approved", "denied"],
+            };
+            (required, forbidden)
+        }
+        ReplyExpectation::Closing | ReplyExpectation::Redirect => (vec![], OUTCOMES),
     };
-    if !lower.contains(required) {
-        return Err(ReplyViolation(format!("reply must contain \"{required}\"")));
+    if let Some(word) = required.iter().find(|w| !lower.contains(&w.to_lowercase())) {
+        return Err(ReplyViolation(format!("reply must contain \"{word}\"")));
     }
     if let Some(word) = forbidden.iter().find(|w| lower.contains(*w)) {
         return Err(ReplyViolation(format!("reply must not contain \"{word}\"")));
@@ -175,6 +249,12 @@ pub fn validate_reply(reply: &str, expectation: &ReplyExpectation) -> Result<(),
 pub fn fallback_reply(expectation: &ReplyExpectation, target: Option<&Target>) -> String {
     let about = target.map_or_else(String::new, |t| format!(" for {}", t.phrase()));
     match expectation {
+        ReplyExpectation::ExistingRequest(r) => format!(
+            "Your refund request {} for {} (order {}) {}. Is there anything else I can help you with?",
+            r.request_ref, r.item_name, r.order_ref, r.status
+        ),
+        ReplyExpectation::Closing => "Thanks for getting in touch. If anything else comes up with one of your orders, just send a message here.".to_owned(),
+        ReplyExpectation::Redirect => "I can only help with refund requests for your Worknoon orders, so I can't help with that here. Which order would you like help with?".to_owned(),
         ReplyExpectation::Clarify => {
             "Could you tell me which order and item this is about, and what went wrong with it?"
                 .to_owned()
@@ -227,6 +307,17 @@ mod tests {
 
     fn check(reply: &str, e: E) -> Result<(), String> {
         validate_reply(reply, &e).map_err(|v| v.0)
+    }
+
+    fn prior(state: RequestState) -> PriorRequest {
+        let decided = DateTime::parse_from_rfc3339("2026-09-18T10:00:00Z").unwrap();
+        PriorRequest::new(
+            "RR-0903",
+            "ORD-10340",
+            "Day Pass, 5-pack",
+            state,
+            decided.with_timezone(&Utc),
+        )
     }
 
     #[test]
@@ -307,15 +398,18 @@ mod tests {
     #[test]
     fn fallback_always_passes_its_own_validation() {
         let target = Target::new("ORD-1006", "4K OLED TV", 129_900);
-        let mut expectations = vec![E::Clarify];
+        let mut expectations = vec![E::Clarify, E::Closing, E::Redirect];
         for v in Verdict::ALL {
             expectations.push(verdict(*v, None));
             expectations.push(verdict(*v, Some(129_900)));
         }
+        for state in RequestState::ALL {
+            expectations.push(E::ExistingRequest(prior(*state)));
+        }
         for e in expectations {
             for t in [None, Some(&target)] {
                 let reply = fallback_reply(&e, t);
-                assert_eq!(check(&reply, e), Ok(()), "{e:?} {t:?}: {reply}");
+                assert_eq!(check(&reply, e.clone()), Ok(()), "{e:?} {t:?}: {reply}");
             }
         }
         let approved = fallback_reply(&verdict(Verdict::Approved, None), Some(&target));
@@ -363,6 +457,51 @@ mod tests {
         assert_eq!(check(sneaky, verdict(Verdict::Denied, None)), Ok(()));
         let err = check(&clean_reply(sneaky), verdict(Verdict::Denied, None)).unwrap_err();
         assert!(err.contains("\"approved\""), "{err}");
+    }
+
+    #[test]
+    fn an_existing_request_reply_names_it_asks_and_keeps_its_outcome() {
+        let approved = E::ExistingRequest(prior(RequestState::ResolvedApproved));
+        assert_eq!(
+            prior(RequestState::ResolvedApproved).status,
+            "was approved after review on Sep 18, 2026"
+        );
+        let ok = "Your refund request rr-0903 for the Day Pass was approved after review on Sep 18. Anything else?";
+        assert_eq!(check(ok, approved.clone()), Ok(()));
+        let bad = [
+            ("Your request was approved. Anything else?", "\"RR-0903\""),
+            ("RR-0903 was approved on Sep 18.", "\"?\""),
+            ("RR-0903 is being reviewed. Anything else?", "\"approved\""),
+            (
+                "RR-0903 was approved, not denied. Anything else?",
+                "\"denied\"",
+            ),
+        ];
+        for (reply, why) in bad {
+            let err = check(reply, approved.clone()).expect_err(reply);
+            assert!(err.contains(why), "{reply}: {err}");
+        }
+        let open = E::ExistingRequest(prior(RequestState::Escalated));
+        assert_eq!(
+            check(
+                "RR-0903 is with our support team. Anything else?",
+                open.clone()
+            ),
+            Ok(())
+        );
+        assert!(check("RR-0903 will be approved soon?", open).is_err());
+    }
+
+    #[test]
+    fn closing_and_redirect_replies_never_name_an_outcome() {
+        for e in [E::Closing, E::Redirect] {
+            assert_eq!(
+                check("I can only help with refunds for your orders.", e.clone()),
+                Ok(())
+            );
+            let err = check("Your refund was approved, goodbye.", e).unwrap_err();
+            assert!(err.contains("\"approved\""), "{err}");
+        }
     }
 
     #[test]

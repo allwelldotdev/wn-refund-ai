@@ -429,23 +429,32 @@ async fn admins_resolve_escalations_once(pool: PgPool) {
 #[sqlx::test(migrations = "../../migrations")]
 async fn an_item_with_an_approved_refund_cannot_be_approved_again(pool: PgPool) {
     let app = TestApp::new(pool).await;
-    let (_, fatima_ref) = decided(
+    let (_, grace_ref) = decided(
         &app,
-        "fatima.bello@example.com",
-        "ORD-10340",
-        ReasonCategory::Damaged,
-        "More passes failed to scan at the door.",
+        "grace.liu@example.com",
+        "ORD-10388",
+        ReasonCategory::ChangedMind,
+        "Please cancel ORD-10388 and return the deposit.",
     )
     .await;
+    // Another conversation approved the same item meanwhile (the chat now
+    // blocks a second request, so this is the race the index still guards).
+    sqlx::query(
+        "WITH c AS (
+           INSERT INTO conversations (customer_id)
+           SELECT customer_id FROM refund_requests WHERE ref = $1 RETURNING id)
+         INSERT INTO refund_requests
+           (conversation_id, customer_id, order_id, order_item_id, amount_cents, state)
+         SELECT c.id, r.customer_id, r.order_id, r.order_item_id, r.amount_cents, 'approved'
+         FROM c, refund_requests r WHERE r.ref = $1",
+    )
+    .bind(&grace_ref)
+    .execute(&app.pool)
+    .await
+    .unwrap();
     let admin = app.login("ngozi.adeyemi@worknoon.example").await;
-    let d = app
-        .get(&format!("/api/admin/requests/{fatima_ref}"), &admin)
-        .await
-        .json();
-    assert_eq!(d["request"]["state"], "escalated");
-    assert_eq!(d["audit"]["rule_trace"][0]["kind"], "active_refund_exists");
 
-    let path = format!("/api/admin/requests/{fatima_ref}/resolve");
+    let path = format!("/api/admin/requests/{grace_ref}/resolve");
     let res = app
         .post(
             &path,
