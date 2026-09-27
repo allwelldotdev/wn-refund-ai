@@ -8,7 +8,7 @@
 use argon2::{Argon2, password_hash::PasswordHasher};
 use chrono::{DateTime, Duration, Utc};
 use domain::policy::Policy;
-use domain::types::{Flag, Verdict};
+use domain::types::{Flag, Fulfilment, Verdict};
 use serde_json::json;
 use uuid::Uuid;
 
@@ -102,12 +102,12 @@ pub const ADMINS: &[SeedAdmin] = &[
     },
 ];
 
-const DAY_PASSES: &str = "Day passes";
-const ROOM_BOOKINGS: &str = "Room bookings";
-const MEMBERSHIPS: &str = "Memberships";
-const OFFICE_DEPOSITS: &str = "Office deposits";
-const ACCESSORIES: &str = "Accessories";
-const SUBSCRIPTIONS: &str = "Subscriptions";
+pub(crate) const DAY_PASSES: &str = "Day passes";
+pub(crate) const ROOM_BOOKINGS: &str = "Room bookings";
+pub(crate) const MEMBERSHIPS: &str = "Memberships";
+pub(crate) const OFFICE_DEPOSITS: &str = "Office deposits";
+pub(crate) const ACCESSORIES: &str = "Accessories";
+pub(crate) const SUBSCRIPTIONS: &str = "Subscriptions";
 
 const fn item(name: &'static str, category: &'static str, amount_cents: i64) -> SeedItem {
     SeedItem {
@@ -152,6 +152,19 @@ const fn upcoming(
         placed_days_ago,
         delivered_days_ago: None,
         items,
+    }
+}
+
+impl SeedOrder {
+    /// Products that arrived, bookings used on the day, plans and passes still
+    /// running; nothing delivered yet means it starts later.
+    fn fulfilment(&self) -> Fulfilment {
+        match (self.delivered_days_ago, self.items[0].category) {
+            (None, _) => Fulfilment::Confirmed,
+            (Some(_), ACCESSORIES | SUBSCRIPTIONS) => Fulfilment::Delivered,
+            (Some(_), ROOM_BOOKINGS) => Fulfilment::Used,
+            (Some(_), _) => Fulfilment::Active,
+        }
     }
 }
 
@@ -614,11 +627,17 @@ pub async fn run(db: &Db, default_policy_json: &str) -> Result<SeedReport, DbErr
             } else {
                 "processing"
             };
+            let fulfilment = o.fulfilment();
+            let starts_at = (fulfilment == Fulfilment::Active)
+                .then_some(delivered_at)
+                .flatten();
             sqlx::query!(
-                "INSERT INTO orders (id, ref, customer_id, placed_at, delivered_at, status, total_cents)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7)
+                "INSERT INTO orders (id, ref, customer_id, placed_at, delivered_at, status, total_cents,
+                                     fulfilment, starts_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                  ON CONFLICT (id) DO UPDATE
-                 SET placed_at = EXCLUDED.placed_at, delivered_at = EXCLUDED.delivered_at",
+                 SET placed_at = EXCLUDED.placed_at, delivered_at = EXCLUDED.delivered_at,
+                     fulfilment = EXCLUDED.fulfilment, starts_at = EXCLUDED.starts_at",
                 order_id,
                 o.order_ref,
                 customer_id,
@@ -626,6 +645,8 @@ pub async fn run(db: &Db, default_policy_json: &str) -> Result<SeedReport, DbErr
                 delivered_at,
                 status,
                 total,
+                fulfilment.as_str(),
+                starts_at,
             )
             .execute(&mut *tx)
             .await?;

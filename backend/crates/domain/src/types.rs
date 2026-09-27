@@ -86,6 +86,17 @@ string_enum! {
 }
 
 string_enum! {
+    /// How far along an order is: a product that arrived, a booking or pass
+    /// already used, a booking that starts later, or a plan still running.
+    pub enum Fulfilment {
+        Delivered = "delivered",
+        Used = "used",
+        Confirmed = "confirmed",
+        Active = "active",
+    }
+}
+
+string_enum! {
     /// `Admin` carries an admin's decision to the customer; `System` is a note
     /// such as "You disputed this decision".
     pub enum MessageRole {
@@ -155,6 +166,7 @@ mod tests {
         include_str!("../../../migrations/0001_initial.sql"),
         include_str!("../../../migrations/0002_assistant_scope.sql"),
         include_str!("../../../migrations/0003_disputes.sql"),
+        include_str!("../../../migrations/0004_test_orders.sql"),
     ];
 
     /// The quoted values of the first `CHECK (<column> IN (...))` in the newest
@@ -193,6 +205,7 @@ mod tests {
         assert_eq!(strings(RequestState::ALL), check_values("state"));
         assert_eq!(strings(OrderStatus::ALL), check_values("status"));
         assert_eq!(strings(MessageRole::ALL), check_values("role"));
+        assert_eq!(strings(Fulfilment::ALL), check_values("fulfilment"));
         assert_eq!(strings(AssistantKind::ALL), check_values("assistant_kind"));
         assert_eq!(
             strings(ReasonCategory::ALL),

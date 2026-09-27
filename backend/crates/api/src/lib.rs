@@ -7,6 +7,7 @@ pub mod auth;
 pub mod config;
 pub mod conversations;
 pub mod error;
+pub mod orders;
 pub mod pipeline;
 pub mod policy;
 pub mod rate_limit;
@@ -55,6 +56,7 @@ pub fn build_router(state: AppState) -> Router {
         .merge(auth::routes())
         .merge(policy::routes())
         .merge(conversations::routes())
+        .merge(orders::routes())
         .merge(admin::routes())
         .fallback(|| async { ApiError::NotFound })
         .layer(DefaultBodyLimit::max(BODY_LIMIT_BYTES))
