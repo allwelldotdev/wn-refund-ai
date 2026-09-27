@@ -2,6 +2,13 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.6.0] — 2026-09-27
+### New
+- Once an admin decides an escalated request, the customer sees a chat message explaining why.
+- The request details also show a short summary note of the admin's decision.
+- Admins write a note, preview the customer's message, then send it to resolve the request.
+- If the assistant can't draft the message, the review stays open and the admin's note is kept.
+
 ## [0.5.0] — 2026-09-27
 ### New
 - Customers can dispute an automatic denial once from Your requests, with an optional reason.

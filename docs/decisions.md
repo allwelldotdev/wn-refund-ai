@@ -253,7 +253,7 @@
 **Rationale:** Matching the mockup's business domain makes the demo read as a coherent product rather than a generic store, at no cost to the scenario coverage ADR-014 established. Changing the request-ref prefix would touch the schema for a cosmetic difference the spec doesn't require (ADR-028).
 
 ## ADR-037: Backend additions the design needed
-**Status:** Accepted
+**Status:** Accepted; superseded by ADR-046 (customer notice on admin resolve)
 **Context:** Building the admin and customer views to the mockup surfaced gaps in the existing API: an overview page needs aggregate counts, the admin queue needs richer filtering, sign-in has no throttling, and demo accounts need scenario metadata for reviewers. This extends ADR-027 (audit access) and ADR-024 (streaming vs. polling).
 **Options:** (a) build only what earlier milestones specified; (b) add the endpoints and behaviour the frontend milestone requires.
 **Decision:** (b). `GET /api/admin/stats?since=` returns the overview's "today" counts and the oldest open escalation. The admin queue gains a `since` filter and a repeatable `flag` filter, where each value is an any-of group and all groups must match, covering date-range, escalation-reason and "flagged for injection" filters. Sign-in throttling pauses sign-in for one email for 5 minutes after 5 consecutive failures (429 with Retry-After); a 401 carries `attempts_left`; unknown emails are counted the same way so nothing reveals which accounts exist; the limiter is in memory, like the message limiter. Demo accounts carry each scenario's title, description, expected verdict and order ref, sourced from the seed matrix. Deferred: telling the customer in chat when an admin resolves an escalation, though the mockup shows it; the resolve note stays an audit note, and the customer instead sees the new status ("Approved/Denied after review") in their requests list.
@@ -315,10 +315,16 @@
 **Decision:** (b). `app_settings` (allow_disputes default on, updated_by_admin_id, updated_at), `GET/PUT /api/admin/settings` for admins; a save records who changed it only when the value changes; the value is read when a customer disputes, and turning it off does not cancel disputes already sent. Customers get a derived `can_dispute` on their requests.
 **Rationale:** The engine and the policy hash stay about refund eligibility; toggling disputes doesn't create a policy version or change how any decision is explained.
 
+## ADR-046: A drafted, validated notice tells the customer why an admin resolved their escalation
+**Status:** Accepted
+**Context:** ADR-037 kept the admin's resolve note audit-only; the customer only saw the new status in Your requests. The product owner now wants the customer told in the chat, in a warm "Dear {first name}" message explaining how and why, written from the admin's note, plus a short summary line. If the model fails, the product owner chose that the review is not completed (no template fallback); the admin's note is kept.
+**Options:** (a) the admin writes the customer message directly; (b) a model rewrites the admin's note, the admin previews and confirms before it is sent; (c) two separate fields (audit note + customer message).
+**Decision:** (b). A fourth LLM stage, `notice`, gets its own model, effort and timeout in `backend/crates/ai/models.toml` (`[notice]`), its own `AI_NOTICE_*` env overrides, and one fallback model, matching the other stages (ADR-011). `backend/crates/ai/src/prompts.rs` (`NOTICE_SYSTEM`) drafts the message from the admin's note and the resolution. `POST /api/admin/requests/{ref}/resolve/draft` (`backend/crates/api/src/admin.rs`, `draft_notice`) returns `{message, summary}`; output must pass `domain::notice::validate_notice` (greets the customer by first name, states the resolution's actual outcome word and never the other one or "escalated", states the approved amount, and includes a one-line summary). If both the primary and fallback attempts fail validation, the endpoint returns 503 `assistant_unavailable`, nothing changes, and the request stays escalated with the admin's note intact. `POST /api/admin/requests/{ref}/resolve` requires the previewed message and summary, re-validates them, and in the same transaction as the state change posts the message as an `admin` chat message and the summary as a `system` note, using the message roles from ADR-044's migration. The admin's original note is stored unchanged in the audit. The frontend resolve dialog shows the draft for the admin to preview before confirming.
+**Rationale:** Fails closed like the rest of the pipeline (ADR-003): a template fallback would either leak the admin's internal wording or send generic text the admin never reviewed, so resolution stays blocked until a valid draft exists. The preview step keeps a person responsible for what the customer reads. Validation stops the model from contradicting the decision it is only meant to word.
+
 ## Future work
 - LLM-assisted policy authoring with dry-run impact preview (ADR-019).
 - Fraud-scoring stage added to the pipeline (ADR-002).
 - Separate policy-editor permission, distinct from support admins.
 - Attachments via S3-compatible storage or a volume (ADR-026).
 - Payout integration after approval (ADR-025).
-- Customer-facing notification when an admin resolves an escalation (ADR-037).
