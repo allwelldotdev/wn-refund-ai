@@ -18,6 +18,8 @@ button,input,textarea{font-family:inherit}
 .wn-spin{animation:wn-spin 0.8s linear infinite;transform-origin:center}
 @keyframes wn-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 .wn-in{animation:wn-in 200ms cubic-bezier(0.2,0,0,1)}
+button:not(:disabled),a[href],select:not(:disabled),label[for],[role="button"],input[type="checkbox"]{cursor:pointer}
+button:disabled,select:disabled{cursor:not-allowed}
 @keyframes wn-blink{50%{opacity:0}}
 .wn-caret{display:inline-block;margin-left:1px;color:#48524D;animation:wn-blink 1s steps(1) infinite}
 @media (prefers-reduced-motion: reduce){.wn-spin,.wn-in,.wn-caret{animation:none}}
@@ -52,6 +54,27 @@ button,input,textarea{font-family:inherit}
 <sc-if value="{{isChat}}" hint-placeholder-val="{{ true }}">
 <div id="{{uid}}-thread" role="log" aria-live="polite" aria-label="Conversation" style="flex-grow: 1; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: #FFFFFF">
 <sc-for list="{{items}}" as="m" hint-placeholder-count="3">
+
+<sc-if value="{{m.isHistory}}" hint-placeholder-val="{{ false }}">
+<section class="wn-in" aria-label="Earlier request {{m.h.ref}} on this order" style="flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid #DCE0DB; border-radius: 10px; background: #F6F7F5">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px">
+<span style="font-size: 12px; line-height: 16px; font-weight: 600; color: #48524D; text-transform: uppercase; letter-spacing: 0.06em">Earlier request · {{m.h.date}}</span>
+<button type="button" onClick="{{m.h.open}}" style="min-height: 32px; padding: 0 2px; border: 0; background: transparent; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #2457C5; text-decoration: underline; text-underline-offset: 3px; cursor: pointer">{{m.h.ref}}</button>
+</div>
+<ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px">
+<sc-for list="{{m.h.entries}}" as="e" hint-placeholder-count="2">
+<sc-if value="{{e.isUser}}" hint-placeholder-val="{{ true }}"><li style="align-self: flex-end; max-width: 85%; padding: 6px 10px; background: #48524D; color: #FFFFFF; border-radius: 10px 10px 4px 10px; font-size: 13px; line-height: 18px; overflow-wrap: anywhere"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0)">You: </span>{{e.text}}</li></sc-if>
+<sc-if value="{{e.isBot}}" hint-placeholder-val="{{ false }}"><li style="align-self: flex-start; max-width: 88%; padding: 6px 10px; background: #FFFFFF; border: 1px solid #DCE0DB; border-radius: 10px 10px 10px 4px; font-size: 13px; line-height: 18px"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0)">Assistant: </span>{{e.text}}</li></sc-if>
+<sc-if value="{{e.isNote}}" hint-placeholder-val="{{ false }}"><li style="font-size: 12px; line-height: 16px; color: #48524D; text-align: center">{{e.text}}</li></sc-if>
+</sc-for>
+</ol>
+<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px; background: #FFFFFF; border: 1px solid #DCE0DB; border-radius: 6px">
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px 0 6px; border-radius: 999px; font-size: 12px; line-height: 16px; font-weight: 500; white-space: nowrap; color: {{m.h.st.fg}}; background: {{m.h.st.bg}}; border: 1px solid {{m.h.st.bd}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{m.h.st.ic}}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{m.h.st.icon}}"></path></svg>{{m.h.st.label}}</span>
+<span style="font-size: 13px; line-height: 18px">{{m.h.item}}</span>
+</div>
+<p style="margin: 0; display: flex; gap: 6px; align-items: flex-start; font-size: 13px; line-height: 18px; color: #48524D"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#48524D" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 11v5M12 8h.01"></path></svg><span>{{m.h.restText}}</span></p>
+</section>
+</sc-if>
 
 <sc-if value="{{m.isBot}}" hint-placeholder-val="{{ true }}">
 <div class="wn-in" style="flex-shrink: 0; display: flex; gap: 8px; align-items: flex-end; max-width: 90%">
@@ -105,7 +128,10 @@ button,input,textarea{font-family:inherit}
 <sc-if value="{{m.noChips}}" hint-placeholder-val="{{ false }}">
 <span style="font-size: 13px; line-height: 18px; color: #48524D">No other orders are eligible right now.</span>
 </sc-if>
-<span style="font-size: 12px; line-height: 16px; color: #5F6963">Not listed? Describe the problem below and include the order ID.</span>
+<sc-if value="{{m.showMore}}" hint-placeholder-val="{{ false }}">
+<button type="button" onClick="{{m.moreChips}}" style="align-self: flex-start; min-height: 36px; padding: 0 12px; border-radius: 6px; border: 1px solid #C4CAC5; background: #FFFFFF; color: #151A18; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>{{m.showMoreText}}</button>
+</sc-if>
+<span style="font-size: 12px; line-height: 16px; color: #5F6963">{{m.chipHint}}</span>
 </div>
 </sc-if>
 
@@ -180,11 +206,14 @@ Not refunded
 <p style="margin: 0; font-size: 14px; line-height: 20px; color: #151A18">{{m.explain}}<sc-if value="{{m.streaming}}" hint-placeholder-val="{{ false }}"><span class="wn-caret" aria-hidden="true">▍</span></sc-if></p>
 <sc-if value="{{m.streamDone}}" hint-placeholder-val="{{ true }}">
 <span style="align-self: flex-start; font-size: 12px; line-height: 16px; color: #48524D; background: #EEF0ED; border-radius: 4px; padding: 2px 8px">{{m.v.policy}} · {{m.v.orderId}}</span>
-<sc-if value="{{m.canAppeal}}" hint-placeholder-val="{{ true }}">
+<sc-if value="{{m.showDispute}}" hint-placeholder-val="{{ true }}">
 <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid #EEF0ED">
-<span style="font-size: 13px; line-height: 18px; color: #48524D">Think we got this wrong? A person can take a second look.</span>
-<button type="button" onClick="{{m.appeal}}" style="align-self: flex-start; height: 40px; padding: 0 14px; border-radius: 6px; border: 1px solid #C4CAC5; background: #FFFFFF; color: #151A18; font-size: 14px; line-height: 20px; font-weight: 500; cursor: pointer">Ask a specialist to review</button>
+<span style="font-size: 13px; line-height: 18px; color: #48524D">Think we got this wrong? You can dispute this decision from Your requests.</span>
+<button type="button" onClick="{{m.openReq}}" style="align-self: flex-start; height: 40px; padding: 0 14px; border-radius: 6px; border: 1px solid #C4CAC5; background: #FFFFFF; color: #151A18; font-size: 14px; line-height: 20px; font-weight: 500; cursor: pointer">Open in Your requests</button>
 </div>
+</sc-if>
+<sc-if value="{{m.showFinal}}" hint-placeholder-val="{{ false }}">
+<span style="display: flex; gap: 6px; align-items: center; padding-top: 10px; border-top: 1px solid #EEF0ED; font-size: 13px; line-height: 18px; color: #48524D"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 11h14v10H5ZM8 11V7.5a4 4 0 0 1 8 0V11"></path></svg>This decision is final.</span>
 </sc-if>
 </sc-if>
 </div>
@@ -267,6 +296,13 @@ Try again
 </sc-for>
 </div>
 
+<sc-if value="{{isClosed}}" hint-placeholder-val="{{ false }}">
+<div style="{{closedStyle}}">
+<span style="font-size: 12px; line-height: 16px; color: #48524D; text-align: center">This request is closed. The full chat is saved in Your requests.</span>
+<button type="button" onClick="{{startNew}}" style="width: 100%; height: 48px; border: 1px solid #1D2724; border-radius: 6px; background: #1D2724; color: #FFFFFF; font-size: 15px; line-height: 20px; font-weight: 500; cursor: pointer">Start new request</button>
+</div>
+</sc-if>
+<sc-if value="{{showComposer}}" hint-placeholder-val="{{ true }}">
 <form onSubmit="{{send}}" style="{{composerStyle}}">
 <label for="{{uid}}-input" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0)">Describe the problem</label>
 <div style="display: flex; gap: 8px; align-items: flex-end">
@@ -281,35 +317,92 @@ Try again
 </div>
 </form>
 </sc-if>
+</sc-if>
 
-<sc-if value="{{isRequests}}" hint-placeholder-val="{{ false }}">
+<sc-if value="{{isReqList}}" hint-placeholder-val="{{ false }}">
 <div style="flex-grow: 1; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: #FFFFFF">
-<p style="margin: 0; font-size: 13px; line-height: 18px; color: #48524D">Refund requests from the last 60 days.</p>
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: #48524D">Refund requests from the last 60 days. Open one to see the full chat.</p>
 <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px">
 <sc-for list="{{reqs}}" as="r" hint-placeholder-count="3">
 <li id="{{r.domId}}" tabindex="-1" style="{{r.style}}">
-<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px">
+<button type="button" onClick="{{r.open}}" aria-label="{{r.aria}}" style="width: 100%; padding: 12px 14px; border: 0; border-radius: 10px; background: transparent; text-align: left; display: flex; flex-direction: column; gap: 4px; color: #151A18; cursor: pointer">
+<span style="display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%">
 <span style="font-size: 14px; line-height: 20px; font-weight: 500">{{r.item}}</span>
 <span style="display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px 0 6px; border-radius: 999px; font-size: 12px; line-height: 16px; font-weight: 500; white-space: nowrap; color: {{r.st.fg}}; background: {{r.st.bg}}; border: 1px solid {{r.st.bd}}">
 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{r.st.ic}}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.st.icon}}"></path></svg>
 {{r.st.label}}
 </span>
-</div>
+</span>
 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 16px; color: #48524D">{{r.ref}} · {{r.order}} · {{r.amount}}</span>
-<span style="font-size: 12px; line-height: 16px; color: #5F6963">Requested {{r.date}} · {{r.note}}</span>
+<span style="display: flex; justify-content: space-between; gap: 8px; width: 100%; font-size: 12px; line-height: 16px; color: #5F6963"><span>Requested {{r.date}} · {{r.note}}</span><span aria-hidden="true" style="color: #2457C5; font-weight: 500">View chat ›</span></span>
+</button>
 </li>
 </sc-for>
 </ul>
 <sc-if value="{{noReqs}}" hint-placeholder-val="{{ false }}">
 <p style="margin: 0; padding: 24px 0; text-align: center; font-size: 14px; line-height: 20px; color: #48524D">No requests yet.</p>
 </sc-if>
-<button type="button" onClick="{{toChat}}" style="align-self: flex-start; margin-top: 4px; height: 40px; padding: 0 14px; border-radius: 6px; border: 1px solid #C4CAC5; background: #FFFFFF; color: #151A18; font-size: 14px; line-height: 20px; font-weight: 500; cursor: pointer">Start a new request</button>
+</div>
+<div style="{{closedStyle}}">
+<button type="button" onClick="{{startNew}}" style="width: 100%; height: 48px; border: 1px solid #1D2724; border-radius: 6px; background: #1D2724; color: #FFFFFF; font-size: 15px; line-height: 20px; font-weight: 500; cursor: pointer">Start new request</button>
+</div>
+</sc-if>
+
+<sc-if value="{{isReqDetail}}" hint-placeholder-val="{{ false }}">
+<div style="flex-grow: 1; min-height: 0; overflow-y: auto; padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 12px; background: #FFFFFF">
+<button type="button" onClick="{{backToList}}" style="align-self: flex-start; min-height: 36px; padding: 0 8px 0 4px; margin-left: -4px; border: 0; border-radius: 6px; background: transparent; color: #151A18; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>All requests</button>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px">
+<h3 style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600">{{rd.item}}</h3>
+<span style="flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px 0 6px; border-radius: 999px; font-size: 12px; line-height: 16px; font-weight: 500; white-space: nowrap; color: {{rd.st.fg}}; background: {{rd.st.bg}}; border: 1px solid {{rd.st.bd}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{rd.st.ic}}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{rd.st.icon}}"></path></svg>{{rd.st.label}}</span>
+</div>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 16px; color: #48524D">{{rd.ref}} · {{rd.order}} · {{rd.amount}} · {{rd.date}}</span>
+</div>
+<h4 style="margin: 4px 0 0; font-size: 12px; line-height: 16px; font-weight: 600; color: #48524D; text-transform: uppercase; letter-spacing: 0.06em">Conversation · read-only</h4>
+<ol role="log" aria-label="Conversation for {{rd.ref}}" style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px">
+<sc-for list="{{rd.entries}}" as="e" hint-placeholder-count="3">
+<sc-if value="{{e.isUser}}" hint-placeholder-val="{{ true }}"><li style="align-self: flex-end; max-width: 85%; padding: 8px 12px; background: #1D2724; color: #FFFFFF; border-radius: 12px 12px 4px 12px; font-size: 13px; line-height: 18px; white-space: pre-wrap; overflow-wrap: anywhere"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0)">You: </span>{{e.text}}</li></sc-if>
+<sc-if value="{{e.isBot}}" hint-placeholder-val="{{ false }}"><li style="align-self: flex-start; max-width: 88%; padding: 8px 12px; background: #EEF0ED; border-radius: 12px 12px 12px 4px; font-size: 13px; line-height: 18px"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0)">Assistant: </span>{{e.text}}</li></sc-if>
+<sc-if value="{{e.isVerdict}}" hint-placeholder-val="{{ false }}"><li style="border: 1px solid {{e.st.bd}}; border-radius: 10px; overflow: hidden">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 12px; background: {{e.st.bg}}; border-bottom: 1px solid {{e.st.bd}}"><span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; line-height: 18px; font-weight: 600; color: {{e.st.fg}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{e.st.ic}}" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{e.st.icon}}"></path></svg>{{e.st.label}}</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; line-height: 16px; color: {{e.st.fg}}">Ref {{e.ref}}</span></div>
+<p style="margin: 0; padding: 10px 12px; font-size: 13px; line-height: 18px">{{e.text}}</p>
+</li></sc-if>
+<sc-if value="{{e.isNote}}" hint-placeholder-val="{{ false }}"><li style="padding: 8px 12px; border: 1px dashed #C4CAC5; border-radius: 6px; font-size: 12px; line-height: 16px; color: #48524D; text-align: center">{{e.text}}</li></sc-if>
+</sc-for>
+</ol>
+<sc-if value="{{rd.partialText}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; display: flex; gap: 6px; align-items: flex-start; padding: 8px 10px; background: #F6F7F5; border: 1px solid #DCE0DB; border-radius: 6px; font-size: 13px; line-height: 18px; color: #48524D"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#48524D" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 11v5M12 8h.01"></path></svg><span>{{rd.partialText}}</span></p>
+</sc-if>
+<sc-if value="{{rd.canDispute}}" hint-placeholder-val="{{ false }}">
+<div style="padding: 12px 14px; border: 1px solid #DCE0DB; border-radius: 10px; background: #F6F7F5; display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 14px; line-height: 20px; font-weight: 600">Think we got this wrong?</span>
+<span style="font-size: 13px; line-height: 18px; color: #48524D">This was decided automatically. A support specialist can review it and reply here within 1 business day.</span>
+<sc-if value="{{rd.notAsking}}" hint-placeholder-val="{{ true }}">
+<button type="button" onClick="{{askDispute}}" style="align-self: flex-start; height: 40px; padding: 0 14px; border-radius: 6px; border: 1px solid #C4CAC5; background: #FFFFFF; color: #151A18; font-size: 14px; font-weight: 500; cursor: pointer">Dispute this decision</button>
+</sc-if>
+<sc-if value="{{rd.asking}}" hint-placeholder-val="{{ false }}">
+<div role="group" aria-label="Confirm dispute" style="display: flex; flex-direction: column; gap: 8px; padding-top: 8px; border-top: 1px solid #DCE0DB">
+<span style="font-size: 13px; line-height: 18px; font-weight: 500">Send {{rd.ref}} to a specialist for review?</span>
+<div style="display: flex; gap: 8px">
+<button type="button" onClick="{{cancelDispute}}" style="height: 40px; padding: 0 14px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: #151A18; font-size: 14px; font-weight: 500; cursor: pointer">Cancel</button>
+<button id="{{uid}}-dispute-yes" type="button" onClick="{{confirmDispute}}" style="height: 40px; padding: 0 14px; border-radius: 6px; border: 1px solid #1D2724; background: #1D2724; color: #FFFFFF; font-size: 14px; font-weight: 500; cursor: pointer">Yes, send for review</button>
+</div>
+</div>
+</sc-if>
+</div>
+</sc-if>
+<sc-if value="{{rd.showFinal}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border: 1px solid #DCE0DB; border-radius: 6px; font-size: 13px; line-height: 18px; color: #48524D"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><path d="M5 11h14v10H5ZM8 11V7.5a4 4 0 0 1 8 0V11"></path></svg><span>{{rd.finalText}}</span></p>
+</sc-if>
+</div>
+<div style="{{closedStyle}}">
+<button type="button" onClick="{{startNew}}" style="width: 100%; height: 48px; border: 1px solid #1D2724; border-radius: 6px; background: #1D2724; color: #FFFFFF; font-size: 15px; line-height: 20px; font-weight: 500; cursor: pointer">Start new request</button>
 </div>
 </sc-if>
 
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"layout":{"editor":"enum","options":["panel","sheet"],"default":"panel"},"scenario":{"editor":"enum","options":["live","typing","processing","streaming","approved","denied","escalated","error","ratelimited","expired","noorders","requests"],"default":"live"},"preselect":{"editor":null},"preselectKey":{"editor":null},"startView":{"editor":null},"onClose":{"editor":null},"$preview":{"width":400,"height":600}}'>
+<script type="text/x-dc" data-dc-script data-props='{"layout":{"editor":"enum","options":["panel","sheet"],"default":"panel"},"scenario":{"editor":"enum","options":["live","typing","processing","streaming","approved","denied","escalated","error","ratelimited","expired","noorders","requests","reqdetail","reqfinal"],"default":"live"},"preselect":{"editor":null},"session":{"editor":null},"onSession":{"editor":null},"preselectKey":{"editor":null},"startView":{"editor":null},"onClose":{"editor":null},"disputesEnabled":{"editor":"boolean","default":true},"extraOrders":{"editor":null},"$preview":{"width":400,"height":600}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -324,12 +417,17 @@ class Component extends DCLogic {
       this.setState(this.init(this.props));
       return;
     }
-    if (prevState && prevState.msgs.length !== this.state.msgs.length) {
+    if (prevState && this.props.onSession && (prevState.reqs !== this.state.reqs || prevState.orderState !== this.state.orderState)) {
+      this.props.onSession({ reqs: this.state.reqs, orderState: this.state.orderState });
+    }
+    var sa = prevState && this.state, sb = prevState;
+    if (sb && (sb.msgs.length !== sa.msgs.length || sb.stream !== sa.stream || sb.phase !== sa.phase || sb.closed !== sa.closed || sb.elapsed !== sa.elapsed || sb.chipsAll !== sa.chipsAll)) {
       var t = document.getElementById(this.uid + '-thread');
       if (t) t.scrollTop = t.scrollHeight;
     }
   }
   componentDidMount() {
+    if (this.props.onSession) this.props.onSession({ reqs: this.state.reqs, orderState: this.state.orderState });
     var t = document.getElementById(this.uid + '-thread');
     if (t) t.scrollTop = t.scrollHeight;
   }
@@ -346,7 +444,7 @@ class Component extends DCLogic {
     };
   }
   orders() {
-    return [
+    var base = [
       { id: 'ORD-10437', date: 'Sep 22, 2026', amount: '$86.00', recent: true, outcome: 'approved',
         parts: [{ name: 'Worknoon Desk Lamp', price: '$62.00' }, { name: 'USB-C Hub', price: '$24.00' }],
         explain: 'Both items arrived damaged, which our damaged-items rule covers, so you’ll get a full refund.',
@@ -361,21 +459,84 @@ class Component extends DCLogic {
         parts: [{ name: 'Flex Day Pass, 10-pack', price: '$180.00', state: 'progress', ref: 'REQ-5817' }],
         problem: '' },
       { id: 'ORD-10416', date: 'Sep 17, 2026', amount: '$42.00', recent: true, outcome: 'approved',
-        parts: [{ name: 'Coffee Subscription (September)', price: '$28.00' }, { name: 'Worknoon Mug', price: '$14.00', state: 'refunded', ref: 'REQ-5790' }],
+        parts: [{ name: 'Coffee Subscription (September)', price: '$28.00' }, { name: 'Worknoon Mug', price: '$14.00', state: 'approved', ref: 'REQ-5790' }],
         explain: 'The coffee arrived damaged, which our damaged-items rule covers. Your mug was already refunded, so this covers the coffee.',
         problem: 'The September coffee bag arrived torn open and half the beans spilled into the box.' },
-      { id: 'ORD-10331', date: 'Aug 26, 2026', amount: '$20.00', recent: false, outcome: 'expired',
-        parts: [{ name: 'Locker Rental, 1 month', price: '$20.00' }],
-        problem: 'The locker lock was jammed for most of the month.' }
+      { id: 'ORD-10411', date: 'Sep 15, 2026', amount: '$249.00', recent: true, outcome: 'denied',
+        parts: [{ name: 'Hot Desk, monthly', price: '$249.00' }],
+        denyTitle: 'We can\u2019t refund a plan that\u2019s in use', denyRule: 'Plans and passes',
+        denyText: 'Plans can be refunded before the first check-in. You checked in on Sep 15, 16 and 18, so this plan can\u2019t be refunded.',
+        problem: 'My company is giving us office space from October, so I don\u2019t need the hot desk any more.' },
+      { id: 'ORD-10408', date: 'Sep 14, 2026', amount: '$129.00', recent: true, outcome: 'approved',
+        parts: [{ name: 'Noise-cancelling Headset', price: '$129.00' }],
+        explain: 'The left ear cup has no sound, which our faulty-items rule covers, so you\u2019ll get a full refund.',
+        problem: 'The left ear cup of the headset has no sound at all, even after charging it fully.' },
+      { id: 'ORD-10402', date: 'Sep 12, 2026', amount: '$50.00', recent: true, outcome: 'denied',
+        parts: [{ name: 'Day Pass \u00d7 2', price: '$50.00' }],
+        denyTitle: 'We can\u2019t refund used passes', denyRule: 'Room and desk bookings',
+        denyText: 'Day passes can be refunded up to 24 hours before the day. Both passes were used on Sep 12, so they can\u2019t be refunded.',
+        problem: 'The Wi-Fi kept dropping all afternoon, so my colleague and I couldn\u2019t really work.' },
+      { id: 'ORD-10399', date: 'Sep 11, 2026', amount: '$30.00', recent: true, outcome: 'approved',
+        parts: [{ name: 'Printing Credits, 500 pages', price: '$30.00' }],
+        explain: 'None of the credits were used and you asked within 14 days, so you\u2019ll get a full refund.',
+        problem: 'I bought 500 printing credits by mistake. I meant to buy 100, and none have been used.' },
+      { id: 'ORD-10395', date: 'Sep 10, 2026', amount: '$420.00', recent: true, outcome: 'approved',
+        parts: [{ name: 'Event Space, half day', price: '$420.00' }],
+        explain: 'Your event is more than 24 hours away and you asked within 14 days, so you\u2019ll get a full refund.',
+        problem: 'Our workshop on Oct 8 has been cancelled, so we won\u2019t need the event space.' },
+      { id: 'ORD-10385', date: 'Sep 5, 2026', short: 'Sep 5', daysAgo: 19, amount: '$48.00', recent: false, outcome: 'expired',
+        parts: [{ name: 'Laptop Stand', price: '$48.00' }], problem: 'One of the laptop stand\u2019s hinges has started to slip.' },
+      { id: 'ORD-10372', date: 'Sep 1, 2026', short: 'Sep 1', daysAgo: 23, amount: '$90.00', recent: false, outcome: 'expired',
+        parts: [{ name: 'Podcast Studio (2 hrs)', price: '$90.00' }], problem: 'The studio headphones crackled for the whole session.' },
+      { id: 'ORD-10358', date: 'Aug 29, 2026', short: 'Aug 29', daysAgo: 26, amount: '$249.00', recent: false, outcome: 'expired',
+        parts: [{ name: 'Hot Desk, monthly', price: '$249.00' }], problem: 'I was travelling for two weeks of the month and didn\u2019t use the desk.' },
+      { id: 'ORD-10331', date: 'Aug 26, 2026', short: 'Aug 26', daysAgo: 29, amount: '$20.00', recent: false, outcome: 'expired',
+        parts: [{ name: 'Locker Rental, 1 month', price: '$20.00', state: 'denied', ref: 'REQ-5862' }],
+        problem: 'The locker lock was jammed for most of the month.' },
+      { id: 'ORD-10312', date: 'Aug 18, 2026', short: 'Aug 18', daysAgo: 37, amount: '$48.00', recent: false, outcome: 'expired',
+        parts: [{ name: 'Meeting Room (2 hrs)', price: '$48.00' }], problem: 'The screen in the meeting room didn\u2019t work.' },
+      { id: 'ORD-10287', date: 'Aug 8, 2026', short: 'Aug 8', daysAgo: 47, amount: '$24.00', recent: false, outcome: 'expired',
+        parts: [{ name: 'Worknoon Notebook, A5 \u00d7 2', price: '$24.00' }], problem: 'One of the notebooks has pages missing.' }
     ];
+    var extra = (this.props && this.props.extraOrders) || [];
+    return extra.concat(base);
   }
   baseReqs() {
-    var S = this.ST();
     return [
-      { ref: 'REQ-5817', order: 'ORD-10421', item: 'Flex Day Pass, 10-pack', amount: '$180.00', date: 'Sep 21', st: S.processing, note: 'arrives by Sep 28' },
-      { ref: 'REQ-5790', order: 'ORD-10416', item: 'Worknoon Mug', amount: '$14.00', date: 'Sep 18', st: S.approved, note: 'refunded Sep 18' },
-      { ref: 'REQ-5540', order: 'ORD-10298', item: 'Day Pass', amount: '$25.00', date: 'Aug 11', st: S.approved, note: 'refunded Aug 11' },
-      { ref: 'REQ-5391', order: 'ORD-10233', item: 'Printing Credits, 100 pages', amount: '$10.00', date: 'Jul 29', st: S.denied, note: 'credits already used' }
+      { ref: 'REQ-5862', order: 'ORD-10331', item: 'Locker Rental, 1 month', amount: '$20.00', date: 'Sep 23', kind: 'denied', by: 'auto', note: 'past the refund window',
+        transcript: [
+          { k: 'user', text: 'ORD-10331 · Locker Rental, 1 month · $20.00' },
+          { k: 'user', text: 'The locker lock was jammed for most of the month.' },
+          { k: 'verdict', kind: 'denied', ref: 'REQ-5862', text: 'Refunds are available for 14 days after purchase. ORD-10331 was placed on Aug 26, 28 days before you asked.' }
+        ] },
+      { ref: 'REQ-5817', order: 'ORD-10421', item: 'Flex Day Pass, 10-pack', amount: '$180.00', date: 'Sep 21', kind: 'processing', by: 'auto', note: 'arrives by Sep 28',
+        transcript: [
+          { k: 'user', text: 'ORD-10421 · Flex Day Pass, 10-pack · $180.00' },
+          { k: 'user', text: 'I bought the 10-pack by mistake. I already have a monthly membership and none of the passes are used.' },
+          { k: 'verdict', kind: 'approved', ref: 'REQ-5817', text: 'None of the passes were used and you asked within 14 days, so you’ll get a full refund of $180.00.' },
+          { k: 'note', text: 'Refund sent to Visa ending 4242 on Sep 22. It should arrive by Sep 28.' }
+        ] },
+      { ref: 'REQ-5790', order: 'ORD-10416', item: 'Worknoon Mug', amount: '$14.00', date: 'Sep 18', kind: 'approved', by: 'auto', note: 'refunded Sep 18',
+        transcript: [
+          { k: 'user', text: 'ORD-10416 · Worknoon Mug · $14.00' },
+          { k: 'user', text: 'The mug arrived chipped on the rim.' },
+          { k: 'verdict', kind: 'approved', ref: 'REQ-5790', text: 'It arrived damaged, which our damaged-items rule covers, so you’ll get $14.00 back.' }
+        ] },
+      { ref: 'REQ-5540', order: 'ORD-10298', item: 'Day Pass', amount: '$25.00', date: 'Aug 11', kind: 'approved', by: 'admin', note: 'refunded Aug 11',
+        transcript: [
+          { k: 'user', text: 'ORD-10298 · Day Pass · $25.00' },
+          { k: 'user', text: 'The Yaba building was closed for a power cut on the day I booked.' },
+          { k: 'verdict', kind: 'escalated', ref: 'REQ-5540', text: 'There’s no closure on record for that day, so a support specialist will check with the site team.' },
+          { k: 'note', text: 'A support specialist approved this refund on Aug 11. The Yaba site team confirmed the power cut.' }
+        ] },
+      { ref: 'REQ-5391', order: 'ORD-10233', item: 'Printing Credits, 100 pages', amount: '$10.00', date: 'Jul 29', kind: 'denied', by: 'admin', note: 'reviewed Jul 30',
+        transcript: [
+          { k: 'user', text: 'ORD-10233 · Printing Credits, 100 pages · $10.00' },
+          { k: 'user', text: 'I don’t need the printing credits any more.' },
+          { k: 'verdict', kind: 'denied', ref: 'REQ-5391', text: 'Credits that have been used can’t be refunded, and 64 of your 100 credits were used.' },
+          { k: 'note', text: 'You disputed this decision on Jul 29.' },
+          { k: 'note', text: 'A support specialist reviewed it on Jul 30 and kept the decision: 64 credits were used before the request.' }
+        ] }
     ];
   }
   avail(o, orderState) {
@@ -390,28 +551,51 @@ class Component extends DCLogic {
     var esc = function (reason) { return { kind: 'escalated', ref: ref, orderId: o.id, explain: reason, eta: 'within 1 business day', etaDate: 'By Fri, Sep 25, 5:00 PM', email: 'amara.okafor@example.com' }; };
     if (failed) return esc('We couldn’t complete an automatic review, so a support specialist will review your request.');
     if (appealed) return esc('You asked for a person to review the earlier decision on this order.');
-    if (o.outcome === 'approved') return { kind: 'approved', ref: ref, orderId: o.id, amount: a.amount, method: 'Visa ending 4242', lines: a.free, explain: o.explain,
+    if (o.outcome === 'approved') return { kind: 'approved', ref: ref, orderId: o.id, amount: a.amount, method: 'Visa ending 4242', lines: a.free, explain: o.explain || 'Your request meets the refund policy, so you’ll get a full refund.',
       steps: [{ text: 'We send the refund today.' }, { text: 'It shows on your statement within 3–5 business days.' }, { text: 'No need to return the items.' }] };
-    if (o.outcome === 'denied') return { kind: 'denied', ref: ref, orderId: o.id, title: 'We can’t refund this booking', policy: 'Policy v7 · Refund window',
-      explain: 'Room bookings can be refunded up to 24 hours before they start. Yours started Sep 20 at 10:00 and you checked in, so unused time can’t be refunded.' };
+    if (o.outcome === 'denied') return { kind: 'denied', ref: ref, orderId: o.id, title: o.denyTitle || 'We can’t refund this booking', policy: 'Policy v7 · ' + (o.denyRule || 'Refund window'),
+      explain: o.denyText || 'Room bookings can be refunded up to 24 hours before they start. Yours started Sep 20 at 10:00 and you checked in, so unused time can’t be refunded.' };
     if (o.outcome === 'expired') return { kind: 'denied', ref: ref, orderId: o.id, title: 'This order is past the refund window', policy: 'Policy v7 · Refund window',
-      explain: 'Refunds are available for 14 days after purchase. ' + o.id + ' was placed on Aug 26, 29 days ago.' };
+      explain: 'Refunds are available for 14 days after purchase. ' + o.id + ' was placed on ' + (o.short || 'Aug 26') + ', ' + (o.daysAgo || 29) + ' days ago.' };
     return esc('Refunds over $500 are checked by a person before they’re paid.');
   }
-  reqFrom(v, o, os) {
-    var S = this.ST();
+  reqFrom(v, o, os, transcript) {
     var a = this.avail(o, os || {});
-    var map = { approved: [S.approved, 'refund sent today'], denied: [S.denied, 'reason in chat'], escalated: [S.escalated, 'reply by Sep 25'] };
-    return { ref: v.ref, order: o.id, item: a.names, amount: v.amount || a.amount, date: 'Sep 24', st: map[v.kind][0], note: map[v.kind][1] };
+    var notes = { approved: 'refund sent today', denied: 'reason in chat', escalated: 'reply by Sep 25' };
+    return { ref: v.ref, order: o.id, item: a.names, amount: v.amount || a.amount, date: 'Sep 24', kind: v.kind, by: 'auto', note: notes[v.kind], transcript: transcript || [] };
+  }
+  histFor(o, orderState, reqs) {
+    var a = this.avail(o, orderState || {});
+    if (!a.selectable) return [];
+    var seen = {}, out = [];
+    a.parts.forEach(function (p) {
+      if (!p.ref || seen[p.ref]) return;
+      var r = (reqs || []).filter(function (x) { return x.ref === p.ref; })[0];
+      if (r && (r.kind === 'approved' || r.kind === 'denied' || r.kind === 'processing')) { seen[p.ref] = true; out.push({ k: 'history', ref: p.ref, orderId: o.id }); }
+    });
+    return out;
+  }
+  lockState(kind) { return kind === 'approved' ? 'approved' : kind === 'denied' ? 'denied' : 'review'; }
+  transcriptOf(msgs) {
+    var out = [];
+    msgs.forEach(function (m, i) {
+      if (i === 0 && m.k === 'bot') return;
+      if (m.k === 'user') out.push({ k: 'user', text: m.order ? m.order.id + ' · ' + m.order.items + ' · ' + m.order.amount : m.text });
+      else if (m.k === 'bot') out.push({ k: 'bot', text: m.text });
+      else if (m.k === 'verdict') out.push({ k: 'verdict', kind: m.v.kind, ref: m.v.ref, text: m.v.explain });
+    });
+    return out;
   }
   init(props) {
     var sc = props.scenario || 'live';
     var self = this;
     var O = this.orders();
     var byId = function (id) { return O.filter(function (o) { return o.id === id; })[0]; };
-    var s = { view: props.startView === 'requests' ? 'requests' : 'chat', msgs: [], selected: null, draft: '', phase: 'idle', elapsed: 0, block: null, lock: 0, reqs: this.baseReqs(), orderState: {}, stream: null, focusReq: null, lastOrder: null, lastText: '', noOrders: false };
+    var s = { view: props.startView === 'requests' ? 'requests' : 'chat', msgs: [], selected: null, draft: '', phase: 'idle', elapsed: 0, block: null, lock: 0, reqs: this.baseReqs(), orderState: {}, stream: null, focusReq: null, lastOrder: null, lastText: '', noOrders: false, closed: false, openRef: null, reqDetail: null, disputeAsk: false };
+    var ses = props.session;
+    if (ses && ses.reqs) { s.reqs = ses.reqs.slice(); s.orderState = Object.assign({}, ses.orderState || {}); }
     var greet = { k: 'bot', text: 'Hi Amara. Which order do you need help with? Pick one, or just tell me what happened.' };
-    var pickMsgs = function (o) { var a = self.avail(o, {}); return [{ k: 'user', order: { id: o.id, amount: a.amount, items: a.names } }, { k: 'bot', text: 'What went wrong with ' + o.id + '? A sentence or two is enough.' }]; };
+    var pickMsgs = function (o) { var a = self.avail(o, s.orderState); return self.histFor(o, s.orderState, s.reqs).concat([{ k: 'user', order: { id: o.id, amount: a.amount, items: a.names } }, { k: 'bot', text: 'What went wrong with ' + o.id + '? A sentence or two is enough.' }]); };
     if (sc === 'noorders') {
       s.msgs = [{ k: 'bot', text: 'Hi there. How can we help?' }, { k: 'empty' }];
       s.noOrders = true; s.reqs = [];
@@ -419,9 +603,12 @@ class Component extends DCLogic {
     }
     s.msgs = [greet, { k: 'chips' }];
     if (sc === 'requests') { s.view = 'requests'; return s; }
+    if (s.view === 'requests' && /^REQ-/.test(props.preselect || '') && s.reqs.some(function (r) { return r.ref === props.preselect; })) { s.reqDetail = props.preselect; return s; }
+    if (sc === 'reqdetail') { s.view = 'requests'; s.reqDetail = 'REQ-5862'; return s; }
+    if (sc === 'reqfinal') { s.view = 'requests'; s.reqDetail = 'REQ-5391'; return s; }
     var o = byId(props.preselect) || null;
     if (sc === 'live') {
-      if (o && this.avail(o, {}).selectable) { s.msgs = s.msgs.concat(pickMsgs(o)); s.selected = o.id; }
+      if (o && this.avail(o, s.orderState).selectable) { s.msgs = s.msgs.concat(pickMsgs(o)); s.selected = o.id; }
       return s;
     }
     var pickFor = { typing: 'ORD-10437', processing: 'ORD-10437', streaming: 'ORD-10437', approved: 'ORD-10437', denied: 'ORD-10430', escalated: 'ORD-10426', error: 'ORD-10430', ratelimited: 'ORD-10437', expired: 'ORD-10437' };
@@ -441,9 +628,11 @@ class Component extends DCLogic {
     var v = this.verdict(o, 'REQ-5903', false, sc === 'error');
     s.msgs.push({ k: 'verdict', v: v, orderId: o.id });
     if (sc === 'streaming') { s.stream = { i: s.msgs.length - 1, n: Math.round(v.explain.length * 0.55) }; s.phase = 'streaming'; return s; }
-    s.reqs = [this.reqFrom(v, o)].concat(s.reqs);
-    if (v.kind !== 'denied') s.orderState[o.id] = { state: 'progress', ref: v.ref };
-    s.selected = null;
+    var nr = this.reqFrom(v, o, {}, this.transcriptOf(s.msgs));
+    s.reqs = [nr].concat(s.reqs.filter(function (r) { return r.ref !== nr.ref; }));
+    s.orderState[o.id] = { state: this.lockState(v.kind), ref: v.ref };
+    if (v.kind === 'escalated') { s.openRef = v.ref; s.msgs.push({ k: 'bot', text: 'A specialist will pick this up. You can add details here while you wait.' }); }
+    else s.closed = true;
     return s;
   }
   startReview(o, text, appealed) {
@@ -459,7 +648,6 @@ class Component extends DCLogic {
       var v = self.verdict(o, ref, appealed, false, self.state.orderState);
       var rest = self.state.msgs.filter(function (m) { return m.k !== 'proc'; });
       rest.push({ k: 'verdict', v: v, orderId: o.id });
-      var req = self.reqFrom(v, o, self.state.orderState);
       self.setState({ msgs: rest, phase: 'streaming', elapsed: 0, stream: { i: rest.length - 1, n: 0 } });
       self.sv = setInterval(function () {
         var stc = self.state.stream; if (!stc) { self.stop(); return; }
@@ -467,10 +655,15 @@ class Component extends DCLogic {
         if (n < v.explain.length) { self.setState({ stream: { i: stc.i, n: n } }); return; }
         self.stop();
         var os = Object.assign({}, self.state.orderState);
-        if (v.kind !== 'denied') os[o.id] = { state: 'progress', ref: v.ref };
-        var after = self.state.msgs.concat([{ k: 'bot', text: 'Need help with another order? Choose one below or type your question.' }, { k: 'chips' }]);
-        var reqs = [req].concat(self.state.reqs.filter(function (r) { return !(r.order === o.id && r.date === 'Sep 24'); }));
-        self.setState({ msgs: after, phase: 'idle', stream: null, selected: null, reqs: reqs, orderState: os });
+        var req = self.reqFrom(v, o, self.state.orderState, self.transcriptOf(self.state.msgs));
+        os[o.id] = { state: self.lockState(v.kind), ref: v.ref };
+        var reqs = [req].concat(self.state.reqs.filter(function (r) { return r.ref !== req.ref; }));
+        if (v.kind === 'escalated') {
+          var after = self.state.msgs.concat([{ k: 'bot', text: 'A specialist will pick this up. You can add details here while you wait.' }]);
+          self.setState({ msgs: after, phase: 'idle', stream: null, selected: null, reqs: reqs, orderState: os, openRef: v.ref });
+        } else {
+          self.setState({ phase: 'idle', stream: null, selected: null, reqs: reqs, orderState: os, closed: true });
+        }
       }, 30);
     }, 1000);
   }
@@ -490,7 +683,7 @@ class Component extends DCLogic {
       return function () {
         var av = self.avail(o, st.orderState);
         if (busy || st.selected || st.block || !av.selectable) return;
-        var msgs = st.msgs.concat([{ k: 'user', order: { id: o.id, amount: av.amount, items: av.names } }, { k: 'bot', text: 'What went wrong with ' + o.id + '? A sentence or two is enough.' }]);
+        var msgs = st.msgs.concat(self.histFor(o, st.orderState, st.reqs)).concat([{ k: 'user', order: { id: o.id, amount: av.amount, items: av.names } }, { k: 'bot', text: 'What went wrong with ' + o.id + '? A sentence or two is enough.' }]);
         self.setState({ msgs: msgs, selected: o.id }, function () {
           var el = document.getElementById(self.uid + '-input'); if (el) el.focus();
         });
@@ -499,7 +692,13 @@ class Component extends DCLogic {
     var send = function (e) {
       if (e && e.preventDefault) e.preventDefault();
       var text = st.draft.trim();
-      if (!text || over || composerDisabled) return;
+      if (!text || over || composerDisabled || st.closed) return;
+      if (st.openRef) {
+        var ref0 = st.openRef;
+        var reqs0 = st.reqs.map(function (r) { return r.ref === ref0 ? Object.assign({}, r, { transcript: r.transcript.concat([{ k: 'user', text: text }]) }) : r; });
+        self.setState({ msgs: st.msgs.concat([{ k: 'user', text: text }, { k: 'bot', text: 'Added to ' + ref0 + '. The specialist will see it with your request.' }]), draft: '', reqs: reqs0 });
+        return;
+      }
       var o = null;
       if (st.selected) o = O.filter(function (x) { return x.id === st.selected; })[0];
       if (!o) {
@@ -508,7 +707,8 @@ class Component extends DCLogic {
       }
       if (o && !self.avail(o, st.orderState).selectable) {
         var blocked = self.avail(o, st.orderState).parts[0];
-        self.setState({ msgs: st.msgs.concat([{ k: 'user', text: text }, { k: 'bot', text: o.id + ' already has a refund ' + (blocked.state === 'refunded' ? 'completed' : 'in progress') + ' (' + blocked.ref + '). You can follow it in Your requests.' }]), draft: '' });
+        var bl = blocked.state === 'refunded' ? 'was already refunded' : blocked.state === 'progress' || blocked.state === 'review' ? 'already has a refund request in progress' : 'already has a decided refund request';
+        self.setState({ msgs: st.msgs.concat([{ k: 'user', text: text }, { k: 'bot', text: o.id + ' ' + bl + ' (' + blocked.ref + '). You can view it in Your requests.' }]), draft: '' });
         return;
       }
       var msgs = st.msgs.concat([{ k: 'user', text: text }]);
@@ -523,10 +723,43 @@ class Component extends DCLogic {
 
     var lastChips = -1;
     st.msgs.forEach(function (m, i) { if (m.k === 'chips') lastChips = i; });
-    var eligible = O.filter(function (o) { return o.recent; });
-    var goReq = function (ref) { return function () { self.setState({ view: 'requests', focusReq: ref }, function () { var el = document.getElementById(self.uid + '-req-' + ref); if (el) { el.focus(); if (el.scrollIntoView) el.scrollIntoView({ block: 'nearest' }); } }); }; };
-    var MK = { progress: ['Refund in progress', S.processing], refunded: ['Refunded', S.approved] };
+    var eligibleAll = O.filter(function (o) { return o.recent; });
+    var chipLimit = st.chipsAll ? 8 : 5;
+    var selIdx = -1; eligibleAll.forEach(function (o, k) { if (o.id === st.selected) selIdx = k; });
+    var eligible = eligibleAll.slice(0, chipLimit);
+    if (selIdx >= chipLimit) eligible.push(eligibleAll[selIdx]);
+    var chipsHidden = Math.max(0, eligibleAll.length - chipLimit);
+    var showMoreN = st.chipsAll ? 0 : Math.max(0, Math.min(8, eligibleAll.length) - 5);
+    var hint = (st.chipsAll && chipsHidden ? chipsHidden + ' more recent ' + (chipsHidden === 1 ? 'order isn\u2019t' : 'orders aren\u2019t') + ' shown. ' : '') + 'Not listed? Type the order number (like ORD-10385) and what went wrong.';
+    var goReq = function (ref) { return function () { self.setState({ view: 'requests', focusReq: ref, reqDetail: ref, disputeAsk: false }, function () { var el = document.getElementById(self.uid + '-req-' + ref); if (el) { el.focus(); if (el.scrollIntoView) el.scrollIntoView({ block: 'nearest' }); } }); }; };
+    var MK = { progress: ['Refund in progress', S.processing], refunded: ['Refunded', S.approved], approved: ['Approved', S.approved], denied: ['Denied', S.denied], review: ['Under review', S.escalated] };
+    var markOf = function (p) {
+      var r = null; st.reqs.forEach(function (x) { if (x.ref === p.ref) r = x; });
+      var key = p.state;
+      if (r) key = r.kind === 'approved' ? 'approved' : r.kind === 'denied' ? 'denied' : r.kind === 'escalated' ? 'review' : 'progress';
+      var m = MK[key] || MK.progress;
+      if (r && r.by === 'admin' && (key === 'approved' || key === 'denied')) return [m[0] + ' after review', m[1]];
+      return m;
+    };
+    var disputesOn = this.props.disputesEnabled !== false;
+    var reqByRef = {}; st.reqs.forEach(function (r) { reqByRef[r.ref] = r; });
+    var badge = function (kind, by) {
+      var b = S[kind] || S.processing;
+      if (by === 'admin' && (kind === 'approved' || kind === 'denied')) return Object.assign({}, b, { label: b.label + ' after review' });
+      return b;
+    };
+    var canDisputeReq = function (r) { return !!r && r.kind === 'denied' && r.by === 'auto' && !r.disputed && disputesOn; };
+    var openDetail = function (ref) { return function () { self.setState({ view: 'requests', reqDetail: ref, disputeAsk: false, focusReq: ref }); }; };
 
+    var histVal = function (m) {
+      if (m.k !== 'history') return { entries: [], st: S.processing };
+      var r = reqByRef[m.ref]; if (!r) return { entries: [], st: S.processing };
+      var o = O.filter(function (x) { return x.id === m.orderId; })[0];
+      var rest = o ? self.avail(o, st.orderState).free.map(function (p) { return p.name; }).join(', ') : '';
+      return { ref: r.ref, item: r.item, date: r.date, st: badge(r.kind, r.by), open: openDetail(r.ref),
+        entries: (r.transcript || []).filter(function (e) { return e.k !== 'verdict'; }).map(function (e) { return { isUser: e.k === 'user', isBot: e.k === 'bot', isNote: e.k === 'note', text: e.text }; }),
+        restText: 'This chat is still open for the rest of ' + m.orderId + (rest ? ': ' + rest : '') + '. If something went wrong with ' + (rest.indexOf(',') >= 0 ? 'those items' : 'it') + ' too, you can ask for a refund below.' };
+    };
     var items = st.msgs.map(function (m, i) {
       var active = i === lastChips && !busy && !st.block;
       var chips = m.k === 'chips' ? eligible.map(function (o) {
@@ -534,12 +767,18 @@ class Component extends DCLogic {
         var sel = st.selected === o.id && i === lastChips;
         var blocked = !av.selectable;
         var dis = !active || (!!st.selected && !sel) || blocked;
-        var markers = av.parts.filter(function (p) { return p.state; }).map(function (p) {
-          return { label: MK[p.state][0], st: MK[p.state][1], name: p.name, ref: p.ref, go: goReq(p.ref), aria: MK[p.state][0] + ': ' + p.name + '. View ' + p.ref + ' in Your requests' };
+        var byRefP = {}, grouped = [];
+        av.parts.filter(function (p) { return p.state; }).forEach(function (p) {
+          if (byRefP[p.ref]) { byRefP[p.ref].name += ', ' + p.name; return; }
+          byRefP[p.ref] = Object.assign({}, p); grouped.push(byRefP[p.ref]);
+        });
+        var markers = grouped.map(function (p) {
+          var mk = markOf(p);
+          return { label: mk[0], st: mk[1], name: p.name, ref: p.ref, go: goReq(p.ref), aria: mk[0] + ': ' + p.name + '. View ' + p.ref + ' in Your requests' };
         });
         return { id: o.id, amount: av.amount, items: av.names, date: o.date, pick: pickOrder(o), disabled: dis || sel, pressed: sel ? 'true' : 'false',
           hasMarkers: markers.length > 0, markers: markers, descId: self.uid + '-mk-' + o.id + '-' + i,
-          unavailText: blocked ? ' · not selectable' : '', ink: blocked ? '#5F6963' : '#151A18',
+          unavailText: blocked ? ' · not available for a new request' : '', ink: blocked ? '#5F6963' : '#151A18',
           wrapStyle: 'border-radius: 10px; background: ' + (blocked ? '#F6F7F5' : '#FFFFFF') + '; ' + (sel ? 'border: 1.5px solid #151A18' : blocked ? 'border: 1px dashed #C4CAC5' : 'border: 1px solid #C4CAC5') + '; ' + (dis && !sel && !blocked ? 'opacity: 0.55' : ''),
           style: 'width: 100%; min-height: 44px; text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 0; border-radius: 10px; background: transparent; font-family: inherit; ' + (dis && !sel ? 'cursor: default' : 'cursor: pointer') };
       }) : [];
@@ -548,23 +787,47 @@ class Component extends DCLogic {
       var explain = v.explain || '';
       return {
         explain: streamingNow ? explain.slice(0, st.stream.n) : explain, streaming: streamingNow, streamDone: !streamingNow, busyStr: streamingNow ? 'true' : 'false',
+        isHistory: m.k === 'history', h: histVal(m),
         isBot: m.k === 'bot', isUser: m.k === 'user', isChips: m.k === 'chips', isProc: m.k === 'proc',
         isApproved: m.k === 'verdict' && v.kind === 'approved', isDenied: m.k === 'verdict' && v.kind === 'denied', isEscalated: m.k === 'verdict' && v.kind === 'escalated',
         isError: m.k === 'error', isRate: m.k === 'rate', isExpired: m.k === 'expired', isEmpty: m.k === 'empty',
         text: m.text || '', hasText: !!m.text, hasOrder: !!m.order, order: m.order || {},
         chips: chips, noChips: m.k === 'chips' && chips.length === 0,
+        showMore: m.k === 'chips' && active && showMoreN > 0 && !st.selected, showMoreText: 'Show ' + showMoreN + ' more ' + (showMoreN === 1 ? 'order' : 'orders'), moreChips: function () { self.setState({ chipsAll: true }); },
+        chipHint: hint + ' Orders older than 14 days are past the refund window, so they aren\u2019t shown here.',
         v: v, hid: self.uid + '-v' + i,
-        canAppeal: m.k === 'verdict' && v.kind === 'denied' && !busy && !st.block && !m.appealed,
-        appeal: function () {
-          var o = O.filter(function (x) { return x.id === v.orderId; })[0];
-          if (!o || busy) return;
-          var msgs = st.msgs.map(function (x) { return x === m ? Object.assign({}, x, { appealed: true }) : x; });
-          msgs.push({ k: 'user', text: 'Please have a person review this decision.' });
-          self.setState({ msgs: msgs }, function () { self.startReview(o, 'appeal', true); });
-        }
+        showDispute: m.k === 'verdict' && v.kind === 'denied' && !streamingNow && (reqByRef[v.ref] ? canDisputeReq(reqByRef[v.ref]) : disputesOn),
+        showFinal: m.k === 'verdict' && v.kind === 'denied' && !streamingNow && !(reqByRef[v.ref] ? canDisputeReq(reqByRef[v.ref]) : disputesOn),
+        openReq: openDetail(v.ref)
       };
     });
-    items.forEach(function (it, i) { if (st.msgs[i].appealed) it.canAppeal = false; });
+
+    var startNew = function () {
+      self.stop();
+      self.setState({ view: 'chat', msgs: [{ k: 'bot', text: 'Hi Amara. Which order do you need help with? Pick one, or just tell me what happened.' }, { k: 'chips' }], selected: null, draft: '', phase: 'idle', closed: false, openRef: null, reqDetail: null, disputeAsk: false, stream: null, block: null, chipsAll: false },
+        function () { var t = document.getElementById(self.uid + '-thread'); if (t) t.scrollTop = 0; });
+    };
+    var rdRaw = st.reqDetail ? reqByRef[st.reqDetail] : null;
+    var rd = { st: S.processing, entries: [] };
+    if (rdRaw) {
+      var disp = canDisputeReq(rdRaw);
+      rd = {
+        ref: rdRaw.ref, item: rdRaw.item, order: rdRaw.order, amount: rdRaw.amount, date: 'Requested ' + rdRaw.date, st: badge(rdRaw.kind, rdRaw.by),
+        entries: (rdRaw.transcript || []).map(function (e) { return { isUser: e.k === 'user', isBot: e.k === 'bot', isVerdict: e.k === 'verdict', isNote: e.k === 'note', text: e.text, ref: e.ref || '', st: e.k === 'verdict' ? S[e.kind] : S.processing }; }),
+        canDispute: disp, asking: disp && st.disputeAsk, notAsking: disp && !st.disputeAsk,
+        showFinal: rdRaw.kind === 'denied' && !disp,
+        partialText: (function () { var o = O.filter(function (x) { return x.id === rdRaw.order; })[0]; if (!o) return ''; var f = self.avail(o, st.orderState).free; return f.length ? 'The rest of ' + o.id + ' (' + f.map(function (p) { return p.name; }).join(', ') + ') can still get its own refund request from the chat.' : ''; })(),
+        finalText: rdRaw.by === 'admin' ? 'A support specialist reviewed this request. This decision is final.' : 'This decision is final.'
+      };
+    }
+    var confirmDispute = function () {
+      var r0 = rdRaw; if (!r0) return;
+      var reqs = st.reqs.map(function (r) {
+        return r.ref === r0.ref ? Object.assign({}, r, { kind: 'escalated', disputed: true, note: 'disputed · reply by Sep 25', transcript: r.transcript.concat([{ k: 'note', text: 'You disputed this decision on Sep 24. A support specialist will review it and reply here within 1 business day.' }]) }) : r;
+      });
+      var os = Object.assign({}, st.orderState); os[r0.order] = { state: 'review', ref: r0.ref };
+      self.setState({ reqs: reqs, disputeAsk: false, orderState: os });
+    };
 
     var procOrder = st.lastOrder || st.selected || 'your order';
     var labels = ['Reading your message', 'Checking ' + procOrder, 'Applying the refund policy'];
@@ -593,14 +856,23 @@ class Component extends DCLogic {
       close: close,
       isChat: st.view === 'chat',
       isRequests: st.view === 'requests',
-      toChat: function () { self.setState({ view: 'chat' }); },
-      toRequests: function () { self.setState({ view: 'requests' }); },
+      isReqList: st.view === 'requests' && !rdRaw,
+      isReqDetail: st.view === 'requests' && !!rdRaw,
+      rd: rd,
+      backToList: function () { self.setState({ reqDetail: null, disputeAsk: false }, function () { var el = document.getElementById(self.uid + '-req-' + (rdRaw ? rdRaw.ref : '')); if (el) el.focus(); }); },
+      askDispute: function () { self.setState({ disputeAsk: true }, function () { var b = document.getElementById(self.uid + '-dispute-yes'); if (b) b.focus(); }); },
+      cancelDispute: function () { self.setState({ disputeAsk: false }); },
+      confirmDispute: confirmDispute,
+      isClosed: st.closed, showComposer: !st.closed, startNew: startNew,
+      closedStyle: 'flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; padding: 12px 16px ' + (sheet ? 'calc(12px + env(safe-area-inset-bottom))' : '12px') + '; border-top: 1px solid #DCE0DB; background: #FFFFFF',
+      toChat: function () { self.setState({ view: 'chat', reqDetail: null }); },
+      toRequests: function () { self.setState({ view: 'requests', reqDetail: null }); },
       chatCurrent: st.view === 'chat' ? 'page' : 'false',
       reqCurrent: st.view === 'requests' ? 'page' : 'false',
       chatTabStyle: tab(st.view === 'chat'),
       reqTabStyle: tab(st.view === 'requests'),
       reqCount: st.reqs.length,
-      reqs: st.reqs.map(function (r) { var on = st.focusReq === r.ref; return Object.assign({}, r, { domId: self.uid + '-req-' + r.ref, style: 'border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; outline: none; ' + (on ? 'border: 1.5px solid #151A18; background: #F1F4F0' : 'border: 1px solid #DCE0DB') }); }),
+      reqs: st.reqs.map(function (r) { var on = st.focusReq === r.ref; var b = badge(r.kind, r.by); return Object.assign({}, r, { st: b, open: openDetail(r.ref), aria: r.item + ', ' + b.label + ', ' + r.ref + '. View chat', domId: self.uid + '-req-' + r.ref, style: 'border-radius: 10px; outline: none; ' + (on ? 'border: 1.5px solid #151A18; background: #F1F4F0' : 'border: 1px solid #DCE0DB') }); }),
       noReqs: st.reqs.length === 0,
       items: items,
       steps: steps,
@@ -615,7 +887,7 @@ class Component extends DCLogic {
       onComposerKey: function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } },
       send: send,
       composerDisabled: composerDisabled,
-      placeholder: st.selected ? 'Describe what went wrong' : 'Describe the problem, or pick an order above',
+      placeholder: st.openRef ? 'Add details for the specialist' : st.selected ? 'Describe what went wrong' : 'Describe the problem, or pick an order above',
       overStr: over ? 'true' : 'false',
       textareaStyle: 'flex-grow: 1; min-height: 44px; max-height: 120px; box-sizing: border-box; padding: 10px 12px; border-radius: 6px; font-size: ' + (sheet ? '16px' : '14px') + '; line-height: 20px; color: #151A18; resize: none; ' +
         (over ? 'border: 1.5px solid #B42318; ' : 'border: 1px solid #858F89; ') + (composerDisabled ? 'background: #EEF0ED; color: #5F6963; cursor: not-allowed' : 'background: #FFFFFF'),

@@ -14,6 +14,9 @@
 body{margin:0}
 :focus-visible{outline:2px solid #2457C5;outline-offset:2px}
 button,input,select,textarea{font-family:inherit}
+button:not(:disabled),a[href],select:not(:disabled),label[for],[role="button"],[role="tab"],[role="switch"]{cursor:pointer}
+button:disabled,select:disabled{cursor:not-allowed}
+@media (prefers-reduced-motion: reduce){[role="switch"] span{transition:none!important}}
 @keyframes wn-spin{to{transform:rotate(360deg)}}
 .wn-spin{animation:wn-spin 0.8s linear infinite;transform-origin:center}
 @keyframes wn-pulse{0%,100%{opacity:1}50%{opacity:0.5}}
@@ -37,7 +40,7 @@ button,input,select,textarea{font-family:inherit}
 </sc-if>
 </div>
 <ul style="margin: 0; padding: 12px; list-style: none; display: flex; flex-direction: column; gap: 4px; flex-grow: 1">
-<sc-for list="{{navItems}}" as="n" hint-placeholder-count="4">
+<sc-for list="{{navItems}}" as="n" hint-placeholder-count="5">
 <li>
 <button type="button" onClick="{{n.go}}" aria-current="{{n.current}}" aria-label="{{n.aria}}" style="{{n.style}}">
 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="{{n.icon}}"></path></svg>
@@ -216,7 +219,7 @@ Try again
 <button type="button" onClick="{{r.open}}" style="width: 100%; text-align: left; padding: 12px 16px; border: 0; background: transparent; display: flex; flex-direction: column; gap: 6px; cursor: pointer; color: #151A18">
 <span style="display: flex; justify-content: space-between; gap: 8px; width: 100%"><span style="font-size: 14px; line-height: 20px; font-weight: 500">{{r.customer}}</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">{{r.amount}}</span></span>
 <span style="display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%">
-<span style="display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px 0 6px; border-radius: 999px; font-size: 12px; line-height: 16px; font-weight: 500; color: {{r.st.fg}}; background: {{r.st.bg}}; border: 1px solid {{r.st.bd}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{r.st.ic}}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.st.icon}}"></path></svg>{{r.st.label}}</span>
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px 0 6px; border-radius: 999px; white-space: nowrap; font-size: 12px; line-height: 16px; font-weight: 500; color: {{r.st.fg}}; background: {{r.st.bg}}; border: 1px solid {{r.st.bd}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{r.st.ic}}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.st.icon}}"></path></svg>{{r.st.label}}</span>
 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #5F6963">{{r.ref}} · {{r.time}}</span>
 </span>
 </button>
@@ -261,7 +264,7 @@ Try again
 <div style="display: flex; flex-direction: column; gap: 6px">
 <label for="f-reason" style="font-size: 13px; line-height: 18px; font-weight: 500">Escalation reason</label>
 <select id="f-reason" value="{{fReason}}" onChange="{{onReason}}" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #858F89; border-radius: 6px; background: #FFFFFF; font-size: 14px; color: #151A18">
-<option value="all">Any reason</option><option value="injection">Injection signal</option><option value="lowconf">Low confidence</option><option value="policy">Policy rule</option><option value="llm">LLM error</option>
+<option value="all">Any reason</option><option value="injection">Injection signal</option><option value="lowconf">Low confidence</option><option value="policy">Policy rule</option><option value="dispute">Customer dispute</option><option value="llm">LLM error</option>
 </select>
 </div>
 <label style="display: flex; align-items: center; gap: 10px; min-height: 40px; align-self: end; font-size: 14px; line-height: 20px; cursor: pointer">
@@ -327,7 +330,7 @@ Flagged for injection
 <span style="font-size: 13px; line-height: 18px; color: #48524D">{{r.category}} · <span style="font-family: 'IBM Plex Mono', monospace">{{r.order}}</span></span>
 <span style="display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; flex-wrap: wrap">
 <span style="display: flex; gap: 6px; flex-wrap: wrap">
-<span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px 0 6px; border-radius: 999px; font-size: 12px; line-height: 16px; font-weight: 500; color: {{r.st.fg}}; background: {{r.st.bg}}; border: 1px solid {{r.st.bd}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{r.st.ic}}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.st.icon}}"></path></svg>{{r.st.label}}</span>
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px 0 6px; border-radius: 999px; white-space: nowrap; font-size: 12px; line-height: 16px; font-weight: 500; color: {{r.st.fg}}; background: {{r.st.bg}}; border: 1px solid {{r.st.bd}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{r.st.ic}}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.st.icon}}"></path></svg>{{r.st.label}}</span>
 <sc-for list="{{r.flags}}" as="f" hint-placeholder-count="0"><span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px 0 6px; border-radius: 4px; font-size: 12px; line-height: 16px; font-weight: 500; color: {{f.fg}}; background: {{f.bg}}; border: 1px solid {{f.bd}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{f.icon}}"></path></svg>{{f.short}}</span></sc-for>
 </span>
 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #5F6963">{{r.ref}} · {{r.time}}</span>
@@ -417,7 +420,7 @@ Waiting {{e.age}}
 <li style="padding: 14px 20px; border-bottom: 1px solid #EEF0ED; display: flex; flex-direction: column; gap: 6px">
 <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap">
 <span style="font-size: 14px; line-height: 20px; font-weight: 500">{{d.customer}} · <span style="font-family: 'IBM Plex Mono', monospace">{{d.amount}}</span> <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #5F6963; font-weight: 400">{{d.ref}}</span></span>
-<span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px 0 8px; border-radius: 999px; font-size: 13px; line-height: 16px; font-weight: 500; color: {{d.st.fg}}; background: {{d.st.bg}}; border: 1px solid {{d.st.bd}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{d.st.ic}}" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{d.st.icon}}"></path></svg>{{d.st.label}}</span>
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px 0 8px; border-radius: 999px; white-space: nowrap; font-size: 13px; line-height: 16px; font-weight: 500; color: {{d.st.fg}}; background: {{d.st.bg}}; border: 1px solid {{d.st.bd}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{d.st.ic}}" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{d.st.icon}}"></path></svg>{{d.st.label}}</span>
 </div>
 <span style="font-size: 13px; line-height: 18px; color: #151A18">{{d.verb}} by <span style="font-weight: 600">{{d.by}}</span> · <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #48524D">{{d.when}}</span></span>
 <span style="font-size: 13px; line-height: 18px; color: #151A18">Note: {{d.note}}</span>
@@ -719,11 +722,38 @@ Waiting {{e.age}}
 </section>
 </sc-if>
 
+<sc-if value="{{showSettings}}" hint-placeholder-val="{{ false }}">
+<section aria-label="Settings" style="{{settingsWrap}}">
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">Changes apply to customer chats straight away.</p>
+<div style="background: #FFFFFF; border: 1px solid #DCE0DB; border-radius: 10px; box-shadow: 0 1px 2px rgb(21 26 24 / 0.06); display: flex; flex-direction: column">
+<div style="padding: 16px 20px; border-bottom: 1px solid #EEF0ED; display: flex; align-items: center; gap: 10px">
+<h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600">Customer disputes</h2>
+<span style="{{dispStateStyle}}">{{dispState}}</span>
+</div>
+<div style="padding: 16px 20px; display: flex; align-items: flex-start; justify-content: space-between; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+<span id="set-disp-label" style="font-size: 14px; line-height: 20px; font-weight: 600">Allow customers to dispute automatic denials</span>
+<span id="set-disp-desc" style="font-size: 13px; line-height: 18px; color: #48524D">When on, a customer can ask a person to review a request the assistant denied. Turn it off to make automatic denials final.</span>
+</div>
+<button type="button" role="switch" aria-checked="{{dispChecked}}" aria-labelledby="set-disp-label" aria-describedby="set-disp-desc" onClick="{{toggleDisputes}}" style="min-width: 52px; min-height: 44px; margin: -10px -4px 0 0; padding: 0 4px; border: 0; border-radius: 6px; background: transparent; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0">
+<span aria-hidden="true" style="{{dispTrack}}"><span style="{{dispKnob}}"></span></span>
+</button>
+</div>
+<dl style="margin: 0 20px 16px; padding: 12px 14px; background: #F6F7F5; border: 1px solid #DCE0DB; border-radius: 6px; display: grid; grid-template-columns: minmax(0, 160px) minmax(0, 1fr); gap: 8px 16px; font-size: 13px; line-height: 18px">
+<dt style="font-weight: 500">Automatic denials</dt><dd style="margin: 0; color: #48524D">{{dispAuto}}</dd>
+<dt style="font-weight: 500">Denied after review</dt><dd style="margin: 0; color: #48524D">Always final. Decisions made by an admin can’t be disputed.</dd>
+<dt style="font-weight: 500">Approvals</dt><dd style="margin: 0; color: #48524D">Not affected.</dd>
+</dl>
+<div style="padding: 10px 20px; border-top: 1px solid #EEF0ED; font-size: 12px; line-height: 16px; color: #5F6963">{{dispMeta}}</div>
+</div>
+</section>
+</sc-if>
+
 </main>
 
 <sc-if value="{{isMobile}}" hint-placeholder-val="{{ false }}">
-<nav aria-label="Admin sections" style="flex-shrink: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid #DCE0DB; background: #FFFFFF; padding-bottom: env(safe-area-inset-bottom)">
-<sc-for list="{{navItems}}" as="n" hint-placeholder-count="4">
+<nav aria-label="Admin sections" style="flex-shrink: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #DCE0DB; background: #FFFFFF; padding-bottom: env(safe-area-inset-bottom)">
+<sc-for list="{{navItems}}" as="n" hint-placeholder-count="5">
 <button type="button" onClick="{{n.go}}" aria-current="{{n.current}}" style="{{n.tabStyle}}">
 <span style="position: relative; display: flex">
 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{n.icon}}"></path></svg>
@@ -744,7 +774,7 @@ Waiting {{e.age}}
 <span style="font-size: 12px; line-height: 16px; font-weight: 500; color: #5F6963">Refund request</span>
 <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
 <h2 id="dr-ref" style="margin: 0; font-family: 'IBM Plex Mono', monospace; font-size: 20px; line-height: 28px; font-weight: 500">{{d.ref}}</h2>
-<span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px 0 8px; border-radius: 999px; font-size: 13px; line-height: 16px; font-weight: 500; color: {{d.st.fg}}; background: {{d.st.bg}}; border: 1px solid {{d.st.bd}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{d.st.ic}}" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{d.st.icon}}"></path></svg>{{d.st.label}}</span>
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px 0 8px; border-radius: 999px; white-space: nowrap; font-size: 13px; line-height: 16px; font-weight: 500; color: {{d.st.fg}}; background: {{d.st.bg}}; border: 1px solid {{d.st.bd}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{d.st.ic}}" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{d.st.icon}}"></path></svg>{{d.st.label}}</span>
 </div>
 <span style="font-size: 13px; line-height: 18px; color: #48524D">{{d.customer}} · <span style="font-family: 'IBM Plex Mono', monospace">{{d.order}}</span> · <span style="font-family: 'IBM Plex Mono', monospace">{{d.amount}}</span> · {{d.time}}</span>
 </div>
@@ -906,7 +936,7 @@ Waiting {{e.age}}
 
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;layout&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;desktop&quot;,&quot;tablet&quot;,&quot;mobile&quot;,&quot;bare&quot;],&quot;default&quot;:&quot;desktop&quot;},&quot;section&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;overview&quot;,&quot;requests&quot;,&quot;escalations&quot;,&quot;policy&quot;],&quot;default&quot;:&quot;overview&quot;},&quot;sectionState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ready&quot;,&quot;loading&quot;,&quot;empty&quot;,&quot;error&quot;],&quot;default&quot;:&quot;ready&quot;},&quot;drawerRef&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;},&quot;dialog&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;none&quot;,&quot;approve&quot;,&quot;deny&quot;,&quot;revert&quot;],&quot;default&quot;:&quot;none&quot;},&quot;policyMode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;view&quot;,&quot;text&quot;,&quot;old&quot;,&quot;edit&quot;,&quot;preview&quot;,&quot;errors&quot;,&quot;conflict&quot;],&quot;default&quot;:&quot;view&quot;},&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:960}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;layout&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;desktop&quot;,&quot;tablet&quot;,&quot;mobile&quot;,&quot;bare&quot;],&quot;default&quot;:&quot;desktop&quot;},&quot;section&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;overview&quot;,&quot;requests&quot;,&quot;escalations&quot;,&quot;policy&quot;,&quot;settings&quot;],&quot;default&quot;:&quot;overview&quot;},&quot;disputesEnabled&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true},&quot;sectionState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ready&quot;,&quot;loading&quot;,&quot;empty&quot;,&quot;error&quot;],&quot;default&quot;:&quot;ready&quot;},&quot;drawerRef&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;},&quot;dialog&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;none&quot;,&quot;approve&quot;,&quot;deny&quot;,&quot;revert&quot;],&quot;default&quot;:&quot;none&quot;},&quot;policyMode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;view&quot;,&quot;text&quot;,&quot;old&quot;,&quot;edit&quot;,&quot;preview&quot;,&quot;errors&quot;,&quot;conflict&quot;],&quot;default&quot;:&quot;view&quot;},&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:960}}">
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -1036,7 +1066,7 @@ class Component extends DCLogic {
         'REQ-5892': { verdict: 'denied', by: 'Ngozi Adeyemi', when: 'Sep 23, 2026 · 11:40', note: 'Message tried to rewrite the refund rules, and the desk plan had already been used. Denied under section 3.' },
         'REQ-5890': { verdict: 'approved', by: 'Sam Whitfield', when: 'Sep 22, 2026 · 16:20', note: 'Both charges are on the card statement. Duplicate confirmed.' }
       },
-      dialog: null, dlgNote: '', dlgErr: '', toast: '',
+      dialog: null, dlgNote: '', dlgErr: '', toast: '', disputesOn: props.disputesEnabled !== false, dispChanged: false,
       versions: this.baseVersions(), viewing: 7, pMode: 'view', pTab: 'rules', pEditTab: 'form', pDraft: [], pNote: '', pSubmitted: false, pConflict: false, pConflictPending: false, pBase: 7, pSaving: false, pDraftKept: false, addOpen: false, pRef: null, nextId: 1
     };
     var pm = props.policyMode || 'view';
@@ -1086,7 +1116,8 @@ class Component extends DCLogic {
       injection: { label: 'Injection suspected', short: 'Injection', tip: 'Injection suspected: the message contains instructions aimed at the system. They were ignored.', fg: '#A1261B', bg: '#FCECEA', bd: '#F1C2BC', icon: shield },
       limit: { label: 'Large refund', short: 'Large refund', tip: 'Large refund: over $500, so the policy requires review by a person.', fg: '#48524D', bg: '#F6F7F5', bd: '#D2D7D2', icon: 'M12 19V5M6 11l6-6 6 6' },
       lowconf: { label: 'Low confidence', short: 'Low conf.', tip: 'Low confidence: the model scored this claim below 0.80.', fg: '#48524D', bg: '#F6F7F5', bd: '#D2D7D2', icon: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6M12 17h.01' },
-      repeat: { label: 'Repeat request', short: 'Repeat', tip: 'Repeat request: this customer already asked about the same order.', fg: '#48524D', bg: '#F6F7F5', bd: '#D2D7D2', icon: 'M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3' }
+      repeat: { label: 'Repeat request', short: 'Repeat', tip: 'Repeat request: this customer already asked about the same order.', fg: '#48524D', bg: '#F6F7F5', bd: '#D2D7D2', icon: 'M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3' },
+      disputed: { label: 'Disputed', short: 'Disputed', tip: 'Disputed: the customer asked a person to review an automatic denial.', fg: '#86480A', bg: '#FDF2E0', bd: '#EDCF98', icon: 'M4 5h16v11H9l-5 4ZM12 8v3M12 13.5h.01' }
     };
   }
   requests() {
@@ -1122,8 +1153,13 @@ class Component extends DCLogic {
       { ref: 'REQ-5897', customer: 'Daniel Mercer', order: 'ORD-10418', item: 'Meeting Room, 4 hrs', amount: '$96.00', amt: 96, category: 'Space unavailable', v: 'escalated', flags: ['lowconf'], escReason: 'lowconf', time: 'Today 07:55', day: 0, conf: 0.58, lat: '3.10 s', tok: '1,730 in · 264 out', evidence: 'flag',
         msg: [{ t: 'The meeting room was double-booked when I arrived, so I couldn’t use my 4-hour slot on Sep 20.' }],
         why: 'Low confidence (0.58): no double-booking is on record for Sep 20.' },
-      { ref: 'REQ-5896', customer: 'Tomás Herrera', order: 'ORD-10397', item: 'Locker Rental, 3 months', amount: '$45.00', amt: 45, category: 'Final sale item', v: 'denied', flags: [], time: 'Today 07:30', day: 0, conf: 0.95, lat: '1.88 s', tok: '1,356 in · 190 out', finalSale: true,
-        msg: [{ t: 'I don’t need the locker anymore. Please refund the rest of the 3 months.' }] },
+      { ref: 'REQ-5896', customer: 'Tomás Herrera', order: 'ORD-10397', item: 'Locker Rental, 3 months', amount: '$45.00', amt: 45, category: 'Final sale item', v: 'escalated', autoV: 'denied', disputedAt: '08:14', flags: ['disputed'], escReason: 'dispute', why: 'Customer disputed the automatic denial: says the final-sale notice wasn\u2019t shown at checkout.', time: 'Today 07:30', day: 0, conf: 0.95, lat: '1.88 s', tok: '1,356 in · 190 out', finalSale: true,
+        msg: [{ t: 'I don’t need the locker anymore. Please refund the rest of the 3 months.' }],
+        thread: [
+          { who: 'c', time: '07:29:48', used: 'used', segs: [{ t: 'I don’t need the locker anymore. Please refund the rest of the 3 months.' }] },
+          { who: 'a', time: '07:30:02', text: 'We can’t refund this rental: it was sold as final sale at checkout. Reference: REQ-5896.' },
+          { who: 'c', time: '08:14:10', used: 'pending', segs: [{ t: 'Dispute: I booked on my phone and the checkout never said final sale. I’d have picked the 1-month locker if it had.' }] }
+        ] },
       { ref: 'REQ-5895', customer: 'Olivia Grant', order: 'ORD-10274', item: 'Podcast Studio, 3 hrs', amount: '$135.00', amt: 135, category: 'Outside window', v: 'denied', flags: [], time: 'Yesterday 18:02', day: 1, conf: 0.98, lat: '1.74 s', tok: '1,311 in · 176 out', late: true,
         msg: [{ t: 'The podcast studio mic had a buzz the whole session. I only just got round to asking.' }] },
       { ref: 'REQ-5894', customer: 'Marcus Reid', order: 'ORD-10302', item: 'Hot Desk, weekly', amount: '$79.00', amt: 79, category: 'Booking unused', v: 'processing', flags: [], time: 'Yesterday 16:40', day: 1, conf: 0.92, lat: '2.20 s', tok: '1,420 in · 205 out',
@@ -1190,6 +1226,7 @@ class Component extends DCLogic {
       limit: ['Refunds over $500 need review by a person under policy version 7.', 'rule R5'],
       lowconf: ['The model wasn’t sure the claim matches the records it could check.', 'confidence ' + r.conf.toFixed(2) + ' · threshold 0.80'],
       repeat: ['This customer already has a request for the same order in the last 30 days.', 'previous: REQ-5781 · Sep 20 · abandoned'],
+      disputed: ['The assistant denied this automatically. The customer disputed it from Your requests, so a person needs to decide.', 'customer disputes on · disputed ' + (r.disputedAt || '') + ' · one dispute per request'],
       llm: ['The model call timed out on all 3 attempts, so no automatic decision was made. Retries were invisible to the customer.', 'timeout 10 s × 3 · no output']
     };
     var dayLbl = ['Sep 24', 'Sep 23', 'Sep 22'][r.day] || 'Sep 22';
@@ -1206,12 +1243,14 @@ class Component extends DCLogic {
     } else {
       var vk = aiV === 'processing' ? 'approved' : aiV;
       tl.push(TL(S[vk].label, aiV === 'escalated' ? (r.llm ? 'Automatic review failed; sent to a person' : 'Sent to a person by the rules') : 'Decided automatically', vt, S[vk].icon, S[vk].ic, true));
+      if (r.disputedAt) tl.push(TL('Disputed', 'Customer asked a person to review the denial', dayLbl + ' · ' + r.disputedAt, S.escalated.icon, S.escalated.ic, true));
       if (dec) tl.push(TL('Resolved', (dec.verdict === 'approved' ? 'Approved' : 'Denied') + ' by ' + dec.by, dec.when.replace(', 2026 · ', ' · '), tick, '#151A18', true));
-      else if (aiV === 'escalated') tl.push(TL('Resolved', 'Waiting for an admin decision', '—', ring, '#8A938D', false));
+      else if (aiV === 'escalated' || r.disputedAt) tl.push(TL('Resolved', 'Waiting for an admin decision', '—', ring, '#8A938D', false));
       else if (aiV === 'processing') tl.push(TL('Resolved', 'Payout in progress, due by Sep 28', vt, tick, '#151A18', true));
       else tl.push(TL('Resolved', 'Closed with the automatic decision', vt, tick, '#151A18', true));
     }
     tl[tl.length - 1].line = false; tl[tl.length - 1].pb = '0';
+    if (r.disputedAt) decisionText.denied = dec ? 'Denied automatically, disputed by the customer, then ' + (dec.verdict === 'approved' ? 'approved' : 'denied') + ' by ' + dec.by + '.' : 'Denied automatically (final sale). The customer disputed it, so it is waiting in Escalations.';
     if (dec) decisionText.escalated = 'Escalated to a person, then ' + (dec.verdict === 'approved' ? 'approved' : 'denied') + ' by ' + dec.by + '.';
     return {
       timeline: tl,
@@ -1241,7 +1280,7 @@ class Component extends DCLogic {
     var reqs = this.requests().map(function (r) {
       var dec = st.decided[r.ref];
       var v = st.overrides[r.ref] || (dec ? dec.verdict : r.v);
-      return Object.assign({}, r, { v: v, ai: r.v, st: S[v], decided: dec, flagObjs: r.flags.map(function (f) { return F[f]; }) });
+      return Object.assign({}, r, { v: v, ai: r.autoV || r.v, st: dec && S[v] ? Object.assign({}, S[v], { label: S[v].label + ' after review' }) : S[v], decided: dec, flagObjs: r.flags.map(function (f) { return F[f]; }) });
     });
     var byRef = {}; reqs.forEach(function (r) { byRef[r.ref] = r; });
     var today = reqs.filter(function (r) { return r.day === 0; });
@@ -1253,14 +1292,15 @@ class Component extends DCLogic {
     var openDlg = function (kind, ref) { return function (e) { if (e && e.stopPropagation) e.stopPropagation(); self.setState({ dialog: { kind: kind, ref: ref }, dlgNote: '', dlgErr: '' }, function () { var n = document.getElementById('dlg-note'); if (n) n.focus(); }); }; };
     var toast = function (msg) { self.setState({ toast: msg }); self.later(function () { self.setState({ toast: '' }); }, 6000); };
 
-    var titles = { overview: 'Overview', requests: 'Requests', escalations: 'Escalations', policy: 'Policy' };
+    var titles = { overview: 'Overview', requests: 'Requests', escalations: 'Escalations', policy: 'Policy', settings: 'Settings' };
     var icons = {
       overview: 'M4 4h7v7H4ZM13 4h7v7h-7ZM4 13h7v7H4ZM13 13h7v7h-7Z',
       requests: 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01',
       escalations: 'M12 3.5L2.8 19.5h18.4ZM12 10v4M12 17h.01',
-      policy: 'M6 3h9l4 4v14H6ZM14 3v5h5M9 13h7M9 17h7'
+      policy: 'M6 3h9l4 4v14H6ZM14 3v5h5M9 13h7M9 17h7',
+      settings: 'M12 15a3 3 0 1 0 0-6a3 3 0 0 0 0 6ZM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z'
     };
-    var navItems = ['overview', 'requests', 'escalations', 'policy'].map(function (k) {
+    var navItems = ['overview', 'requests', 'escalations', 'policy', 'settings'].map(function (k) {
       var on = sec === k;
       var count = k === 'escalations' && openEscAll.length ? openEscAll.length : 0;
       return {
@@ -1323,12 +1363,13 @@ class Component extends DCLogic {
       'REQ-5902': { state: 'ready', meta: 'Drafted 09:59', summary: 'Customer reports broken air conditioning during a Sep 9 workshop and asks for the full $420.00. The message also contains text telling the system to approve the refund; it was ignored. No incident report exists for Sep 9.', suggest: 'Deny for now and ask for the event invoice or attendee complaints; approve if facilities confirms the fault.' },
       'REQ-5900': { state: 'ready', meta: 'Drafted 09:13', summary: 'Customer is relocating before the office starts on Oct 1 and wants the $1,200.00 deposit back. Every rule passed; it needs review only because it is a large refund (over $500).', suggest: 'Approve. The 30-day deposit window is still open and the office hasn\u2019t started.' },
       'REQ-5897': { state: 'failed', meta: 'Failed 07:56' },
+      'REQ-5896': { state: 'ready', meta: 'Drafted 08:15', summary: 'Customer disputes the automatic denial of a 3-month locker rental ($45.00). Checkout marked it final sale; the customer says the notice wasn\u2019t shown on the mobile checkout.', suggest: 'Check the mobile checkout for that order. If the final-sale notice was missing, approve; if it was shown, keep the denial.' },
       'REQ-5893': { state: 'ready', meta: 'Drafted Sep 23 · 14:12', summary: 'Startup closed; customer wants the rest of an annual virtual office refunded. Second request for this order (the first chat timed out).', suggest: 'Approve a pro-rated $441.00 for the 9 unused months rather than the full $588.00.' },
       'REQ-5892': { state: 'ready', summary: '', suggest: 'Deny: the desk plan was used, and the message tried to add a new refund rule.' },
       'REQ-5890': { state: 'failed' }
     };
     var draftOf = function (ref) { var d = DRAFTS[ref] || { state: 'failed', meta: '' }; return { ready: d.state === 'ready', gen: d.state === 'gen', failed: d.state === 'failed', meta: d.meta || '', summary: d.summary || '', suggest: d.suggest || '' }; };
-    var ages = { 'REQ-5904': ['1 m', '#48524D'], 'REQ-5893': ['20 h', '#86480A'], 'REQ-5900': ['1 h 20 m', '#48524D'], 'REQ-5902': ['34 m', '#48524D'], 'REQ-5897': ['2 h 37 m', '#48524D'] };
+    var ages = { 'REQ-5904': ['1 m', '#48524D'], 'REQ-5893': ['20 h', '#86480A'], 'REQ-5900': ['1 h 20 m', '#48524D'], 'REQ-5902': ['34 m', '#48524D'], 'REQ-5897': ['2 h 37 m', '#48524D'], 'REQ-5896': ['2 h 18 m', '#48524D'] };
     var openEsc = openEscAll.slice().reverse().map(function (r) {
       return { ref: r.ref, customer: r.customer, amount: r.amount, order: r.order, category: r.category, why: r.why || '', flags: r.flagObjs,
         age: ages[r.ref] ? ages[r.ref][0] : '—', ageColor: ages[r.ref] ? ages[r.ref][1] : '#48524D',
@@ -1336,7 +1377,7 @@ class Component extends DCLogic {
     });
     var decided = Object.keys(st.decided).map(function (ref) {
       var d = st.decided[ref], r = byRef[ref];
-      return { ref: ref, customer: r.customer, amount: r.amount, st: S[d.verdict], verb: d.verdict === 'approved' ? 'Approved' : 'Denied', by: d.by, when: d.when, note: d.note, order: d.when,
+      return { ref: ref, customer: r.customer, amount: r.amount, st: Object.assign({}, S[d.verdict], { label: S[d.verdict].label + ' after review' }), verb: d.verdict === 'approved' ? 'Approved' : 'Denied', by: d.by, when: d.when, note: d.note, order: d.when,
         draftText: (function () { var x = draftOf(ref); return x.ready ? 'Suggested: ' + x.suggest : x.gen ? 'Still drafting when decided.' : 'Draft unavailable.'; })() };
     }).reverse();
     decided.sort(function (a, b) { return a.when < b.when ? 1 : -1; });
@@ -1583,9 +1624,10 @@ class Component extends DCLogic {
       overview: ['M3 13h5l1.5 3h5l1.5-3h5M5.5 5h13L21 13v6H3v-6Z', 'No requests yet today', 'When customers ask for refunds, today’s numbers and the latest requests show up here.', 'View all requests', go('requests')],
       requests: ['M3 13h5l1.5 3h5l1.5-3h5M5.5 5h13L21 13v6H3v-6Z', 'No refund requests in the last 60 days', 'Requests appear here as soon as a customer starts one in chat.', '', null],
       escalations: ['M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M8.5 12.5l2.5 2.5 4.5-5', 'No open escalations', 'Nothing needs a person right now. Requests the assistant can’t decide will appear here.', 'View recent requests', go('requests')],
+      settings: ['M12 15a3 3 0 1 0 0-6a3 3 0 0 0 0 6ZM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z', 'Settings unavailable', 'Defaults are in use until settings load.', '', null],
       policy: ['M6 3h9l4 4v14H6ZM14 3v5h5M9 13h7M9 17h7', 'No policy version yet', 'The assistant can’t decide requests until a policy exists. Start from the default template.', 'Create version 1', null]
     }[sec];
-    var errTitles = { overview: 'Couldn’t load the overview', requests: 'Couldn’t load requests', escalations: 'Couldn’t load the escalation queue', policy: 'Couldn’t load the refund policy' };
+    var errTitles = { overview: 'Couldn’t load the overview', requests: 'Couldn’t load requests', escalations: 'Couldn’t load the escalation queue', policy: 'Couldn’t load the refund policy', settings: 'Couldn’t load settings' };
 
     var font = 'font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; color: #151A18; -webkit-font-smoothing: antialiased; ';
     var size = desk ? 'width: 1440px; height: 960px; ' : tab ? 'width: 1024px; height: 768px; ' : mob ? 'width: 390px; height: 844px; ' : 'width: 1136px; height: 640px; ';
@@ -1604,7 +1646,7 @@ class Component extends DCLogic {
       mainStyle: 'flex-grow: 1; min-height: 0; overflow-y: auto; box-sizing: border-box; padding: ' + pad + (bare ? '' : '; padding-bottom: 48px'),
 
       isLoading: st.dataState === 'loading', isError: st.dataState === 'error', isEmpty: st.dataState === 'empty',
-      skTiles: sec === 'overview', skFilters: sec === 'requests', skRows: sec === 'overview' || sec === 'requests', skCards: sec === 'escalations', skDoc: sec === 'policy',
+      skTiles: sec === 'overview', skFilters: sec === 'requests', skRows: sec === 'overview' || sec === 'requests', skCards: sec === 'escalations', skDoc: sec === 'policy' || sec === 'settings',
       sk3: [1, 2, 3], sk5: [1, 2, 3, 4, 5], sk6: [1, 2, 3, 4, 5, 6],
       errTitle: errTitles[sec],
       retry: function () { self.setState({ dataState: 'loading' }); self.later(function () { self.setState({ dataState: 'ready' }); }, 1200); },
@@ -1632,6 +1674,21 @@ class Component extends DCLogic {
       prevPage: setPage(Math.max(1, page - 1)), nextPage: setPage(Math.min(pages, page + 1)),
       prevDisabled: page <= 1, nextDisabled: page >= pages, prevStyle: navBtn(page <= 1), nextStyle: navBtn(page >= pages),
       showPageNums: !mob,
+
+      showSettings: ready && sec === 'settings',
+      dispChecked: st.disputesOn ? 'true' : 'false',
+      dispState: st.disputesOn ? 'On' : 'Off',
+      dispStateStyle: 'font-size: 12px; line-height: 16px; font-weight: 600; padding: 1px 8px; border-radius: 999px; ' + (st.disputesOn ? 'background: #E7F4EC; border: 1px solid #B5DCC3; color: #17603A' : 'background: #EEF0ED; border: 1px solid #D2D7D2; color: #454F4A'),
+      dispTrack: 'position: relative; display: block; width: 44px; height: 24px; flex-shrink: 0; border-radius: 999px; box-sizing: border-box; transition: background-color 150ms; ' + (st.disputesOn ? 'background: #1D2724; border: 1px solid #1D2724' : 'background: #FFFFFF; border: 1px solid #858F89'),
+      dispKnob: 'position: absolute; display: block; top: 2px; width: 18px; height: 18px; border-radius: 999px; transition: left 150ms; ' + (st.disputesOn ? 'left: 22px; background: #FFFFFF' : 'left: 2px; background: #858F89'),
+      dispAuto: st.disputesOn ? 'Customers can dispute once, from Your requests. The request moves to Escalations, marked Disputed.' : 'Final. Customers see \u201cThis decision is final.\u201d and can\u2019t dispute.',
+      dispMeta: st.dispChanged ? 'Changed by Ngozi Adeyemi · just now' : 'Last changed by Ngozi Adeyemi · Sep 14, 2026',
+      toggleDisputes: function () {
+        var on = !self.state.disputesOn;
+        self.setState({ disputesOn: on, dispChanged: true });
+        toast(on ? 'Customer disputes are on. Customers can now dispute automatic denials.' : 'Customer disputes are off. Automatic denials are now final; disputes already sent stay in Escalations.');
+      },
+      settingsWrap: 'display: flex; flex-direction: column; gap: 16px; max-width: 760px',
 
       showEsc: ready && sec === 'escalations',
       escSummary: openEsc.length ? openEsc.length + ' open, oldest first. Approving or denying needs a note and a confirmation; the customer is told in chat.' : 'All escalations are decided.',

@@ -14,6 +14,8 @@
 body{margin:0}
 :focus-visible{outline:2px solid #2457C5;outline-offset:2px}
 button,input,textarea{font-family:inherit}
+button:not(:disabled),a[href],select:not(:disabled),label[for],[role="button"],[role="tab"]{cursor:pointer}
+button:disabled,select:disabled{cursor:not-allowed}
 @keyframes wn-spin{to{transform:rotate(360deg)}}
 .wn-spin{animation:wn-spin 0.8s linear infinite;transform-origin:center}
 @keyframes wn-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
@@ -23,12 +25,12 @@ button,input,textarea{font-family:inherit}
 @media (prefers-reduced-motion: reduce){.wn-spin,.wn-in,.wn-caret{animation:none}}
 </style>
 </helmet>
-<div style="width: 2800px; height: 1720px; box-sizing: border-box; padding: 64px 80px; background: #F6F7F5; font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; color: #151A18; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); column-gap: 48px; row-gap: 72px; align-items: start">
+<div style="width: 2800px; height: 2408px; box-sizing: border-box; padding: 64px 80px; background: #F6F7F5; font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; color: #151A18; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); column-gap: 48px; row-gap: 72px; align-items: start">
 <div style="display: flex; flex-direction: column; gap: 16px">
 <div style="display: flex; flex-direction: column; gap: 4px; min-height: 96px">
 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #5F6963">A</span>
 <h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Greeting + order chips</h2>
-<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">Recent orders as chips. Items already refunded or with a refund in progress are marked, can't be picked, and link to Your requests.</p>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">Recent orders as chips. Orders with an approved, denied or in-progress request are marked with that status, can't be picked, and link to the request.</p>
 </div>
 <div style="position: relative; width: 400px; height: 600px">
 <dc-import name="ChatPanel" layout="panel" scenario="live" hint-size="400px,600px"></dc-import>
@@ -58,7 +60,7 @@ button,input,textarea{font-family:inherit}
 <div style="display: flex; flex-direction: column; gap: 4px; min-height: 96px">
 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #5F6963">D</span>
 <h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Verdict — approved</h2>
-<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">After streaming: explanation, amount, refund method, line items, next steps, reference.</p>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">After streaming: explanation, amount, refund method, line items, reference. The composer is replaced by a black “Start new request” button; the chat is saved in Your requests.</p>
 </div>
 <div style="position: relative; width: 400px; height: 600px">
 <dc-import name="ChatPanel" layout="panel" scenario="approved" hint-size="400px,600px"></dc-import>
@@ -68,7 +70,7 @@ button,input,textarea{font-family:inherit}
 <div style="display: flex; flex-direction: column; gap: 4px; min-height: 96px">
 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #5F6963">E</span>
 <h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Verdict — denied</h2>
-<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">Plain-language reason, the policy it came from, and a way to ask a person.</p>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">Plain-language reason and the policy it came from. The request closes; if disputes are on, the card points to Your requests to dispute it.</p>
 </div>
 <div style="position: relative; width: 400px; height: 600px">
 <dc-import name="ChatPanel" layout="panel" scenario="denied" hint-size="400px,600px"></dc-import>
@@ -144,9 +146,39 @@ button,input,textarea{font-family:inherit}
 <dc-import name="ChatPanel" layout="panel" scenario="streaming" hint-size="400px,600px"></dc-import>
 </div>
 </div>
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px; min-height: 96px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #5F6963">M</span>
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Your requests — denied, can dispute</h2>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">Read-only chat for an automatic denial. No composer; “Dispute this decision” asks for confirmation, then moves it to Escalations.</p>
+</div>
+<div style="position: relative; width: 400px; height: 600px">
+<dc-import name="ChatPanel" layout="panel" scenario="reqdetail" hint-size="400px,600px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px; min-height: 96px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #5F6963">N</span>
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Your requests — denied after review</h2>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">A specialist made this decision, so it is final. No dispute option is shown.</p>
+</div>
+<div style="position: relative; width: 400px; height: 600px">
+<dc-import name="ChatPanel" layout="panel" scenario="reqfinal" hint-size="400px,600px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px; min-height: 96px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #5F6963">O</span>
+<h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Your requests — disputes turned off</h2>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">Same automatic denial with the admin setting off: the decision is final and no dispute option is shown.</p>
+</div>
+<div style="position: relative; width: 400px; height: 600px">
+<dc-import name="ChatPanel" layout="panel" scenario="reqdetail" disputes-enabled="{{ false }}" hint-size="400px,600px"></dc-import>
+</div>
+</div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2800,"height":1720}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2800,"height":2408}}'>
 class Component extends DCLogic {
   renderVals() { return {}; }
 }
