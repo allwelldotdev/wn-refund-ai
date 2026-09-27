@@ -75,14 +75,12 @@ export function TableSkeleton({ label, rows = 6 }: { label: string; rows?: numbe
   );
 }
 
-/** The review model's advisory draft for an escalation (ready / drafting / failed). */
+/** The advisory AI draft for an escalation (ready / drafting / failed). */
 export function ReviewDraft({ review, createdAt }: { review: ReviewInfo | null | undefined; createdAt?: string }) {
   if (!review) return null;
   const meta =
     review.status === "drafted"
-      ? review.model
-        ? `Drafted by ${review.model}`
-        : "Drafted"
+      ? "Drafted"
       : review.status === "pending"
         ? createdAt
           ? `Started ${formatTime(createdAt)}`

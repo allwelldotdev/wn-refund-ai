@@ -15,7 +15,6 @@ import {
   FLAG_META,
   RULE_META,
   distinctFlags,
-  failureSummary,
   shortHash,
   useRequestDetail,
   usePolicyVersion,
@@ -27,7 +26,6 @@ import type {
   RequestDetail,
   Rule,
   SignalView,
-  StageLog,
 } from "@/lib/api-types";
 import { api } from "@/lib/bff";
 import { cn } from "@/lib/cn";
@@ -143,7 +141,7 @@ function DrawerBody({ d }: { d: RequestDetail }) {
           <ReviewDraft review={d.review} createdAt={d.request.created_at} />
         </Section>
       ) : null}
-      <PolicyAndModel d={d} />
+      <PolicyAndProcessing d={d} />
       {verdictMessage ? (
         <Section title="Response sent to the customer">
           <blockquote className="border-l-2 border-border-strong pl-3 text-body-sm whitespace-pre-wrap [overflow-wrap:anywhere]">
@@ -205,7 +203,7 @@ function Timeline({ d }: { d: RequestDetail }) {
     } else if (e.kind === "disputed") {
       steps.push({ label: "Disputed", detail: "Customer asked a person to review the denial", at: e.created_at, done: true, icon: "dispute" });
     } else if (e.kind === "review_drafted") {
-      steps.push({ label: "AI review drafted", detail: `Advisory draft by ${String(e.payload.model ?? "the review model")}`, at: e.created_at, done: true, icon: "document" });
+      steps.push({ label: "AI review drafted", detail: "Advisory summary for the admin", at: e.created_at, done: true, icon: "document" });
     } else if (e.kind === "review_failed") {
       steps.push({ label: "AI review failed", detail: "No draft; decide manually", at: e.created_at, done: true, icon: "info-circle" });
     } else if (e.kind === "resolved") {
@@ -490,15 +488,8 @@ function Flags({ audit, messages, disputedAt }: { audit: AuditInfo | null; messa
   );
 }
 
-function stageLine(name: string, log: StageLog | null): ReactNode {
-  if (!log) return `${name}: skipped`;
-  const r = log.record;
-  const failed = log.failures.map((f) => `${f.model} — ${failureSummary(f.error)}`).join("; ");
-  if (!r) return `${name}: failed (${failed})`;
-  return `${name}: ${r.model}${r.fallback ? " (fallback)" : ""}${failed ? ` after ${failed}` : ""}`;
-}
-
-function PolicyAndModel({ d }: { d: RequestDetail }) {
+/** Which policy decided it and what the automatic steps cost; model details stay in the raw audit. */
+function PolicyAndProcessing({ d }: { d: RequestDetail }) {
   const a = d.audit;
   if (!a) return null;
   const records = [a.stages.intake?.record, a.stages.responder?.record].filter((r): r is NonNullable<typeof r> => !!r);
@@ -506,7 +497,7 @@ function PolicyAndModel({ d }: { d: RequestDetail }) {
   const tokensIn = records.reduce((s, r) => s + (r.prompt_tokens ?? 0), 0);
   const tokensOut = records.reduce((s, r) => s + (r.completion_tokens ?? 0), 0);
   return (
-    <Section title="Policy & model">
+    <Section title="Policy & processing">
       <DefinitionList
         labelWidth={120}
         rows={[
@@ -516,15 +507,6 @@ function PolicyAndModel({ d }: { d: RequestDetail }) {
               <Link className="link" href={`/admin/policy?v=${a.policy_version.version}&from=${encodeURIComponent(d.request.ref)}`}>
                 Version {a.policy_version.version} · <span className="font-mono">#{shortHash(a.policy_version.content_hash)}</span>
               </Link>
-            ),
-          },
-          {
-            label: "Models",
-            value: (
-              <span className="flex flex-col font-mono text-meta">
-                <span>{stageLine("intake", a.stages.intake)}</span>
-                <span>{stageLine("reply", a.stages.responder)}</span>
-              </span>
             ),
           },
           { label: "Latency", value: <span className="font-mono tabular">{records.length ? formatLatency(latency) : "—"}</span> },
