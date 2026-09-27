@@ -2,6 +2,13 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.6.1] — 2026-09-27
+### Improved
+- Suggested reviews on escalations are now short and to the point, easier for admins to scan.
+
+### Changed
+- The request details panel's "Policy & model" section is now "Policy & processing" and no longer shows AI names.
+
 ## [0.6.0] — 2026-09-27
 ### New
 - Once an admin decides an escalated request, the customer sees a chat message explaining why.

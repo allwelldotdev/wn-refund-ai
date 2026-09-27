@@ -168,6 +168,28 @@ The admin dashboard's request drawer (opened via `?ref=RR-…` on any `/admin/*`
 
 A customer can dispute an automatic denial once, with `POST /api/conversations/{id}/dispute`; this adds a `disputed` row to `request_events` and moves the request back into the escalation queue without changing the original `decision_audit` row (ADR-044).
 
+### Reading the raw audit JSON
+
+The drawer's "View raw audit JSON" button, and `GET /api/admin/requests/{ref}/audit` directly, return the four stored records as they are (`db::admin::get_request_audit_raw`), with no reshaping:
+
+| Key | What it is |
+|---|---|
+| `request` | The `refund_requests` row. |
+| `decision_audit` | Written once, in the same transaction as the verdict. Null if the request never reached a decision. |
+| `escalation_review` | The AI review draft and the admin's resolution. Null if the request was never escalated. |
+| `events` | The `request_events` timeline, oldest first. |
+
+Read `decision_audit` top to bottom as the decision's story:
+
+1. `prescan_signals` — pattern matches the heuristic pre-scan found on the messages.
+2. `extracted` — what the intake model understood (null on a pre-scan escalation, since intake never ran).
+3. `facts` — what the order and customer records actually say.
+4. `rule_trace` — every enabled rule that ran, in order, and its verdict.
+5. `flags` — the flags (injection signal, low confidence, foreign order reference, LLM failure, responder failure, etc.) that fed into the final verdict.
+6. `verdict` — the outcome: `approved`, `denied` or `escalated`.
+
+`stages` is where model names now live (the drawer no longer shows them): which model ran at each stage, its latency and its token counts. `policy_version_id` and `content_hash` prove which policy version applied. `evaluated_through_seq` marks the last customer message the decision actually read; later messages are tagged `after_decision` rather than `used_in_decision` in the case file.
+
 For direct database access, `make psql` opens a `psql` shell on the compose database:
 
 ```bash
