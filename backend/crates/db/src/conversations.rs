@@ -32,6 +32,9 @@ pub struct RequestSummary {
     pub amount_cents: Option<i64>,
     pub created_at: DateTime<Utc>,
     pub resolved_at: Option<DateTime<Utc>>,
+    pub disputed_at: Option<DateTime<Utc>>,
+    /// An automatic denial, not yet disputed, while disputes are allowed.
+    pub can_dispute: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -108,7 +111,10 @@ pub async fn list_conversations(
                    ORDER BY m.seq LIMIT 1) AS preview,
                   r.id AS "request_id?", r.ref AS "request_ref?", r.state AS "state?",
                   o.ref AS "order_ref?", i.name AS "item_name?", r.amount_cents AS "amount_cents?",
-                  r.created_at AS "request_created_at?", r.resolved_at AS "resolved_at?"
+                  r.created_at AS "request_created_at?", r.resolved_at AS "resolved_at?",
+                  r.disputed_at AS "disputed_at?",
+                  (r.state = 'denied' AND r.disputed_at IS NULL
+                   AND (SELECT allow_disputes FROM app_settings)) AS "can_dispute?"
            FROM conversations c
            LEFT JOIN refund_requests r ON r.conversation_id = c.id
            LEFT JOIN orders o ON o.id = r.order_id
@@ -133,6 +139,8 @@ pub async fn list_conversations(
                         amount_cents: r.amount_cents,
                         created_at,
                         resolved_at: r.resolved_at,
+                        disputed_at: r.disputed_at,
+                        can_dispute: r.can_dispute.unwrap_or(false),
                     })
                 }
                 _ => None,
@@ -158,7 +166,9 @@ pub async fn find_request_summary(
         // which can put `r` on the nullable side of the joins.
         r#"SELECT r.id AS "id!", r.ref AS "ref!", r.state AS "state!",
                   o.ref AS "order_ref?", i.name AS "item_name?",
-                  r.amount_cents, r.created_at AS "created_at!", r.resolved_at
+                  r.amount_cents, r.created_at AS "created_at!", r.resolved_at, r.disputed_at,
+                  (r.state = 'denied' AND r.disputed_at IS NULL
+                   AND (SELECT allow_disputes FROM app_settings)) AS "can_dispute!"
            FROM refund_requests r
            LEFT JOIN orders o ON o.id = r.order_id
            LEFT JOIN order_items i ON i.id = r.order_item_id
@@ -177,6 +187,8 @@ pub async fn find_request_summary(
             amount_cents: r.amount_cents,
             created_at: r.created_at,
             resolved_at: r.resolved_at,
+            disputed_at: r.disputed_at,
+            can_dispute: r.can_dispute,
         })
     })
     .transpose()

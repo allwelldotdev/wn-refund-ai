@@ -86,9 +86,13 @@ string_enum! {
 }
 
 string_enum! {
+    /// `Admin` carries an admin's decision to the customer; `System` is a note
+    /// such as "You disputed this decision".
     pub enum MessageRole {
         Customer = "customer",
         Assistant = "assistant",
+        Admin = "admin",
+        System = "system",
     }
 }
 
@@ -150,6 +154,7 @@ mod tests {
     const MIGRATIONS: &[&str] = &[
         include_str!("../../../migrations/0001_initial.sql"),
         include_str!("../../../migrations/0002_assistant_scope.sql"),
+        include_str!("../../../migrations/0003_disputes.sql"),
     ];
 
     /// The quoted values of the first `CHECK (<column> IN (...))` in the newest

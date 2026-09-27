@@ -134,6 +134,29 @@ pub async fn insert_assistant_message(
     r.try_into()
 }
 
+/// A message from an admin, or a system note. Neither goes through the pipeline.
+pub async fn insert_note(
+    conn: &mut PgConnection,
+    conversation_id: Uuid,
+    role: MessageRole,
+    body: &str,
+) -> Result<Message, DbError> {
+    let seq = next_seq(conn, conversation_id).await?;
+    let r = sqlx::query_as!(
+        RawMessage,
+        "INSERT INTO messages (conversation_id, seq, role, body)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, conversation_id, seq, role, assistant_kind, body, client_msg_id, order_id, created_at",
+        conversation_id,
+        seq,
+        role.as_str(),
+        body,
+    )
+    .fetch_one(&mut *conn)
+    .await?;
+    r.try_into()
+}
+
 /// In `seq` order.
 pub async fn list_messages(db: &Db, conversation_id: Uuid) -> Result<Vec<Message>, DbError> {
     sqlx::query_as!(

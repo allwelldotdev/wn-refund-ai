@@ -6,6 +6,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use chrono::{DateTime, Utc};
 use db::admin::{ListFilter, RequestDetail, Resolution, Resolved, Stats};
+use db::settings::Settings;
 use domain::types::{Flag, RequestState};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -24,6 +25,7 @@ pub fn routes() -> Router<AppState> {
         .route("/api/admin/requests/{ref}", get(detail))
         .route("/api/admin/requests/{ref}/audit", get(audit))
         .route("/api/admin/requests/{ref}/resolve", post(resolve))
+        .route("/api/admin/settings", get(get_settings).put(put_settings))
 }
 
 /// Query parameters as (name, value) pairs; `flag` may repeat.
@@ -122,11 +124,17 @@ async fn list(
     if offset < 0 {
         return Err(ApiError::field("offset", "must not be negative"));
     }
+    let disputed = match param(&pairs, "disputed") {
+        None | Some("false") => false,
+        Some("true") => true,
+        Some(_) => return Err(ApiError::field("disputed", "must be true or false")),
+    };
     let filter = ListFilter {
         state: filter_state,
         q: param(&pairs, "q").map(str::to_owned),
         since: time_param(&pairs, "since")?,
         flag_groups,
+        disputed,
         limit,
         offset,
     };
@@ -212,4 +220,29 @@ async fn resolve(
         "escalation resolved"
     );
     Ok(Json(resolved))
+}
+
+async fn get_settings(
+    State(state): State<AppState>,
+    _: AdminSession,
+) -> Result<Json<Settings>, ApiError> {
+    Ok(Json(db::settings::get_settings(&state.db).await?))
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SettingsBody {
+    allow_disputes: bool,
+}
+
+/// Takes effect at once; disputes already sent stay in Escalations.
+async fn put_settings(
+    State(state): State<AppState>,
+    s: AdminSession,
+    ApiJson(req): ApiJson<SettingsBody>,
+) -> Result<Json<Settings>, ApiError> {
+    let settings =
+        db::settings::set_allow_disputes(&state.db, s.admin_id, req.allow_disputes).await?;
+    tracing::info!(admin = %s.name, allow_disputes = req.allow_disputes, "settings saved");
+    Ok(Json(settings))
 }

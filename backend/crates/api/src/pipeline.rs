@@ -22,7 +22,6 @@ use std::time::{Duration, Instant};
 use ai::{AiConfig, AiError, Completed, Stage, StageModel, StageRecord};
 use chrono::{DateTime, Utc};
 use db::DbError;
-use db::conversations::RequestSummary;
 use db::messages::{Message, SignalRow};
 use db::orders::{Order, OrderItem};
 use db::refunds::{NewAudit, NewRefundRequest};
@@ -616,16 +615,8 @@ async fn decide_and_reply(
         "refund request decided"
     );
     out.reply(&reply).await;
-    out.send(SseEvent::RequestUpdated(RequestSummary {
-        id: created.id,
-        request_ref: created.request_ref,
-        state: created.state,
-        order_ref: order.map(|o| o.order_ref.clone()),
-        item_name: order.map(|o| o.item.name.clone()),
-        amount_cents: request.amount_cents,
-        created_at: created.created_at,
-        resolved_at: None,
-    }))
-    .await;
+    if let Some(summary) = db::conversations::find_request_summary(db, conversation_id).await? {
+        out.send(SseEvent::RequestUpdated(summary)).await;
+    }
     Ok((decision.verdict == Verdict::Escalated).then_some(created.id))
 }

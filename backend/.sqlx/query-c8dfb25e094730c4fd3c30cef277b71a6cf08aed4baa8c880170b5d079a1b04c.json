@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT r.ref, r.state, c.name, c.email, o.ref AS \"order_ref?\", i.name AS \"item_name?\",\n                  r.amount_cents, r.reason_category, a.flags AS \"flags?\", v.status AS \"review_status?\",\n                  r.created_at, r.resolved_at\n           FROM refund_requests r\n           JOIN customers c ON c.id = r.customer_id\n           LEFT JOIN orders o ON o.id = r.order_id\n           LEFT JOIN order_items i ON i.id = r.order_item_id\n           LEFT JOIN decision_audit a ON a.refund_request_id = r.id\n           LEFT JOIN escalation_reviews v ON v.refund_request_id = r.id\n           WHERE ($1::text IS NULL OR r.state = $1)\n             AND ($2::text IS NULL OR r.ref ILIKE $2 OR c.name ILIKE $2\n                  OR c.email ILIKE $2 OR o.ref ILIKE $2)\n             AND ($3::timestamptz IS NULL OR r.created_at >= $3)\n             AND NOT EXISTS (\n                   SELECT 1 FROM unnest($4::text[]) AS g(grp)\n                   WHERE NOT (coalesce(a.flags, '[]'::jsonb) ?| string_to_array(g.grp, ',')))\n           ORDER BY r.created_at DESC, r.id\n           LIMIT $5 OFFSET $6",
+  "query": "SELECT r.ref, r.state, c.name, c.email, o.ref AS \"order_ref?\", i.name AS \"item_name?\",\n                  r.amount_cents, r.reason_category, a.flags AS \"flags?\", v.status AS \"review_status?\",\n                  r.created_at, r.resolved_at, r.disputed_at\n           FROM refund_requests r\n           JOIN customers c ON c.id = r.customer_id\n           LEFT JOIN orders o ON o.id = r.order_id\n           LEFT JOIN order_items i ON i.id = r.order_item_id\n           LEFT JOIN decision_audit a ON a.refund_request_id = r.id\n           LEFT JOIN escalation_reviews v ON v.refund_request_id = r.id\n           WHERE ($1::text IS NULL OR r.state = $1)\n             AND ($2::text IS NULL OR r.ref ILIKE $2 OR c.name ILIKE $2\n                  OR c.email ILIKE $2 OR o.ref ILIKE $2)\n             AND ($3::timestamptz IS NULL OR r.created_at >= $3)\n             AND NOT EXISTS (\n                   SELECT 1 FROM unnest($4::text[]) AS g(grp)\n                   WHERE NOT (coalesce(a.flags, '[]'::jsonb) ?| string_to_array(g.grp, ',')))\n             AND (NOT $5 OR r.disputed_at IS NOT NULL)\n           ORDER BY r.created_at DESC, r.id\n           LIMIT $6 OFFSET $7",
   "describe": {
     "columns": [
       {
@@ -134,6 +134,17 @@
             "name": "resolved_at"
           }
         }
+      },
+      {
+        "ordinal": 12,
+        "name": "disputed_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "refund_requests",
+            "name": "disputed_at"
+          }
+        }
       }
     ],
     "parameters": {
@@ -142,6 +153,7 @@
         "Text",
         "Timestamptz",
         "TextArray",
+        "Bool",
         "Int8",
         "Int8"
       ]
@@ -158,8 +170,9 @@
       false,
       false,
       false,
+      true,
       true
     ]
   },
-  "hash": "9d49d1807728006308b16e5b46aadb17c7de56c364448e56cbe7c8e74f0bb883"
+  "hash": "c8dfb25e094730c4fd3c30cef277b71a6cf08aed4baa8c880170b5d079a1b04c"
 }

@@ -1,0 +1,50 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT s.allow_disputes, a.name AS \"updated_by?\", s.updated_at\n           FROM app_settings s\n           LEFT JOIN admins a ON a.id = s.updated_by_admin_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "allow_disputes",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "app_settings",
+            "name": "allow_disputes"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "updated_by?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "admins",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "app_settings",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "f0a04bb872a50b246d66fbc39a26f35d8c6281c14628e1a6b85f0d2bdf7f2bfc"
+}

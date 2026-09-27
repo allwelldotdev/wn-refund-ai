@@ -6,12 +6,13 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use chrono::Utc;
 use db::DbError;
-use db::conversations::ConversationSummary;
+use db::conversations::{ConversationSummary, RequestSummary};
 use db::messages::Message;
 use db::orders::Order;
 use domain::prescan::{MAX_MESSAGE_CHARS, prescan};
-use domain::types::{RequestState, SignalScope};
+use domain::types::{MessageRole, RequestState, SignalScope};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use tokio::sync::mpsc;
@@ -20,8 +21,8 @@ use uuid::Uuid;
 use crate::AppState;
 use crate::auth::CustomerSession;
 use crate::error::{ApiError, ApiJson};
-use crate::pipeline;
 use crate::sse::{self, Emitter, SseEvent};
+use crate::{pipeline, review_job};
 
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -32,6 +33,7 @@ pub fn routes() -> Router<AppState> {
         )
         .route("/api/conversations/{id}", get(get_conversation))
         .route("/api/conversations/{id}/messages", post(post_message))
+        .route("/api/conversations/{id}/dispute", post(dispute))
 }
 
 async fn list_orders(
@@ -181,6 +183,92 @@ async fn post_message(
         out,
     ));
     Ok(sse::stream(rx).into_response())
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DisputeBody {
+    reason: Option<String>,
+}
+
+/// The customer asks a person to review an automatic denial: once, and only
+/// while the admin setting allows it. The optional reason is stored and
+/// pre-scanned like any customer message, a system note records the dispute,
+/// and the request goes back to Escalations with a fresh review draft.
+async fn dispute(
+    State(state): State<AppState>,
+    s: CustomerSession,
+    Path(conversation_id): Path<Uuid>,
+    ApiJson(req): ApiJson<DisputeBody>,
+) -> Result<Json<RequestSummary>, ApiError> {
+    let reason = req
+        .reason
+        .as_deref()
+        .map(str::trim)
+        .filter(|r| !r.is_empty());
+    if reason.is_some_and(|r| r.chars().count() > MAX_MESSAGE_CHARS) {
+        return Err(ApiError::field(
+            "reason",
+            format!("must be at most {MAX_MESSAGE_CHARS} characters"),
+        ));
+    }
+    db::conversations::get_conversation_owned(&state.db, conversation_id, s.customer_id)
+        .await?
+        .ok_or(ApiError::NotFound)?;
+
+    let mut tx = state.db.0.begin().await.map_err(DbError::from)?;
+    let target = db::refunds::lock_for_dispute(&mut tx, conversation_id)
+        .await?
+        .filter(|t| t.state == RequestState::Denied || t.disputed_at.is_some())
+        .ok_or_else(|| {
+            ApiError::conflict(
+                "not_disputable",
+                "Only a request the assistant denied can be disputed.",
+            )
+        })?;
+    if target.disputed_at.is_some() {
+        return Err(ApiError::conflict(
+            "already_disputed",
+            "This decision has already been disputed.",
+        ));
+    }
+    if !target.allow_disputes {
+        return Err(ApiError::conflict(
+            "disputes_off",
+            "Automatic decisions are final at the moment.",
+        ));
+    }
+    if let Some(reason) = reason {
+        let message = db::messages::insert_customer_message(
+            &mut tx,
+            conversation_id,
+            Uuid::new_v4(),
+            reason,
+            None,
+        )
+        .await?;
+        db::messages::insert_signals(&mut tx, message.id, SignalScope::Message, &prescan(reason))
+            .await?;
+    }
+    let today = Utc::now().format("%b %-d, %Y");
+    db::messages::insert_note(
+        &mut tx,
+        conversation_id,
+        MessageRole::System,
+        &format!(
+            "You disputed this decision on {today}. A support specialist will review it and reply here."
+        ),
+    )
+    .await?;
+    db::refunds::mark_disputed(&mut tx, target.id).await?;
+    tx.commit().await.map_err(DbError::from)?;
+
+    tracing::info!(%conversation_id, "automatic denial disputed");
+    tokio::spawn(review_job::run_review(state.clone(), target.id));
+    let summary = db::conversations::find_request_summary(&state.db, conversation_id)
+        .await?
+        .ok_or(ApiError::NotFound)?;
+    Ok(Json(summary))
 }
 
 /// Same conversation: acknowledge and end; the client re-reads the

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE app_settings\n         SET allow_disputes = $1, updated_by_admin_id = $2, updated_at = now()\n         WHERE allow_disputes IS DISTINCT FROM $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a03f7dc684d84aae18da2acffbc309a928c1ce034660c7eadd77ed4bff32f01b"
+}

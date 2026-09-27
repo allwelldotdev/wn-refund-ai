@@ -11,6 +11,7 @@ pub mod orders;
 pub mod policy;
 pub mod refunds;
 pub mod seed;
+pub mod settings;
 
 use std::time::Duration;
 
