@@ -2,6 +2,15 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.3.0] — 2026-09-27
+### New
+- Asking about an item that already has a request now shows that request's status instead of opening a second one.
+
+### Changed
+- The chat now politely declines anything that isn't a refund request, including requests to look things up online.
+- Replies are warmer and briefly acknowledge the customer's situation.
+- Saying you need nothing else ends the chat with a short thank-you, without filing a request.
+
 ## [0.2.0] — 2026-09-27
 ### Changed
 - The chat now asks a clarifying question for a vague message instead of handing it to a person right away, unless it looks suspicious.
