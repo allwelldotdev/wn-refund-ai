@@ -259,9 +259,3 @@ export const BUILTIN_CHECKS: Record<"fail_closed" | "active_refund_exists", stri
 export function shortHash(hash: string): string {
   return hash.slice(0, 7);
 }
-
-/** Stage failure text without provider response bodies (they can carry account ids). */
-export function failureSummary(error: string): string {
-  const head = error.split(":")[0]?.trim() ?? error;
-  return head.length > 60 ? `${head.slice(0, 60)}…` : head;
-}
