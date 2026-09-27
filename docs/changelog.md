@@ -2,6 +2,15 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.7.0] — 2026-09-27
+### New
+- Customers can add a test order from My orders, picking a date, items from a catalogue, and a delivery status, to try the chat.
+- Before adding a test order, the form shows what the assistant would likely decide for each item.
+- Added test orders are tagged "Test" and appear first in My orders.
+
+### Improved
+- My orders now shows a start date for a confirmed order and an end date for an active one.
+
 ## [0.6.1] — 2026-09-27
 ### Improved
 - Suggested reviews on escalations are now short and to the point, easier for admins to scan.

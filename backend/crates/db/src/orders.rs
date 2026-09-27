@@ -1,9 +1,9 @@
-//! Customer orders (read-only; seeded). `active_refund` marks items that
-//! already have a refund that pays out, which the engine refuses to repeat
-//! (ADR-013, ADR-030).
+//! Customer orders: seeded, plus test orders a customer adds (demo only).
+//! `active_refund` marks items that already have a refund that pays out,
+//! which the engine refuses to repeat (ADR-013, ADR-030).
 
 use chrono::{DateTime, Utc};
-use domain::types::OrderStatus;
+use domain::types::{Fulfilment, OrderStatus};
 use serde::Serialize;
 use uuid::Uuid;
 
@@ -29,6 +29,12 @@ pub struct Order {
     pub delivered_at: Option<DateTime<Utc>>,
     pub status: OrderStatus,
     pub total_cents: i64,
+    pub fulfilment: Option<Fulfilment>,
+    /// A confirmed booking's start, or when an active plan began.
+    pub starts_at: Option<DateTime<Utc>>,
+    /// When an active plan runs out, if it has an end.
+    pub ends_at: Option<DateTime<Utc>>,
+    pub is_test: bool,
     pub items: Vec<OrderItem>,
 }
 
@@ -38,10 +44,12 @@ impl Order {
     }
 }
 
-/// Newest order first; items by name.
+/// Test orders first, newest added first (so one just added is on the first
+/// page), then the rest newest first; items by name.
 pub async fn list_orders_for_customer(db: &Db, customer_id: Uuid) -> Result<Vec<Order>, DbError> {
     let rows = sqlx::query!(
         r#"SELECT o.id AS order_id, o.ref, o.placed_at, o.delivered_at, o.status, o.total_cents,
+                  o.fulfilment, o.starts_at, o.ends_at, o.is_test,
                   i.id AS item_id, i.name, i.category, i.quantity, i.amount_cents, i.final_sale,
                   EXISTS (SELECT 1 FROM refund_requests r
                           WHERE r.order_item_id = i.id
@@ -49,7 +57,8 @@ pub async fn list_orders_for_customer(db: &Db, customer_id: Uuid) -> Result<Vec<
            FROM orders o
            JOIN order_items i ON i.order_id = o.id
            WHERE o.customer_id = $1
-           ORDER BY o.placed_at DESC, o.id, i.name, i.id"#,
+           ORDER BY o.is_test DESC, CASE WHEN o.is_test THEN o.created_at END DESC,
+                    o.placed_at DESC, o.id, i.name, i.id"#,
         customer_id,
     )
     .fetch_all(&db.0)
@@ -65,6 +74,10 @@ pub async fn list_orders_for_customer(db: &Db, customer_id: Uuid) -> Result<Vec<
                 delivered_at: r.delivered_at,
                 status: parse_enum(&r.status)?,
                 total_cents: r.total_cents,
+                fulfilment: r.fulfilment.as_deref().map(parse_enum).transpose()?,
+                starts_at: r.starts_at,
+                ends_at: r.ends_at,
+                is_test: r.is_test,
                 items: Vec::new(),
             });
         }
@@ -80,6 +93,81 @@ pub async fn list_orders_for_customer(db: &Db, customer_id: Uuid) -> Result<Vec<
         });
     }
     Ok(orders)
+}
+
+/// The next number in the `ORD-` sequence; not reserved, so only a preview.
+pub async fn next_order_ref(db: &Db) -> Result<String, DbError> {
+    let n = sqlx::query_scalar!(
+        r#"SELECT COALESCE(max(substring(ref FROM 5)::int), 10000) + 1 AS "n!"
+           FROM orders WHERE ref ~ '^ORD-[0-9]+$'"#
+    )
+    .fetch_one(&db.0)
+    .await?;
+    Ok(format!("ORD-{n}"))
+}
+
+#[derive(Debug)]
+pub struct NewOrderItem {
+    pub name: String,
+    pub category: String,
+    pub quantity: i32,
+    pub amount_cents: i64,
+    pub final_sale: bool,
+}
+
+#[derive(Debug)]
+pub struct NewOrder {
+    pub placed_at: DateTime<Utc>,
+    pub delivered_at: Option<DateTime<Utc>>,
+    pub status: OrderStatus,
+    pub fulfilment: Fulfilment,
+    pub starts_at: Option<DateTime<Utc>>,
+    pub ends_at: Option<DateTime<Utc>>,
+    pub items: Vec<NewOrderItem>,
+}
+
+/// A test order for `customer_id` with the next `ORD-` number, which a
+/// transaction-scoped advisory lock hands out one at a time. Returns its id.
+pub async fn create_test_order(db: &Db, customer_id: Uuid, o: &NewOrder) -> Result<Uuid, DbError> {
+    let mut tx = db.0.begin().await?;
+    sqlx::query!("SELECT pg_advisory_xact_lock(hashtext('order_ref'))")
+        .execute(&mut *tx)
+        .await?;
+    let total: i64 = o.items.iter().map(|i| i.amount_cents).sum();
+    let order_id = sqlx::query_scalar!(
+        r#"INSERT INTO orders (ref, customer_id, placed_at, delivered_at, status, total_cents,
+                               fulfilment, starts_at, ends_at, is_test)
+           SELECT 'ORD-' || (COALESCE(max(substring(ref FROM 5)::int), 10000) + 1),
+                  $1, $2, $3, $4, $5, $6, $7, $8, true
+           FROM orders WHERE ref ~ '^ORD-[0-9]+$'
+           RETURNING id"#,
+        customer_id,
+        o.placed_at,
+        o.delivered_at,
+        o.status.as_str(),
+        total,
+        o.fulfilment.as_str(),
+        o.starts_at,
+        o.ends_at,
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+    for item in &o.items {
+        sqlx::query!(
+            "INSERT INTO order_items (order_id, name, category, quantity, amount_cents, final_sale)
+             VALUES ($1, $2, $3, $4, $5, $6)",
+            order_id,
+            item.name,
+            item.category,
+            item.quantity,
+            item.amount_cents,
+            item.final_sale,
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+    tx.commit().await?;
+    Ok(order_id)
 }
 
 pub async fn is_order_owned(db: &Db, order_id: Uuid, customer_id: Uuid) -> Result<bool, DbError> {

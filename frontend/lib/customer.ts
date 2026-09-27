@@ -69,8 +69,21 @@ export type Fulfilment = { label: string; icon: "box" | "check-circle" | "calend
 const PHYSICAL = new Set(["accessories", "subscriptions"]);
 const BOOKINGS = new Set(["room bookings"]);
 
-/** How an order was fulfilled, worded for the kind of thing bought. */
+/** How far along an order is, from its stored status; older rows fall back to the kind of thing bought. */
 export function fulfilment(order: Order, formatShortDate: (iso: string) => string): Fulfilment {
+  const on = (iso: string | null) => (iso ? formatShortDate(iso) : "");
+  switch (order.fulfilment) {
+    case "delivered":
+      return { label: `Delivered ${on(order.delivered_at)}`, icon: "box" };
+    case "used":
+      return { label: `Used ${on(order.delivered_at)}`, icon: "check-circle" };
+    case "confirmed":
+      return { label: order.starts_at ? `Confirmed, starts ${on(order.starts_at)}` : "Confirmed, not started", icon: "calendar" };
+    case "active": {
+      const since = on(order.starts_at ?? order.delivered_at);
+      return { label: order.ends_at ? `Active since ${since}, until ${on(order.ends_at)}` : `Active since ${since}`, icon: "clock" };
+    }
+  }
   const category = (order.items[0]?.category ?? "").trim().toLowerCase();
   if (!order.delivered_at) {
     return order.status === "shipped"

@@ -4,6 +4,7 @@
 
 pub mod admin;
 pub mod auth;
+pub mod catalog;
 pub mod conversations;
 pub mod lock;
 pub mod messages;

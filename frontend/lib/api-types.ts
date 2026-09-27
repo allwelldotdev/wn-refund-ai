@@ -30,6 +30,7 @@ export type Flag =
 export type ReviewStatus = "pending" | "drafted" | "failed";
 export type AssistantKind = "clarify" | "verdict" | "holding" | "existing_request" | "closing" | "redirect";
 export type OrderStatus = "processing" | "shipped" | "delivered";
+export type Fulfilment = "delivered" | "used" | "confirmed" | "active";
 
 export const REQUEST_STATES: RequestState[] = [
   "approved",
@@ -93,7 +94,48 @@ export interface Order {
   delivered_at: ISODate | null;
   status: OrderStatus;
   total_cents: Cents;
+  fulfilment: Fulfilment | null;
+  /** A confirmed booking's start, or when an active plan began. */
+  starts_at: ISODate | null;
+  /** When an active plan runs out, if it has an end. */
+  ends_at: ISODate | null;
+  /** Added by the customer from My orders to try the chat (demo). */
+  is_test: boolean;
   items: OrderItem[];
+}
+
+export type CatalogKind = "booking" | "plan" | "deposit" | "service" | "product";
+
+export interface CatalogItem {
+  id: string;
+  group: "workspace" | "services" | "products";
+  name: string;
+  kind: CatalogKind;
+  unit_cents: Cents;
+  unit: string;
+  hourly: boolean;
+  category: string;
+  final_sale: boolean;
+}
+
+export interface Catalog {
+  /** A preview only: the number is assigned when the order is added. */
+  next_order_ref: string;
+  groups: { key: CatalogItem["group"]; label: string; items: CatalogItem[] }[];
+}
+
+export interface NewOrderBody {
+  placed_on: string;
+  items: { item: string; quantity: number }[];
+  fulfilment: Fulfilment | null;
+  delivered_on: string | null;
+  starts_on: string | null;
+  runs_for_days: number | null;
+}
+
+export interface OrderPreview {
+  assumption: string;
+  items: { name: string; verdict: Verdict; reason: string }[];
 }
 
 export interface RequestSummary {
