@@ -389,6 +389,77 @@ async fn a_fourth_unclear_message_escalates(pool: PgPool) {
     assert_eq!(flags(&app.audit(&conv).await), ["clarification_limit"]);
 }
 
+/// Seen live: a vague first message came back with low confidence and was
+/// escalated at once. An incomplete request is clarified first.
+#[sqlx::test(migrations = "../../migrations")]
+async fn a_vague_first_message_gets_a_question_despite_low_confidence(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let amara = app.login("amara.okafor@example.com").await;
+    let conv = app.new_conversation(&amara).await;
+    let mut vague = needs_info_intake(vec![MissingField::Order, MissingField::Item]);
+    vague.reason_category = Some(ReasonCategory::Damaged);
+    vague.confidence = 0.3;
+    app.fake.push_intake(Ok(vague));
+
+    let res = app
+        .say(&amara, &conv, "Something I ordered arrived broken.")
+        .await;
+    assert_eq!(res.event("reply_start")["kind"], "clarify");
+    assert!(!res.event_names().contains(&"request_updated".to_owned()));
+
+    app.fake
+        .push_intake(Ok(complete_intake("ORD-10437", ReasonCategory::Damaged)));
+    let res = app
+        .say(&amara, &conv, "The desk lamp from ORD-10437.")
+        .await;
+    assert_eq!(res.event("request_updated")["state"], "approved");
+    assert!(flags(&app.audit(&conv).await).is_empty());
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn low_confidence_on_a_complete_request_escalates(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let amara = app.login("amara.okafor@example.com").await;
+    let conv = app.new_conversation(&amara).await;
+    let mut unsure = complete_intake("ORD-10437", ReasonCategory::Damaged);
+    unsure.confidence = 0.4;
+    app.fake.push_intake(Ok(unsure));
+
+    let res = app
+        .say(
+            &amara,
+            &conv,
+            "The lamp from ORD-10437 is kind of broken, maybe.",
+        )
+        .await;
+    assert_eq!(res.event("request_updated")["state"], "escalated");
+    assert_eq!(flags(&app.audit(&conv).await), ["low_confidence"]);
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn low_confidence_counts_once_the_questions_run_out(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let priya = app.login("priya.raman@example.com").await;
+    let conv = app.new_conversation(&priya).await;
+    let unclear = || {
+        let mut intake = needs_info_intake(vec![MissingField::Reason]);
+        intake.confidence = 0.2;
+        intake
+    };
+    for turn in 1..=3 {
+        app.fake.push_intake(Ok(unclear()));
+        let res = app.say(&priya, &conv, "It's not right.").await;
+        assert_eq!(res.event("reply_start")["kind"], "clarify", "turn {turn}");
+    }
+    app.fake.push_intake(Ok(unclear()));
+    let res = app.say(&priya, &conv, "Just not right.").await;
+    assert_eq!(res.event("request_updated")["state"], "escalated");
+    assert_eq!(
+        flags(&app.audit(&conv).await),
+        ["low_confidence", "clarification_limit"]
+    );
+}
+
 #[sqlx::test(migrations = "../../migrations")]
 async fn asking_about_another_customers_order_is_flagged(pool: PgPool) {
     let app = TestApp::new(pool).await;

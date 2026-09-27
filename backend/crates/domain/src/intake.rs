@@ -10,7 +10,8 @@ use uuid::Uuid;
 
 use crate::types::{OrderStatus, ReasonCategory};
 
-/// Below this, intake output raises `Flag::LowConfidence`.
+/// Below this, intake output raises `Flag::LowConfidence`, but only once the
+/// request is complete or the clarifying questions have run out.
 pub const LOW_CONFIDENCE: f32 = 0.6;
 /// Clarifying questions allowed per conversation before it escalates.
 pub const MAX_CLARIFY_TURNS: u8 = 3;
@@ -93,6 +94,13 @@ pub struct IntakeOutput {
     pub injection_signals: Vec<InjectionSignal>,
     /// 0.0 to 1.0.
     pub confidence: f32,
+}
+
+impl IntakeOutput {
+    /// Below `LOW_CONFIDENCE`, or not a number at all.
+    pub fn low_confidence(&self) -> bool {
+        self.confidence.is_nan() || self.confidence < LOW_CONFIDENCE
+    }
 }
 
 #[cfg(test)]

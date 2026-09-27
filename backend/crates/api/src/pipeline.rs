@@ -7,7 +7,8 @@
 //! 3. Intake (LLM, with one fallback model) extracts claims. Rust then checks
 //!    every id against the customer's own orders and raises flags.
 //! 4. Missing order, item or reason: ask a clarifying question, up to
-//!    `MAX_CLARIFY_TURNS`, then escalate.
+//!    `MAX_CLARIFY_TURNS`, then escalate. Low confidence waits for the same
+//!    point: it only escalates a complete request or one out of questions.
 //! 5. `domain::engine::decide` returns the verdict. The responder only words it,
 //!    and a reply that names another outcome is rejected.
 //! 6. Request, audit, event and reply commit in one transaction.
@@ -25,8 +26,8 @@ use db::orders::{Order, OrderItem};
 use db::refunds::{NewAudit, NewRefundRequest};
 use domain::engine::{Claims, Facts, ItemFacts, OrderFacts, PriorClaim, decide};
 use domain::intake::{
-    CustomerMessage, IntakeInput, IntakeOutput, IntakeStatus, ItemSummary, LOW_CONFIDENCE,
-    MAX_CLARIFY_TURNS, MissingField, OrderSummary,
+    CustomerMessage, IntakeInput, IntakeOutput, IntakeStatus, ItemSummary, MAX_CLARIFY_TURNS,
+    MissingField, OrderSummary,
 };
 use domain::prescan::{WindowMessage, prescan_window};
 use domain::prose::render_policy;
@@ -186,7 +187,9 @@ pub async fn screen_intake(
     if !intake.injection_signals.is_empty() {
         flags.push(Flag::IntakeInjectionSignal);
     }
-    if intake.confidence.is_nan() || intake.confidence < LOW_CONFIDENCE {
+    // An incomplete request is expected to be unclear; the clarifying
+    // questions deal with it, and `process` adds the flag if they run out.
+    if intake.low_confidence() && missing_fields(orders, intake).is_empty() {
         flags.push(Flag::LowConfidence);
     }
     Ok(flags)
@@ -356,6 +359,9 @@ async fn process(
                 let asked = db::messages::clarify_count(db, conversation_id).await?;
                 if asked >= i64::from(MAX_CLARIFY_TURNS) {
                     flags.push(Flag::ClarificationLimit);
+                    if extracted.low_confidence() {
+                        flags.push(Flag::LowConfidence);
+                    }
                 } else {
                     let policy = db::policy::latest_policy(db).await?;
                     let input = ResponderInput::Clarify {

@@ -15,7 +15,7 @@
 **Rationale:** The pre-scan catches obvious attacks at no cost. Combining intake saves a round trip. The review model runs after the customer has their reply, so it adds no user-facing latency.
 
 ## ADR-003: Fail closed to Escalated
-**Status:** Accepted
+**Status:** Accepted; superseded by ADR-041 (low-confidence timing only)
 **Context:** LLM calls can fail, time out or return invalid output, and injection may be suspected.
 **Options:** (a) deny on failure; (b) retry indefinitely; (c) retry once on a fallback model, then escalate.
 **Decision:** (c). Any injection signal, low confidence, schema failure or repeated LLM error results in Escalated with a flag, and the customer is told a human will review.
@@ -279,6 +279,13 @@
 **Options:** (a) reorder SSE events so the verdict arrives before reply tokens; (b) keep ADR-024's event order, and on `done` re-read the stored conversation and animate the stored reply client-side, badge and reference first, then the text typed out.
 **Decision:** (b).
 **Rationale:** Reordering SSE events would complicate the stream contract for a purely visual sequencing need. Tokens arrive in a burst anyway, so re-reading the stored conversation and animating it client-side loses nothing perceptible while keeping ADR-024's stream unchanged.
+
+## ADR-041: Low confidence only escalates once the request is complete or clarifying runs out
+**Status:** Accepted
+**Context:** ADR-003 made low intake confidence one of the fail-closed triggers. In practice a vague first message ("Something I ordered arrived broken.") came back from intake as needs_info with confidence below 0.6, so the low-confidence flag escalated it before the clarifying step (ADR-021, up to 3 questions) could run. Low confidence on an incomplete request only means the request is not understood yet.
+**Options:** (a) keep escalating on any low confidence; (b) apply low confidence only when the extraction is complete, and otherwise let the clarifying questions run, adding the flag if they run out; (c) drop the low-confidence flag.
+**Decision:** (b), implemented in `backend/crates/api/src/pipeline.rs` (`screen_intake`, `process`) and `backend/crates/domain/src/intake.rs`. The flag is raised only when nothing is missing (order, item, reason all known) or when the clarify limit is reached with confidence still low (then both low_confidence and clarification_limit are recorded). Safety flags (pre-scan hits, intake injection signals, foreign order references) still escalate immediately. The engine is not called during clarify turns, so no decision is made until the request is complete or the questions run out.
+**Rationale:** Questions resolve most vague openings; fail-closed still applies to every request the engine actually decides and to anything suspicious; the audit still records low confidence when it mattered.
 
 ## Future work
 - LLM-assisted policy authoring with dry-run impact preview (ADR-019).
