@@ -2,6 +2,10 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.2.0] — 2026-09-27
+### Changed
+- The chat now asks a clarifying question for a vague message instead of handing it to a person right away, unless it looks suspicious.
+
 ## [0.1.1] — 2026-09-27
 ### Improved
 - Everything you can click now shows a hand cursor on hover, and unavailable controls show a blocked cursor.
