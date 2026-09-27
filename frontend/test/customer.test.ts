@@ -40,6 +40,14 @@ describe("customer order markers", () => {
     expect([isClosed(escalated), isClosed(denied), isClosed(reviewed), isClosed(null)]).toEqual([false, true, true, false]);
   });
 
+  it("words a stored fulfilment", () => {
+    const base = byRef("ORD-10437");
+    const at = (d: string) => `2026-09-${d}T12:00:00Z`;
+    expect(fulfilment({ ...base, fulfilment: "confirmed", delivered_at: null, starts_at: at("30") }, formatShortDate).label).toBe("Confirmed, starts Sep 30");
+    expect(fulfilment({ ...base, fulfilment: "active", starts_at: at("19"), ends_at: at("26") }, formatShortDate).label).toBe("Active since Sep 19, until Sep 26");
+    expect(fulfilment({ ...base, fulfilment: "used", delivered_at: at("19") }, formatShortDate).label).toBe("Used Sep 19");
+  });
+
   it("words fulfilment by what was bought", () => {
     expect(fulfilment(byRef("ORD-10437"), formatShortDate).label).toBe("Delivered Sep 23");
     expect(fulfilment(byRef("ORD-10430"), formatShortDate).label).toBe("Used Sep 20");

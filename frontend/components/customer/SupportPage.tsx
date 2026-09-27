@@ -1,12 +1,13 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 
 import { ChatWidget, type ThreadTarget } from "@/components/chat/ChatWidget";
+import { AddOrderDialog } from "@/components/customer/AddOrderDialog";
 import { Chip } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button, IconButton } from "@/components/ui/Button";
 import { BrandMark, Icon } from "@/components/ui/Icon";
 import { Alert, Avatar, EmptyState, Skeleton } from "@/components/ui/Surface";
 import { Pagination, TD, TH, THead, TR, Table } from "@/components/ui/Table";
@@ -44,6 +45,9 @@ export function SupportPage({ principal }: { principal: Principal }) {
   const [focusRef, setFocusRef] = useState<string | null>(null);
   const [detailRef, setDetailRef] = useState<string | null>(params.get("req"));
   const [page, setPage] = useState(1);
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const [target, setTarget] = useState<ThreadTarget>({
     key: 0,
     conversationId: initialChat && initialChat !== "new" ? initialChat : null,
@@ -143,10 +147,26 @@ export function SupportPage({ principal }: { principal: Principal }) {
             <h1 className="text-[22px] leading-[30px] font-semibold sm:text-title-lg">My orders</h1>
             <p className="text-body-sm text-ink-muted">Your orders, newest first.</p>
           </div>
-          <button type="button" onClick={() => showRequests(null)} className="link min-h-11 text-body-sm font-medium">
-            Your refund requests ({requestCount})
-          </button>
+          <div className="flex flex-wrap items-center gap-4">
+            <button type="button" onClick={() => showRequests(null)} className="link min-h-11 text-body-sm font-medium">
+              Your refund requests ({requestCount})
+            </button>
+            <Button icon="plus" aria-haspopup="dialog" onClick={() => setAdding(true)}>
+              Add order
+            </Button>
+          </div>
         </div>
+
+        {added ? (
+          <div className="relative">
+            <Alert tone="success" title={`${added} added`} className="pr-12">
+              Use &ldquo;Get help with this order&rdquo; to try a refund request with it.
+            </Alert>
+            <span className="absolute top-2 right-2">
+              <IconButton icon="close" label="Dismiss" size={32} onClick={() => setAdded(null)} />
+            </span>
+          </div>
+        ) : null}
 
         {orders.isPending ? (
           <div aria-busy="true" className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5">
@@ -177,6 +197,19 @@ export function SupportPage({ principal }: { principal: Principal }) {
           </div>
         )}
       </main>
+
+      <AddOrderDialog
+        open={adding}
+        customerName={principal.name}
+        onClose={() => setAdding(false)}
+        onAdded={(order) => {
+          setAdding(false);
+          setAdded(order.ref);
+          setPage(1);
+          void queryClient.invalidateQueries({ queryKey: ["orders"] });
+          void queryClient.invalidateQueries({ queryKey: ["catalog"] });
+        }}
+      />
 
       {!open ? (
         <button
@@ -264,6 +297,15 @@ function HelpAction({ order, conversations, onHelp, onShowRequest }: Omit<Orders
   );
 }
 
+/** Marks an order the customer added to try the chat (demo). */
+function TestTag() {
+  return (
+    <span className="rounded-[4px] border border-info-border bg-info-bg px-1.5 font-sans text-[11px] leading-4 font-semibold tracking-[0.04em] text-info-fg uppercase">
+      Test
+    </span>
+  );
+}
+
 function Items({ order }: { order: Order }) {
   return (
     <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
@@ -305,7 +347,12 @@ function OrdersTable({ orders, conversations, onHelp, onShowRequest }: OrdersVie
         <tbody>
           {orders.map((o) => (
             <TR key={o.id}>
-              <TD className="font-mono text-mono font-medium whitespace-nowrap">{o.ref}</TD>
+              <TD className="font-mono text-mono font-medium whitespace-nowrap">
+                <span className="inline-flex items-center gap-2">
+                  {o.ref}
+                  {o.is_test ? <TestTag /> : null}
+                </span>
+              </TD>
               <TD className="font-mono text-mono whitespace-nowrap text-ink-muted tabular">{formatDate(o.placed_at)}</TD>
               <TD>
                 <Items order={o} />
@@ -331,7 +378,10 @@ function OrdersList({ orders, conversations, onHelp, onShowRequest }: OrdersView
       {orders.map((o) => (
         <li key={o.id} className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
           <div className="flex items-center justify-between font-mono text-mono">
-            <span className="font-medium">{o.ref}</span>
+            <span className="inline-flex items-center gap-2 font-medium">
+              {o.ref}
+              {o.is_test ? <TestTag /> : null}
+            </span>
             <span className="text-ink-muted tabular">{formatDate(o.placed_at)}</span>
           </div>
           <div className="text-lead">

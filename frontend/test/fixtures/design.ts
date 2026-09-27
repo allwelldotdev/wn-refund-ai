@@ -15,6 +15,10 @@ function order(ref: string, placed: string, delivered: string | null, items: Arr
     delivered_at: delivered ? day(delivered) : null,
     status: delivered ? "delivered" : "processing",
     total_cents: items.reduce((s, [, , c]) => s + c, 0),
+    fulfilment: null,
+    starts_at: null,
+    ends_at: null,
+    is_test: false,
     items: items.map(([name, category, amount_cents, active_refund = false, final_sale = false], i) => ({
       id: `${ref}-${i}`,
       name,
