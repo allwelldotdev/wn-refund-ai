@@ -73,7 +73,7 @@ export function RequestTable({ items, caption, selected, onOpen, variant }: Prop
                   <StatusBadge state={r.state} />
                 </TD>
                 <TD className="py-1.5">
-                  <FlagChips flags={r.flags} full={!queue} />
+                  <FlagChips flags={r.flags} disputed={r.disputed_at !== null} full={!queue} />
                 </TD>
                 <TD numeric className="py-1.5 whitespace-nowrap">
                   {formatRelativeDayTime(r.created_at)}
@@ -107,7 +107,7 @@ export function RequestTable({ items, caption, selected, onOpen, variant }: Prop
               ) : null}
               <span className="flex flex-wrap items-center gap-1.5">
                 <StatusBadge state={r.state} size="sm" />
-                <FlagChips flags={r.flags} />
+                <FlagChips flags={r.flags} disputed={r.disputed_at !== null} />
               </span>
               <span className="font-mono text-caption text-ink-subtle">
                 {r.ref} · {formatRelativeDayTime(r.created_at)}

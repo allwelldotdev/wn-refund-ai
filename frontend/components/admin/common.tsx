@@ -10,25 +10,24 @@ import { Icon, Spinner } from "@/components/ui/Icon";
 import { Dialog } from "@/components/ui/Overlay";
 import { LoadingRegion, Skeleton } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
-import { FLAG_META, distinctFlags } from "@/lib/admin";
+import { DISPUTED_META, FLAG_META, distinctFlags } from "@/lib/admin";
 import type { Flag, ResolveResponse, ReviewInfo } from "@/lib/api-types";
 import { api, isApiError } from "@/lib/bff";
 import { cn } from "@/lib/cn";
 import { formatCents, formatTime } from "@/lib/format";
 
-export function FlagChips({ flags, full, className }: { flags: Flag[]; full?: boolean; className?: string }) {
-  const shown = distinctFlags(flags);
+type FlagChipsProps = { flags: Flag[]; disputed?: boolean; full?: boolean; className?: string };
+
+export function FlagChips({ flags, disputed, full, className }: FlagChipsProps) {
+  const shown = [...(disputed ? [DISPUTED_META] : []), ...distinctFlags(flags).map((f) => FLAG_META[f])];
   if (!shown.length) return null;
   return (
     <span className={cn("flex flex-wrap gap-1", className)}>
-      {shown.map((f) => {
-        const m = FLAG_META[f];
-        return (
-          <Chip key={f} tone={m.tone} icon={m.icon} tip={full ? undefined : m.tip}>
-            {full ? m.label : m.short}
-          </Chip>
-        );
-      })}
+      {shown.map((m) => (
+        <Chip key={m.label} tone={m.tone} icon={m.icon} tip={full ? undefined : m.tip}>
+          {full ? m.label : m.short}
+        </Chip>
+      ))}
     </span>
   );
 }

@@ -7,6 +7,7 @@ import type { IconName } from "@/components/ui/Icon";
 import type {
   AdminList,
   AdminStats,
+  AppSettings,
   Flag,
   PolicyVersion,
   PolicyVersionView,
@@ -25,6 +26,8 @@ export type RequestFilter = {
   q?: string;
   since?: string | null;
   flagGroups?: Flag[][];
+  /** Only requests a customer disputed. */
+  disputed?: boolean;
   limit: number;
   offset: number;
 };
@@ -35,6 +38,7 @@ export function requestListPath(f: RequestFilter): string {
   if (f.q?.trim()) p.set("q", f.q.trim());
   if (f.since) p.set("since", f.since);
   for (const g of f.flagGroups ?? []) if (g.length) p.append("flag", g.join(","));
+  if (f.disputed) p.set("disputed", "true");
   p.set("limit", String(f.limit));
   p.set("offset", String(f.offset));
   return `admin/requests?${p}`;
@@ -76,6 +80,14 @@ export function detailQuery(ref: string) {
   };
 }
 
+export function useSettings() {
+  return useQuery({
+    queryKey: ["admin", "settings"],
+    queryFn: () => api<AppSettings>("admin/settings"),
+    refetchInterval: 15_000,
+  });
+}
+
 export function useCurrentPolicy() {
   return useQuery({
     queryKey: ["admin", "policy", "current"],
@@ -103,7 +115,7 @@ export function usePolicyVersion(id: string | null) {
 
 // Labels
 
-type FlagMeta = { label: string; short: string; tip: string; icon: IconName; tone: "neutral" | "denied" };
+type FlagMeta = { label: string; short: string; tip: string; icon: IconName; tone: "neutral" | "denied" | "escalated" };
 
 export const FLAG_META: Record<Flag, FlagMeta> = {
   prescan_signal: {
@@ -164,6 +176,15 @@ export const FLAG_META: Record<Flag, FlagMeta> = {
   },
 };
 
+/** Not a pipeline flag: shown whenever the customer disputed an automatic denial. */
+export const DISPUTED_META: FlagMeta = {
+  label: "Disputed",
+  short: "Disputed",
+  tip: "Disputed: the customer asked a person to review an automatic denial.",
+  icon: "dispute",
+  tone: "escalated",
+};
+
 /** Flags that mean the same thing to an admin are shown once. */
 export function distinctFlags(flags: Flag[]): Flag[] {
   const seen = new Set<string>();
@@ -178,9 +199,10 @@ export function distinctFlags(flags: Flag[]): Flag[] {
 export const INJECTION_FLAGS: Flag[] = ["prescan_signal", "intake_injection_signal"];
 
 /** Escalation-reason filter options, each a group of flags (any of them matches). */
-export const REASON_FILTERS: Array<{ value: string; label: string; flags: Flag[] }> = [
+export const REASON_FILTERS: Array<{ value: string; label: string; flags: Flag[]; disputed?: boolean }> = [
   { value: "injection", label: "Injection signal", flags: INJECTION_FLAGS },
   { value: "lowconf", label: "Low confidence", flags: ["low_confidence"] },
+  { value: "dispute", label: "Customer dispute", flags: [], disputed: true },
   { value: "llm", label: "LLM error", flags: ["llm_failure", "responder_failure"] },
   { value: "foreign", label: "Someone else's order", flags: ["foreign_order_reference"] },
   { value: "unclear", label: "Still unclear", flags: ["clarification_limit"] },

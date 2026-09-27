@@ -11,6 +11,7 @@ import { Alert, DefinitionList, Skeleton } from "@/components/ui/Surface";
 import {
   BUILTIN_CHECKS,
   DETECTOR_LABELS,
+  DISPUTED_META,
   FLAG_META,
   RULE_META,
   distinctFlags,
@@ -135,7 +136,7 @@ function DrawerBody({ d }: { d: RequestDetail }) {
       <MessageThread messages={d.messages} />
       <Extracted audit={d.audit} />
       <RuleTrace audit={d.audit} />
-      <Flags audit={d.audit} messages={d.messages} />
+      <Flags audit={d.audit} messages={d.messages} disputedAt={d.request.disputed_at} />
       {d.review ? (
         <Section title="AI review draft">
           <ReviewDraft review={d.review} createdAt={d.request.created_at} />
@@ -192,6 +193,8 @@ function Timeline({ d }: { d: RequestDetail }) {
         done: true,
         icon: verdict === "approved" ? "check-circle" : verdict === "denied" ? "x-circle" : "warning",
       });
+    } else if (e.kind === "disputed") {
+      steps.push({ label: "Disputed", detail: "Customer asked a person to review the denial", at: e.created_at, done: true, icon: "dispute" });
     } else if (e.kind === "review_drafted") {
       steps.push({ label: "AI review drafted", detail: `Advisory draft by ${String(e.payload.model ?? "the review model")}`, at: e.created_at, done: true, icon: "document" });
     } else if (e.kind === "review_failed") {
@@ -250,6 +253,13 @@ export function SignalText({ text, signals }: { text: string; signals: SignalVie
   );
 }
 
+const SENDER: Record<DetailMessage["role"], string> = {
+  customer: "Customer",
+  assistant: "Assistant",
+  admin: "Support team",
+  system: "Note",
+};
+
 function MessageThread({ messages }: { messages: DetailMessage[] }) {
   const [expanded, setExpanded] = useState(false);
   const customer = messages.filter((m) => m.role === "customer");
@@ -299,9 +309,9 @@ function MessageThread({ messages }: { messages: DetailMessage[] }) {
               </p>
             </li>
           ) : (
-            <li key={m.id} className="ml-4 flex flex-col gap-0.5 px-3 py-1.5 text-body-sm text-ink-muted">
+            <li key={m.id} className={cn("ml-4 flex flex-col gap-0.5 px-3 py-1.5 text-body-sm text-ink-muted", m.role === "system" && "rounded-md border border-dashed border-border-control")}>
               <span className="text-caption font-semibold tracking-[0.05em] uppercase">
-                Assistant <span className="font-mono font-normal normal-case">{formatTime(m.created_at)}</span>
+                {SENDER[m.role]} <span className="font-mono font-normal normal-case">{formatTime(m.created_at)}</span>
               </span>
               <span className="whitespace-pre-wrap [overflow-wrap:anywhere]">{m.body}</span>
             </li>
@@ -424,17 +434,28 @@ function RuleTrace({ audit }: { audit: AuditInfo | null }) {
   );
 }
 
-function Flags({ audit, messages }: { audit: AuditInfo | null; messages: DetailMessage[] }) {
+function Flags({ audit, messages, disputedAt }: { audit: AuditInfo | null; messages: DetailMessage[]; disputedAt: string | null }) {
   if (!audit) return null;
   const flags = distinctFlags(audit.flags.filter((f) => f !== "no_rule_fired"));
+  const dispute = disputedAt ? (
+    <li className="flex gap-3 rounded-lg border border-escalated-border bg-escalated-bg p-3">
+      <Icon name={DISPUTED_META.icon} size={18} className="mt-px shrink-0 text-escalated-icon" />
+      <span className="flex flex-col gap-0.5">
+        <span className="text-body-sm font-semibold">{DISPUTED_META.label}</span>
+        <span className="text-meta">The assistant denied this automatically. The customer disputed it from Your requests, so a person needs to decide.</span>
+        <span className="font-mono text-caption text-ink-subtle">disputed {formatDateTime(disputedAt)} · one dispute per request</span>
+      </span>
+    </li>
+  ) : null;
   const customer = messages.filter((m) => m.role === "customer");
   const signals = customer.flatMap((m, i) => m.signals.map((s) => ({ ...s, n: i + 1 })));
   return (
     <Section title="Flags">
-      {flags.length === 0 ? (
+      {flags.length === 0 && !dispute ? (
         <p className="text-body-sm text-ink-muted">No injection or suspicion flags.</p>
       ) : (
         <ul className="flex flex-col gap-2">
+          {dispute}
           {flags.map((f) => {
             const m = FLAG_META[f];
             const meta =

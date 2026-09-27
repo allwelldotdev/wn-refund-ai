@@ -12,6 +12,7 @@ import { Composer } from "./Composer";
 import { OrderChips } from "./OrderChips";
 import {
   BotBubble,
+  NoteLine,
   NoticeCard,
   OrderBubble,
   RateLimitNotice,
@@ -166,8 +167,10 @@ export function ChatThreadView(props: ChatThreadViewProps) {
     } else if (m.assistant_kind === "verdict" && request) {
       entries.push(
         <VerdictCard key={m.id} id={m.id} body={m.body} request={request} animate={thread.animateId === m.id}
-          onShowPolicy={onShowPolicy} />,
+          onShowPolicy={onShowPolicy} onShowRequest={onShowRequest} />,
       );
+    } else if (m.role === "system") {
+      entries.push(<NoteLine key={m.id}>{m.body}</NoteLine>);
     } else {
       entries.push(<BotBubble key={m.id}>{m.body}</BotBubble>);
     }

@@ -105,6 +105,9 @@ export interface RequestSummary {
   amount_cents: Cents | null;
   created_at: ISODate;
   resolved_at: ISODate | null;
+  disputed_at: ISODate | null;
+  /** An automatic denial, not yet disputed, while disputes are allowed. */
+  can_dispute: boolean;
 }
 
 export interface ConversationSummary {
@@ -116,10 +119,13 @@ export interface ConversationSummary {
   request: RequestSummary | null;
 }
 
+/** `admin`: an admin's decision sent to the customer; `system`: a note such as a dispute. */
+export type MessageRole = "customer" | "assistant" | "admin" | "system";
+
 export interface Message {
   id: UUID;
   seq: number;
-  role: "customer" | "assistant";
+  role: MessageRole;
   assistant_kind: AssistantKind | null;
   body: string;
   order_id: UUID | null;
@@ -156,6 +162,7 @@ export interface AdminListItem {
   review_status: ReviewStatus | null;
   created_at: ISODate;
   resolved_at: ISODate | null;
+  disputed_at: ISODate | null;
 }
 
 export interface AdminList {
@@ -177,11 +184,11 @@ export interface AdminStats {
   oldest_open_escalation_at: ISODate | null;
 }
 
-export type TimelineKind = "decided" | "review_drafted" | "review_failed" | "resolved";
+export type TimelineKind = "decided" | "review_drafted" | "review_failed" | "resolved" | "disputed";
 
 export interface TimelineEvent {
   kind: TimelineKind;
-  actor_kind: "system" | "admin";
+  actor_kind: "system" | "admin" | "customer";
   actor_name: string | null;
   payload: Record<string, unknown>;
   created_at: ISODate;
@@ -205,7 +212,7 @@ export interface SignalView {
 export interface DetailMessage {
   id: UUID;
   seq: number;
-  role: "customer" | "assistant";
+  role: MessageRole;
   assistant_kind: AssistantKind | null;
   body: string;
   created_at: ISODate;
@@ -305,6 +312,7 @@ export interface RequestDetail {
     amount_cents: Cents | null;
     created_at: ISODate;
     resolved_at: ISODate | null;
+    disputed_at: ISODate | null;
   };
   customer: { id: UUID; name: string; email: string; scenario: string };
   order: {
@@ -323,6 +331,12 @@ export interface ResolveResponse {
   ref: string;
   state: "resolved_approved" | "resolved_denied";
   resolved_at: ISODate;
+}
+
+export interface AppSettings {
+  allow_disputes: boolean;
+  updated_by: string | null;
+  updated_at: ISODate | null;
 }
 
 // Policy
