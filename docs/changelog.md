@@ -2,6 +2,10 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.1.1] — 2026-09-27
+### Improved
+- Everything you can click now shows a hand cursor on hover, and unavailable controls show a blocked cursor.
+
 ## [0.1.0] — 2026-09-27
 ### New
 - Customers can sign in with any of the seeded demo accounts; repeated failed sign-in attempts pause further tries on that account for a few minutes.
