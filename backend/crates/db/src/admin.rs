@@ -548,23 +548,69 @@ pub struct Resolved {
     pub resolved_at: DateTime<Utc>,
 }
 
-/// Escalated → resolved_*, with the admin's note on the review and a
-/// `resolved` event. `NotFound`, `Conflict("not_escalated")`, or
+/// What the resolution notice is written from.
+pub struct NoticeFacts {
+    pub state: RequestState,
+    pub customer_name: String,
+    pub item_name: Option<String>,
+    pub order_ref: Option<String>,
+    pub amount_cents: Option<i64>,
+}
+
+pub async fn notice_facts(db: &Db, request_ref: &str) -> Result<Option<NoticeFacts>, DbError> {
+    let r = sqlx::query!(
+        r#"SELECT r.state AS "state!", c.name AS "customer_name!", i.name AS "item_name?",
+                  o.ref AS "order_ref?", r.amount_cents
+           FROM refund_requests r
+           JOIN customers c ON c.id = r.customer_id
+           LEFT JOIN orders o ON o.id = r.order_id
+           LEFT JOIN order_items i ON i.id = r.order_item_id
+           WHERE r.ref = $1"#,
+        request_ref,
+    )
+    .fetch_optional(&db.0)
+    .await?;
+    r.map(|r| {
+        Ok(NoticeFacts {
+            state: parse_enum(&r.state)?,
+            customer_name: r.customer_name,
+            item_name: r.item_name,
+            order_ref: r.order_ref,
+            amount_cents: r.amount_cents,
+        })
+    })
+    .transpose()
+}
+
+/// The admin's decision, and what the customer is told about it.
+pub struct Resolve<'a> {
+    pub resolution: Resolution,
+    /// Kept for the audit; never shown to the customer as written.
+    pub note: &'a str,
+    /// Posted to the chat as a message from the support team.
+    pub message: &'a str,
+    /// Posted to the chat as a system note.
+    pub summary: &'a str,
+}
+
+/// Escalated → resolved_*, with the admin's note on the review, a `resolved`
+/// event, and the message and summary posted to the customer's chat, all in
+/// one transaction. `NotFound`, `Conflict("not_escalated")`, or
 /// `Conflict("duplicate_active_refund")` when approving an item that already
 /// has an approved refund.
 pub async fn resolve_request(
     db: &Db,
     request_ref: &str,
     admin_id: Uuid,
-    resolution: Resolution,
-    note: &str,
+    r: &Resolve<'_>,
 ) -> Result<Resolved, DbError> {
+    let (resolution, note) = (r.resolution, r.note);
     let state = resolution.state();
     let mut tx = db.0.begin().await?;
     let updated = sqlx::query!(
         "UPDATE refund_requests SET state = $2, resolved_at = now()
          WHERE ref = $1 AND state = 'escalated'
-         RETURNING id, resolved_at AS \"resolved_at!\"",
+         RETURNING id, conversation_id, resolved_at AS \"resolved_at!\"",
         request_ref,
         state.as_str(),
     )
@@ -612,6 +658,9 @@ pub async fn resolve_request(
     )
     .execute(&mut *tx)
     .await?;
+    let chat = updated.conversation_id;
+    crate::messages::insert_note(&mut tx, chat, MessageRole::Admin, r.message).await?;
+    crate::messages::insert_note(&mut tx, chat, MessageRole::System, r.summary).await?;
     tx.commit().await?;
     Ok(Resolved {
         request_ref: request_ref.to_owned(),

@@ -1,19 +1,23 @@
 //! Admin request routes: the queue, the case file, the raw audit rows, and
 //! resolving escalations. The admin makes the final call on every escalation.
 
+use ai::{AiError, Stage};
 use axum::extract::{Path, RawQuery, State};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use chrono::{DateTime, Utc};
-use db::admin::{ListFilter, RequestDetail, Resolution, Resolved, Stats};
+use db::admin::{ListFilter, RequestDetail, Resolution, Resolve, Resolved, Stats};
 use db::settings::Settings;
+use domain::money::format_cents;
+use domain::notice::{NoticeInput, NoticeOutput, Outcome, validate_notice};
+use domain::responder::clean_reply;
 use domain::types::{Flag, RequestState};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use crate::AppState;
 use crate::auth::AdminSession;
 use crate::error::{ApiError, ApiJson};
+use crate::{AppState, pipeline};
 
 pub const MAX_PAGE: i64 = 200;
 pub const MAX_NOTE_CHARS: usize = 2000;
@@ -25,6 +29,10 @@ pub fn routes() -> Router<AppState> {
         .route("/api/admin/requests/{ref}", get(detail))
         .route("/api/admin/requests/{ref}/audit", get(audit))
         .route("/api/admin/requests/{ref}/resolve", post(resolve))
+        .route(
+            "/api/admin/requests/{ref}/resolve/draft",
+            post(draft_notice),
+        )
         .route("/api/admin/settings", get(get_settings).put(put_settings))
 }
 
@@ -177,9 +185,101 @@ async fn audit(
 }
 
 #[derive(Deserialize)]
+struct DraftBody {
+    resolution: Resolution,
+    note: String,
+}
+
+#[derive(Deserialize)]
 struct ResolveBody {
     resolution: Resolution,
     note: String,
+    /// The notice the admin previewed and confirmed (from `resolve/draft`).
+    message: String,
+    summary: String,
+}
+
+fn checked_note(note: &str) -> Result<&str, ApiError> {
+    let note = note.trim();
+    if note.is_empty() || note.chars().count() > MAX_NOTE_CHARS {
+        return Err(ApiError::field(
+            "note",
+            format!("must be between 1 and {MAX_NOTE_CHARS} characters"),
+        ));
+    }
+    Ok(note)
+}
+
+/// What the notice is written from, while the request can still be resolved.
+async fn notice_input(
+    state: &AppState,
+    request_ref: &str,
+    resolution: Resolution,
+    note: &str,
+) -> Result<NoticeInput, ApiError> {
+    let facts = db::admin::notice_facts(&state.db, request_ref)
+        .await?
+        .ok_or(ApiError::NotFound)?;
+    if facts.state != RequestState::Escalated {
+        return Err(not_escalated());
+    }
+    let first_name = facts
+        .customer_name
+        .split_whitespace()
+        .next()
+        .unwrap_or(&facts.customer_name)
+        .to_owned();
+    Ok(NoticeInput {
+        outcome: match resolution {
+            Resolution::Approved => Outcome::Approved,
+            Resolution::Denied => Outcome::Denied,
+        },
+        first_name,
+        request_ref: request_ref.to_owned(),
+        item_name: facts.item_name,
+        order_ref: facts.order_ref,
+        amount: facts.amount_cents.map(format_cents),
+        note: note.to_owned(),
+    })
+}
+
+fn not_escalated() -> ApiError {
+    ApiError::conflict("not_escalated", "Only escalated requests can be resolved.")
+}
+
+fn cleaned(n: NoticeOutput) -> NoticeOutput {
+    NoticeOutput {
+        message: clean_reply(&n.message),
+        summary: clean_reply(&n.summary),
+    }
+}
+
+/// The message and summary the customer would get, for the admin to preview.
+/// Without a valid notice the review can't be completed (no template).
+async fn draft_notice(
+    State(state): State<AppState>,
+    _: AdminSession,
+    Path(request_ref): Path<String>,
+    ApiJson(body): ApiJson<DraftBody>,
+) -> Result<Json<NoticeOutput>, ApiError> {
+    let note = checked_note(&body.note)?;
+    let input = notice_input(&state, &request_ref, body.resolution, note).await?;
+    let input = &input;
+    let assistant = &state.assistant;
+    let (notice, log) = pipeline::call_with_fallback(&state.ai, Stage::Notice, |m| async move {
+        let mut done = assistant.notice(input, &m).await?;
+        done.output = cleaned(done.output);
+        validate_notice(&done.output, input).map_err(|v| AiError::Rejected(v.0))?;
+        Ok(done)
+    })
+    .await;
+    notice.map(Json).ok_or_else(|| {
+        tracing::warn!(request = %request_ref, failures = ?log.failures, "resolution notice failed");
+        ApiError::Unavailable {
+            code: "assistant_unavailable",
+            message: "The assistant is unavailable, so this review can't be completed right now.",
+        }
+    })
 }
 
 async fn resolve(
@@ -188,25 +288,27 @@ async fn resolve(
     Path(request_ref): Path<String>,
     ApiJson(body): ApiJson<ResolveBody>,
 ) -> Result<Json<Resolved>, ApiError> {
-    let note = body.note.trim();
-    if note.is_empty() || note.chars().count() > MAX_NOTE_CHARS {
-        return Err(ApiError::field(
-            "note",
-            format!("must be between 1 and {MAX_NOTE_CHARS} characters"),
-        ));
-    }
+    let note = checked_note(&body.note)?;
+    let input = notice_input(&state, &request_ref, body.resolution, note).await?;
+    let notice = cleaned(NoticeOutput {
+        message: body.message,
+        summary: body.summary,
+    });
+    validate_notice(&notice, &input).map_err(|v| ApiError::field("message", v.0))?;
     let resolved = db::admin::resolve_request(
         &state.db,
         &request_ref,
         admin.admin_id,
-        body.resolution,
-        note,
+        &Resolve {
+            resolution: body.resolution,
+            note,
+            message: &notice.message,
+            summary: &notice.summary,
+        },
     )
     .await
     .map_err(|e| match e {
-        db::DbError::Conflict("not_escalated") => {
-            ApiError::conflict("not_escalated", "Only escalated requests can be resolved.")
-        }
+        db::DbError::Conflict("not_escalated") => not_escalated(),
         db::DbError::Conflict("duplicate_active_refund") => ApiError::conflict(
             "duplicate_active_refund",
             "This item already has an approved refund.",

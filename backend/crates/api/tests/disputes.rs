@@ -222,10 +222,11 @@ async fn only_an_automatic_denial_can_be_disputed(pool: PgPool) {
         .to_owned();
     let admin = app.login("ngozi.adeyemi@worknoon.example").await;
     let resolved = app
-        .post(
-            &format!("/api/admin/requests/{request_ref}/resolve"),
+        .resolve(
             &admin,
-            json!({ "resolution": "denied", "note": "The deposit is non-refundable now." }),
+            &request_ref,
+            "denied",
+            "The deposit is non-refundable now.",
         )
         .await;
     assert_eq!(resolved.status, StatusCode::OK);

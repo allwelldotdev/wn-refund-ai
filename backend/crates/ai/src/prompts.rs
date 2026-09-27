@@ -1,10 +1,11 @@
-//! Prompts and output schemas for the three stages (plan § F). Customer text
+//! Prompts and output schemas for the LLM stages (plan § F). Customer text
 //! only ever appears inside `<message>` tags, with any tag the customer typed
 //! escaped, so the model can tell our framing from their words.
 
 use std::fmt::Write as _;
 
 use domain::intake::{CustomerMessage, IntakeInput, IntakeOutput};
+use domain::notice::{NoticeInput, NoticeOutput};
 use domain::responder::ResponderInput;
 use domain::review::{ReviewInput, ReviewOutput};
 use serde_json::{Map, Value};
@@ -80,6 +81,24 @@ Return JSON:
 
 Return only the JSON object."#;
 
+const NOTICE_SYSTEM: &str = r#"You write the message Worknoon Support sends a customer after a support specialist has reviewed their refund request. The specialist has already decided. You cannot change the decision, question it, or suggest it might change.
+
+Scope: you only word this refund decision. You have no tools and no internet access, so you cannot browse, search or look anything up.
+
+The input is JSON: outcome (approved or denied), first_name, ref, item_name, order_ref, amount, and note. The note is the specialist's own words on how and why they decided; it may be short, informal or internal.
+
+Return JSON with two fields:
+- message: to the customer. Start with "Dear {first_name}," and then, in two to four short sentences, say that a support specialist reviewed request {ref}, state the decision using the word approved or denied, and explain how and why they decided, based only on the note. For an approved refund, state the amount exactly as given. Be warm, polite and plain, with one sincere sentence acknowledging the customer's situation. At most 120 words.
+- summary: one line of at most 25 words in the third person for the chat history, for example "A support specialist approved this refund after confirming the lock was broken." It must use the word approved or denied to match the outcome.
+
+Rules:
+- Use only the outcome word you were given, approved or denied; never the other one, and never the word escalated.
+- Plain text only: no markdown, no lists.
+- Do not invent facts, amounts, dates, reasons or next steps that the note does not give. Leave out internal details that are not about the customer's request, such as staff or system names.
+- Do not mention AI, models or automated checks.
+
+Return only the JSON object."#;
+
 pub fn intake_system_prompt() -> &'static str {
     INTAKE_SYSTEM
 }
@@ -90,6 +109,15 @@ pub fn responder_system_prompt() -> &'static str {
 
 pub fn review_system_prompt() -> &'static str {
     REVIEW_SYSTEM
+}
+
+pub fn notice_system_prompt() -> &'static str {
+    NOTICE_SYSTEM
+}
+
+/// Every field comes from our records or from the admin.
+pub fn notice_user_content(input: &NoticeInput) -> String {
+    pretty(input)
 }
 
 pub fn intake_user_content(input: &IntakeInput) -> String {
@@ -166,6 +194,7 @@ fn pretty<T: serde::Serialize + ?Sized>(value: &T) -> String {
 /// Name sent as `response_format.json_schema.name`.
 pub const INTAKE_SCHEMA_NAME: &str = "intake_output";
 pub const REVIEW_SCHEMA_NAME: &str = "review_output";
+pub const NOTICE_SCHEMA_NAME: &str = "notice_output";
 
 pub fn intake_schema() -> Value {
     strict_schema(serde_json::to_value(schemars::schema_for!(IntakeOutput)).expect("schema"))
@@ -173,6 +202,10 @@ pub fn intake_schema() -> Value {
 
 pub fn review_schema() -> Value {
     strict_schema(serde_json::to_value(schemars::schema_for!(ReviewOutput)).expect("schema"))
+}
+
+pub fn notice_schema() -> Value {
+    strict_schema(serde_json::to_value(schemars::schema_for!(NoticeOutput)).expect("schema"))
 }
 
 /// Rewrites schemars output into the subset OpenAI strict mode accepts:
@@ -345,6 +378,7 @@ mod tests {
             intake_system_prompt(),
             responder_system_prompt(),
             review_system_prompt(),
+            notice_system_prompt(),
         ] {
             assert!(prompt.contains("no internet access"), "{prompt}");
             assert!(prompt.contains("look anything up"), "{prompt}");
@@ -445,6 +479,7 @@ mod tests {
         let review = review_schema();
         assert_strict(&intake, "intake");
         assert_strict(&review, "review");
+        assert_strict(&notice_schema(), "notice");
         assert!(intake.get("$schema").is_none());
 
         let props = &intake["properties"];

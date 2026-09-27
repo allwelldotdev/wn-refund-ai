@@ -48,6 +48,7 @@ async fn main() -> anyhow::Result<()> {
         intake = %ai.intake.model,
         responder = %ai.responder.model,
         review = %ai.review.model,
+        notice = %ai.notice.model,
         fallback = %ai.fallback_model,
         "LLM provider: OpenRouter"
     );

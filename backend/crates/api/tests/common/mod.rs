@@ -152,6 +152,38 @@ impl TestApp {
             .await
     }
 
+    /// Drafts the customer notice, then resolves with it, as the admin UI
+    /// does. Returns the draft's response if drafting fails.
+    pub async fn resolve(
+        &self,
+        token: &str,
+        request_ref: &str,
+        resolution: &str,
+        note: &str,
+    ) -> TestResponse {
+        let path = format!("/api/admin/requests/{request_ref}/resolve");
+        let draft = self
+            .post(
+                &format!("{path}/draft"),
+                token,
+                serde_json::json!({ "resolution": resolution, "note": note }),
+            )
+            .await;
+        if draft.status != StatusCode::OK {
+            return draft;
+        }
+        let d = draft.json();
+        self.post(
+            &path,
+            token,
+            serde_json::json!({
+                "resolution": resolution, "note": note,
+                "message": d["message"], "summary": d["summary"],
+            }),
+        )
+        .await
+    }
+
     /// Signs in with the demo password and returns the bearer token.
     pub async fn login(&self, email: &str) -> String {
         let body = serde_json::json!({ "email": email, "password": db::seed::DEMO_PASSWORD });

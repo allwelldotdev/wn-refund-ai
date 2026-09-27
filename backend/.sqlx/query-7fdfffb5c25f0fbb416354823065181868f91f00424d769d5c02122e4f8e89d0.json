@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT r.state AS \"state!\", c.name AS \"customer_name!\", i.name AS \"item_name?\",\n                  o.ref AS \"order_ref?\", r.amount_cents\n           FROM refund_requests r\n           JOIN customers c ON c.id = r.customer_id\n           LEFT JOIN orders o ON o.id = r.order_id\n           LEFT JOIN order_items i ON i.id = r.order_item_id\n           WHERE r.ref = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "state!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "refund_requests",
+            "name": "state"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "customer_name!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customers",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "item_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "order_items",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "order_ref?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "orders",
+            "name": "ref"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "amount_cents",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "refund_requests",
+            "name": "amount_cents"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "7fdfffb5c25f0fbb416354823065181868f91f00424d769d5c02122e4f8e89d0"
+}
