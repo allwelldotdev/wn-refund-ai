@@ -207,12 +207,13 @@ type SwitchProps = {
   checked: boolean;
   onChange: (next: boolean) => void;
   labelledBy: string;
+  describedBy?: string;
   disabled?: boolean;
   id?: string;
 };
 
 /** On/off switch (`role="switch"`), 52×44 hit area around a 40×24 track. */
-export function Switch({ checked, onChange, labelledBy, disabled, id }: SwitchProps) {
+export function Switch({ checked, onChange, labelledBy, describedBy, disabled, id }: SwitchProps) {
   return (
     <span className="inline-flex items-center gap-1">
       <span aria-hidden="true" className="min-w-[22px] text-right text-caption font-medium text-ink-muted">
@@ -224,6 +225,7 @@ export function Switch({ checked, onChange, labelledBy, disabled, id }: SwitchPr
         role="switch"
         aria-checked={checked}
         aria-labelledby={labelledBy}
+        aria-describedby={describedBy}
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className="relative inline-flex h-11 w-[52px] items-center justify-center rounded-md disabled:cursor-not-allowed disabled:opacity-60"

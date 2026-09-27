@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO request_events (refund_request_id, kind, actor_kind)\n         VALUES ($1, 'disputed', 'customer')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5ac4d55119b66a3951bc51786daf49565b09ef15a3004a24b54490787ad85e43"
+}

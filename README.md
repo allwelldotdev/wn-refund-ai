@@ -118,8 +118,8 @@ flowchart LR
 | `backend/crates/domain` | Policy rule types (`Rule`, `Policy`); decision engine `decide()` (every enabled rule runs, most severe verdict wins, nothing fired means Escalated, plus two built-in fail-closed checks no policy can disable); prose renderer (`policy/refund-policy.md` is its snapshot); heuristic pre-scan (`role_marker`, `instruction_override`, `encoded_payload`, `unusual_unicode`, `abnormal_length` detectors, plus a 6-message window scan for split payloads); LLM stage contracts for intake, responder and review, including responder reply validation, reply cleaning and the Rust fallback template. Pure, no I/O, no async. | Implemented. |
 | `backend/crates/db` | Postgres pool, migrations, idempotent demo seed (`seed.rs`, the co-working catalogue and scenario matrix, ADR-036). | Implemented. |
 | `backend/crates/ai` | `RefundAssistant` trait (intake / respond / review); `OpenRouterAssistant`, built on Rig 0.42's low-level completion request (ADR-034); `prompts` (system prompts, `<message>` framing, strict JSON schemas); `AiConfig` (compiled-in `models.toml` plus `AI_*` env overrides); `FakeAssistant` for tests. | Implemented. |
-| `backend/crates/api` | Axum binary `refund-api` (serve / `seed`): `/api/health`, session auth (`/api/auth/*`, with sign-in throttling), customer routes (orders, conversations, the per-message pipeline over SSE), public and admin policy routes, and the admin stats, request queue, case file, raw audit and resolve endpoints (ADR-037). | Implemented. |
-| `frontend` | Next.js 16 App Router BFF (React 19, Tailwind v4, TanStack Query): `/login`, `/support` (customer "My orders" plus the chat widget), `/admin/overview`, `/admin/requests`, `/admin/escalations`, `/admin/policy`, with the request case file as a drawer (`?ref=RR-…`, ADR-035). The browser only calls `/api/bff/*`; the BFF proxies to the Rust API. | Implemented. |
+| `backend/crates/api` | Axum binary `refund-api` (serve / `seed`): `/api/health`, session auth (`/api/auth/*`, with sign-in throttling), customer routes (orders, conversations, the per-message pipeline over SSE, and `POST /api/conversations/{id}/dispute`, ADR-044), public and admin policy routes, and the admin stats, request queue, case file, raw audit, resolve and settings endpoints (ADR-037, ADR-045). | Implemented. |
+| `frontend` | Next.js 16 App Router BFF (React 19, Tailwind v4, TanStack Query): `/login`, `/support` (customer "My orders" plus the chat widget, closed to new messages once a request is decided, ADR-043), `/admin/overview`, `/admin/requests`, `/admin/escalations`, `/admin/policy`, `/admin/settings` (ADR-045), with the request case file as a drawer (`?ref=RR-…`, ADR-035). The browser only calls `/api/bff/*`; the BFF proxies to the Rust API. | Implemented. |
 
 ## How the AI integration works
 
@@ -141,6 +141,7 @@ The LLM never decides a refund: every stage's output either feeds facts into `do
 - **Reply validation:** the responder LLM only words a decision the engine already made, or, for the no-request modes (`closing`, `redirect`, `existing_request`, ADR-042), wording that files nothing. `validate_reply` rejects any decision reply that names the wrong outcome, uses a forbidden word for a different verdict, or (for an approval) omits the approved amount; an `existing_request` reply must name the earlier ref, ask a question and use only that request's real outcome word, and `closing`/`redirect` replies may name no outcome. A Rust fallback template is used when the model fails or the reply is rejected, for every mode.
 - **Plain-text rendering:** message bodies are always rendered as plain text in the frontend, never as markup, even when they contain a flagged payload; injection spans are stored per message and the UI splits text by span rather than interpreting it (ADR-023).
 - **Roles enforced in the API:** every protected handler in `backend/crates/api` takes a `CustomerSession` or `AdminSession` extractor; a customer session on an admin route (or vice versa) is rejected with 403, and a customer's lookup of another customer's conversation is a 404, not a 403, so it does not confirm the id exists. The frontend's client-side route guards are a UX convenience only; enforcement stays in the Rust API (ADR-035).
+- **After a decision:** `POST /api/conversations/{id}/messages` returns 409 `request_closed` once a request is approved, denied, resolved_approved or resolved_denied; an escalated request stays open so the customer can add details for the specialist (ADR-043). A customer can ask a person to look at an automatic denial once, with `POST /api/conversations/{id}/dispute`: this is allowed only while the request is `denied`, unreviewed and the admin setting is on (409 `not_disputable` / `already_disputed` / `disputes_off`); it does not re-run the engine, so the original verdict and rule trace stay on the audit record, and the request moves to Escalated for a person to resolve (ADR-044). The dispute toggle lives in `app_settings`, separate from policy versions, and is edited at `GET`/`PUT /api/admin/settings` (ADR-045).
 - **Sign-in throttling:** 5 consecutive failed sign-ins for one email pause sign-in for that email for 5 minutes (429 with `Retry-After`); a 401 carries `attempts_left`; unknown emails are counted the same way so a response never reveals which accounts exist (ADR-037).
 - **Rate limiting:** `backend/crates/api/src/rate_limit.rs` allows 10 messages per minute per customer; over the limit returns 429 with body `{"error":{"code":"rate_limited","message":"Too many messages. Try again in N seconds."}}` and a `retry-after: N` response header (`ApiError::RateLimited`, `backend/crates/api/src/error.rs`).
 - **Body limits:** request bodies over 64 KiB are rejected with 413 (`DefaultBodyLimit`, `backend/crates/api/src/lib.rs`).
@@ -154,6 +155,9 @@ The admin dashboard's request drawer (opened via `?ref=RR-…` on any `/admin/*`
 - `GET /api/admin/requests/{ref}/audit` — the raw `decision_audit` rows for that request.
 - `POST /api/admin/requests/{ref}/resolve` — records an admin's approve/deny decision on an escalated request.
 - `GET /api/admin/stats?since=` — the overview page's aggregate counts and oldest open escalation.
+- `GET`/`PUT /api/admin/settings` — reads and toggles `allow_disputes`, the switch for customer disputes (ADR-045).
+
+A customer can dispute an automatic denial once, with `POST /api/conversations/{id}/dispute`; this adds a `disputed` row to `request_events` and moves the request back into the escalation queue without changing the original `decision_audit` row (ADR-044).
 
 For direct database access, `make psql` opens a `psql` shell on the compose database:
 
@@ -161,7 +165,7 @@ For direct database access, `make psql` opens a `psql` shell on the compose data
 make psql
 ```
 
-Example queries, against the tables in `backend/migrations/0001_initial.sql`:
+Example queries, against the tables in `backend/migrations/0001_initial.sql` (and `app_settings`, `refund_requests.disputed_at` from `backend/migrations/0003_disputes.sql`):
 
 ```sql
 -- Recent refund requests and their outcome
@@ -188,6 +192,13 @@ FROM refund_requests r
 JOIN decision_audit d ON d.refund_request_id = r.id
 WHERE r.state = 'escalated'
 ORDER BY r.created_at DESC
+LIMIT 20;
+
+-- Disputed automatic denials waiting on a person
+SELECT r.ref, r.disputed_at, r.state
+FROM refund_requests r
+WHERE r.disputed_at IS NOT NULL
+ORDER BY r.disputed_at DESC
 LIMIT 20;
 ```
 
@@ -248,6 +259,8 @@ Summarised from `docs/decisions.md`; ADR numbers there give the full context, op
 - A responder failure is folded into the engine as a `responder_failure` flag and `decide()` runs again, rather than overwriting the verdict outside the engine, so the stored rule trace always explains the final verdict (ADR-032).
 - Low intake confidence only escalates once the request is complete or the clarifying questions (up to 3) run out, not on a merely vague opening message (ADR-041).
 - The assistant stays on refund requests: intake also classifies intent (refund_request, out_of_scope, finished), and an item that already has a request in any state gets that request's status in chat instead of a second decision, filing nothing (ADR-042).
+- An answered request (approved, denied, or resolved either way) closes to new customer messages, enforced in the API, not just the UI; an escalated request stays open so the customer can add details for the specialist (ADR-043).
+- A customer can dispute an automatic denial once, as an admin-controlled option; the original verdict and rule trace are never changed, and an admin's own decision is final (ADR-044). The dispute switch lives in a separate `app_settings` table rather than the policy versions, since it is an operational toggle, not a refund rule (ADR-045).
 - The backend only serves with a real `OPENROUTER_API_KEY`: compose refuses to start the `backend` container without one, and the binary itself refuses a blank key or the `.env.example` placeholder; `refund-api seed` needs no key (ADR-033).
 
 ## Future work

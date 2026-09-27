@@ -41,11 +41,15 @@ async fn review(state: &AppState, refund_request_id: Uuid) -> anyhow::Result<()>
     let Some(case) = db::refunds::pending_review_case(db, refund_request_id).await? else {
         return Ok(());
     };
-    // Only what the decision read; later messages are for the admin to see.
+    // Only what the decision read; later messages are for the admin to see,
+    // except after a dispute, whose reason the review must weigh.
+    let disputed = case.disputed_at.is_some();
     let messages = db::messages::list_messages(db, case.conversation_id)
         .await?
         .into_iter()
-        .filter(|m| m.role == MessageRole::Customer && m.seq <= case.evaluated_through_seq)
+        .filter(|m| {
+            m.role == MessageRole::Customer && (disputed || m.seq <= case.evaluated_through_seq)
+        })
         .map(|m| CustomerMessage {
             id: m.id,
             seq: m.seq,
@@ -55,6 +59,7 @@ async fn review(state: &AppState, refund_request_id: Uuid) -> anyhow::Result<()>
     let input = ReviewInput {
         request_ref: case.request_ref,
         decided_at: case.facts.now,
+        disputed_at: case.disputed_at,
         order: case.facts.order,
         extracted: case.extracted,
         fired: case.rule_trace,

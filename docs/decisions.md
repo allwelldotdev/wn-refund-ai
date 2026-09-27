@@ -260,7 +260,7 @@
 **Rationale:** These additions extend ADR-027's audit access and ADR-024's polling model rather than replacing them: `stats` and `flag` filtering are read paths built the same way. Sign-in throttling closes an enumeration and brute-force gap the design surfaced. An in-chat resolution notice would need a new customer-facing push channel beyond ADR-024's SSE-for-replies model, so it is deferred rather than built ad hoc.
 
 ## ADR-038: Where the mockup and the spec differ, the spec wins — the concrete list
-**Status:** Accepted
+**Status:** Accepted; superseded by ADR-044 (appeal / dispute button)
 **Context:** ADR-028 established that the spec wins where the mockup and spec differ, citing model name, retry count, statuses and attachments as examples. Building the frontend surfaced a longer, concrete list of such differences. This extends ADR-028.
 **Options:** (a) resolve each difference ad hoc as it is found; (b) enumerate the full list once, as a single reference extending ADR-028.
 **Decision:** (b). No payout, pending or processing states, and no payment-method or delivery-time promises (ADR-025). No attachments or photo requests (ADR-026). No appeal button; the verdict freezes (ADR-021). One refund request per conversation: after a verdict, another order starts a new conversation. Customers never see rule names or policy internals; a denied card links to the generated policy text (ADR-018). One admin role; no "policy editor" tier. LLM-error details show the real single fallback (ADR-011), and the low-confidence threshold shown is 0.6. Light theme only, as the design system specifies.
@@ -300,6 +300,20 @@
 **Options:** (a) hide the composer in the UI only; (b) close in the UI and enforce in the API; (c) leave conversations open and rely on holding replies.
 **Decision:** (b). `POST /api/conversations/{id}/messages` (`backend/crates/api/src/conversations.rs`, `post_message`) returns 409 `request_closed` when the conversation's request is approved, denied, resolved_approved or resolved_denied; escalated conversations still accept messages, which get the holding reply and the After decision tag (ADR-021 still describes that part). The check runs after the client_msg_id duplicate check, so a retried send is still acknowledged. The frontend (`frontend/lib/customer.ts`, `frontend/components/chat/*`) replaces the composer with a footer and a "Start new request" button, shows requests read-only in Your requests, blocks every item that already has a request in any state in the order picker (marked Approved / Approved after review / Denied / Denied after review / Under review), and shows the earlier request inline when an order with a partly-requested item is picked.
 **Rationale:** The API is the enforcement point (roles and rules live there, ADR-010), so a stale tab or a direct call cannot reopen a decided chat; escalated chats stay open because the admin has not decided yet.
+
+## ADR-044: Customers can dispute an automatic denial once
+**Status:** Accepted
+**Context:** ADR-038 dropped the design's appeal button because the verdict freezes (ADR-021). The product owner now wants customers to be able to ask a person to review a request the assistant denied automatically, as an admin-controlled option; decisions made by an admin stay final.
+**Options:** (a) no disputes; (b) let the customer reopen the chat and re-run the pipeline; (c) a one-time dispute that hands the automatic denial to a person without re-deciding it.
+**Decision:** (c). `POST /api/conversations/{id}/dispute {reason?}` is allowed only when the request's state is `denied` (automatic), it has not been disputed, and the setting is on (409 `not_disputable` / `already_disputed` / `disputes_off`). In one transaction with the request row locked: the optional reason is stored and pre-scanned like any customer message, a system note ("You disputed this decision on …") is added, the request becomes `escalated` with `disputed_at`, a `disputed` event (actor customer) and a pending review are recorded. The decision audit row is not changed, so the automatic verdict and its rule trace stay on record; the engine is not re-run. The review job sees the reason and `disputed_at`. Admins see a Disputed flag, a "Customer dispute" filter and a timeline step, and resolve it like any escalation; the result (resolved_approved/denied) is final.
+**Rationale:** Keeps the frozen verdict auditable, puts a person in the loop for the one case customers most often contest, and cannot loop (one dispute; admin decisions are final).
+
+## ADR-045: Admin settings live outside the policy versions
+**Status:** Accepted
+**Context:** The dispute switch (ADR-044) is an operational setting, not a refund rule; policy versions are append-only, hashed and cited by each decision (ADR-008, ADR-016).
+**Options:** (a) make it a rule in the policy JSON; (b) a separate single-row `app_settings` table read at dispute time.
+**Decision:** (b). `app_settings` (allow_disputes default on, updated_by_admin_id, updated_at), `GET/PUT /api/admin/settings` for admins; a save records who changed it only when the value changes; the value is read when a customer disputes, and turning it off does not cancel disputes already sent. Customers get a derived `can_dispute` on their requests.
+**Rationale:** The engine and the policy hash stay about refund eligibility; toggling disputes doesn't create a policy version or change how any decision is explained.
 
 ## Future work
 - LLM-assisted policy authoring with dry-run impact preview (ADR-019).

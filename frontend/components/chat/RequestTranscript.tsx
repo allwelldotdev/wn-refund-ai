@@ -1,14 +1,15 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import type { ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 import { StatusBadge, stateLabel } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Textarea } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
 import { Skeleton } from "@/components/ui/Surface";
 import type { ConversationDetail, ConversationSummary, Message, Order, RequestSummary } from "@/lib/api-types";
-import { api } from "@/lib/bff";
+import { api, isApiError } from "@/lib/bff";
 import { cn } from "@/lib/cn";
 import { orderAvailability } from "@/lib/customer";
 import { formatCents, formatDate } from "@/lib/format";
@@ -21,17 +22,20 @@ function useConversation(id: string) {
   });
 }
 
-/** The verdict as it was given: a request a person later decided was escalated first. */
-function verdictLabel(state: RequestSummary["state"]) {
-  return state === "resolved_approved" || state === "resolved_denied" ? stateLabel("escalated") : stateLabel(state);
+/**
+ * The verdict as it was given: a disputed request was denied first, and one a
+ * person decided otherwise was escalated first.
+ */
+function givenVerdict(r: RequestSummary): "approved" | "denied" | "escalated" {
+  if (r.disputed_at) return "denied";
+  if (r.state === "resolved_approved" || r.state === "resolved_denied") return "escalated";
+  return r.state;
 }
 
-const VERDICT_BOX: Record<RequestSummary["state"], string> = {
+const VERDICT_BOX: Record<"approved" | "denied" | "escalated", string> = {
   approved: "border-approved-border [&>div]:bg-approved-bg [&>div]:text-approved-fg",
   denied: "border-denied-border [&>div]:bg-denied-bg [&>div]:text-denied-fg",
   escalated: "border-escalated-border [&>div]:bg-escalated-bg [&>div]:text-escalated-fg",
-  resolved_approved: "border-escalated-border [&>div]:bg-escalated-bg [&>div]:text-escalated-fg",
-  resolved_denied: "border-escalated-border [&>div]:bg-escalated-bg [&>div]:text-escalated-fg",
 };
 
 function Entry({ m, request }: { m: Message; request: RequestSummary }) {
@@ -43,11 +47,19 @@ function Entry({ m, request }: { m: Message; request: RequestSummary }) {
       </li>
     );
   }
-  if (m.assistant_kind === "verdict") {
+  if (m.role === "system") {
     return (
-      <li className={cn("overflow-hidden rounded-lg border", VERDICT_BOX[request.state])}>
+      <li className="rounded-md border border-dashed border-border-control px-3 py-2 text-center text-caption text-ink-muted [overflow-wrap:anywhere]">
+        {m.body}
+      </li>
+    );
+  }
+  if (m.assistant_kind === "verdict") {
+    const given = givenVerdict(request);
+    return (
+      <li className={cn("overflow-hidden rounded-lg border", VERDICT_BOX[given])}>
         <div className="flex items-center justify-between gap-2 border-b border-inherit px-3 py-2">
-          <span className="text-meta font-semibold">{verdictLabel(request.state)}</span>
+          <span className="text-meta font-semibold">{stateLabel(given)}</span>
           <span className="font-mono text-caption tabular">Ref {request.ref}</span>
         </div>
         <p className="px-3 py-2.5 text-meta whitespace-pre-wrap [overflow-wrap:anywhere]">{m.body}</p>
@@ -144,9 +156,72 @@ export function RequestDetailView({ conversationId, request: r, orders, conversa
         </div>
       ) : byPerson ? (
         <InfoLine icon="lock">A support specialist reviewed this request. This decision is final.</InfoLine>
+      ) : r.can_dispute ? (
+        <DisputeCard conversationId={conversationId} request={r} />
       ) : r.state === "denied" ? (
         <InfoLine icon="lock">This decision is final.</InfoLine>
       ) : null}
+    </div>
+  );
+}
+
+const MAX_REASON = 500;
+
+/** Asks a person to review an automatic denial: once, after a confirm step, with an optional reason. */
+function DisputeCard({ conversationId, request }: { conversationId: string; request: RequestSummary }) {
+  const [asking, setAsking] = useState(false);
+  const [reason, setReason] = useState("");
+  const yes = useRef<HTMLButtonElement>(null);
+  const reasonId = useId();
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (asking) yes.current?.focus();
+  }, [asking]);
+  const dispute = useMutation({
+    mutationFn: () =>
+      api<RequestSummary>(`conversations/${conversationId}/dispute`, { method: "POST", json: { reason: reason.trim() || null } }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["conversations"] }),
+        queryClient.invalidateQueries({ queryKey: ["conversation", conversationId] }),
+      ]),
+  });
+  const error = dispute.error
+    ? isApiError(dispute.error)
+      ? dispute.error.message
+      : "Your dispute didn't reach us. Please try again."
+    : null;
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-border bg-canvas px-3.5 py-3">
+      <p className="text-body-sm font-semibold">Think we got this wrong?</p>
+      <p className="text-meta text-ink-muted">This was decided automatically. A support specialist can review it and reply here.</p>
+      {!asking ? (
+        <Button className="self-start" onClick={() => setAsking(true)}>
+          Dispute this decision
+        </Button>
+      ) : (
+        <div role="group" aria-label="Confirm dispute" className="flex flex-col gap-2 border-t border-border pt-2">
+          <p className="text-meta font-medium">Send {request.ref} to a specialist for review?</p>
+          <label htmlFor={reasonId} className="text-caption text-ink-muted">
+            Why do you think it&apos;s wrong? (optional)
+          </label>
+          <Textarea id={reasonId} rows={2} maxLength={MAX_REASON} value={reason} onChange={(e) => setReason(e.target.value)}
+            disabled={dispute.isPending} />
+          {error ? (
+            <p role="alert" className="text-meta text-denied-fg">
+              {error}
+            </p>
+          ) : null}
+          <div className="flex gap-2">
+            <Button variant="ghost" disabled={dispute.isPending} onClick={() => setAsking(false)}>
+              Cancel
+            </Button>
+            <Button ref={yes} variant="primary" loading={dispute.isPending} onClick={() => dispute.mutate()}>
+              Yes, send for review
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

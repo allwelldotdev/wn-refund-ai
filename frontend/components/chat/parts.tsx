@@ -111,9 +111,12 @@ const VERDICT_STYLE: Record<
   escalated: { border: "border-escalated-border", head: "bg-escalated-bg text-escalated-fg", icon: "warning", iconColor: "text-escalated-icon", label: "Escalated" },
 };
 
-function verdictOf(state: RequestSummary["state"]): "approved" | "denied" | "escalated" {
+function verdictOf(request: RequestSummary): "approved" | "denied" | "escalated" {
+  const { state } = request;
   if (state === "resolved_approved") return "approved";
   if (state === "resolved_denied") return "denied";
+  // A disputed denial is back with a person, but this card is the denial.
+  if (request.disputed_at && state === "escalated") return "denied";
   return state;
 }
 
@@ -141,14 +144,15 @@ type VerdictCardProps = {
   onShowPolicy: () => void;
   /** Called once the text has finished playing. */
   onDone?: () => void;
+  onShowRequest?: (ref: string) => void;
 };
 
 /**
  * The decision in the thread: badge and reference first, then the stored
  * reply, then details. A request an admin later decided shows that outcome.
  */
-export function VerdictCard({ id, body, request, animate, onShowPolicy, onDone }: VerdictCardProps) {
-  const verdict = verdictOf(request.state);
+export function VerdictCard({ id, body, request, animate, onShowPolicy, onDone, onShowRequest }: VerdictCardProps) {
+  const verdict = verdictOf(request);
   const s = VERDICT_STYLE[verdict];
   const { visible, done } = useTypewriter(body, animate);
   useEffect(() => {
@@ -175,7 +179,7 @@ export function VerdictCard({ id, body, request, animate, onShowPolicy, onDone }
             </span>
           ) : null}
         </p>
-        {done ? <VerdictDetails verdict={verdict} request={request} onShowPolicy={onShowPolicy} /> : null}
+        {done ? <VerdictDetails verdict={verdict} request={request} onShowPolicy={onShowPolicy} onShowRequest={onShowRequest} /> : null}
       </div>
     </article>
   );
@@ -185,10 +189,12 @@ function VerdictDetails({
   verdict,
   request,
   onShowPolicy,
+  onShowRequest,
 }: {
   verdict: "approved" | "denied" | "escalated";
   request: RequestSummary;
   onShowPolicy: () => void;
+  onShowRequest?: (ref: string) => void;
 }) {
   const item = [request.item_name, request.order_ref].filter(Boolean).join(" · ");
   if (verdict === "approved") {
@@ -211,12 +217,23 @@ function VerdictDetails({
           </button>
           {item ? <span>· {item}</span> : null}
         </div>
-        <p className="flex items-center gap-1.5 border-t border-muted pt-2.5 text-meta text-ink-muted">
-          <Icon name="lock" size={14} />
-          {request.state === "resolved_denied"
-            ? "A support specialist reviewed this request. This decision is final."
-            : "This decision is final."}
-        </p>
+        {request.can_dispute ? (
+          <div className="flex flex-col items-start gap-2 border-t border-muted pt-2.5">
+            <p className="text-meta text-ink-muted">Think we got this wrong? You can dispute this decision from Your requests.</p>
+            {onShowRequest ? (
+              <button type="button" onClick={() => onShowRequest(request.ref)} className={buttonClasses("secondary", "md")}>
+                Open in Your requests
+              </button>
+            ) : null}
+          </div>
+        ) : request.disputed_at ? null : (
+          <p className="flex items-center gap-1.5 border-t border-muted pt-2.5 text-meta text-ink-muted">
+            <Icon name="lock" size={14} />
+            {request.state === "resolved_denied"
+              ? "A support specialist reviewed this request. This decision is final."
+              : "This decision is final."}
+          </p>
+        )}
       </div>
     );
   }
@@ -298,5 +315,14 @@ export function StartNewFooter({ onStart, caption }: { onStart: () => void; capt
         Start new request
       </button>
     </div>
+  );
+}
+
+/** A system note in the thread, e.g. that the customer disputed a decision. */
+export function NoteLine({ children }: { children: ReactNode }) {
+  return (
+    <p role="note" className="animate-wn-in rounded-md border border-dashed border-border-control px-3 py-2 text-center text-caption text-ink-muted [overflow-wrap:anywhere]">
+      {children}
+    </p>
   );
 }

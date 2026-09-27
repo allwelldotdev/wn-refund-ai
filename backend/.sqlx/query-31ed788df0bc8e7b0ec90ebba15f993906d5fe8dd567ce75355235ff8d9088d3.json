@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT r.id, r.ref, r.state, r.reason_category, r.amount_cents, r.created_at, r.resolved_at,\n                  r.conversation_id, c.id AS customer_id, c.name, c.email, c.scenario,\n                  o.ref AS \"order_ref?\", o.placed_at AS \"placed_at?\", o.delivered_at,\n                  i.name AS \"item_name?\", i.category AS \"category?\",\n                  i.amount_cents AS \"item_amount_cents?\", i.final_sale AS \"final_sale?\"\n           FROM refund_requests r\n           JOIN customers c ON c.id = r.customer_id\n           LEFT JOIN orders o ON o.id = r.order_id\n           LEFT JOIN order_items i ON i.id = r.order_item_id\n           WHERE r.ref = $1",
+  "query": "SELECT r.id, r.ref, r.state, r.reason_category, r.amount_cents, r.created_at, r.resolved_at,\n                  r.disputed_at, r.conversation_id, c.id AS customer_id, c.name, c.email, c.scenario,\n                  o.ref AS \"order_ref?\", o.placed_at AS \"placed_at?\", o.delivered_at,\n                  i.name AS \"item_name?\", i.category AS \"category?\",\n                  i.amount_cents AS \"item_amount_cents?\", i.final_sale AS \"final_sale?\"\n           FROM refund_requests r\n           JOIN customers c ON c.id = r.customer_id\n           LEFT JOIN orders o ON o.id = r.order_id\n           LEFT JOIN order_items i ON i.id = r.order_item_id\n           WHERE r.ref = $1",
   "describe": {
     "columns": [
       {
@@ -82,6 +82,17 @@
       },
       {
         "ordinal": 7,
+        "name": "disputed_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "refund_requests",
+            "name": "disputed_at"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
         "name": "conversation_id",
         "type_info": "Uuid",
         "origin": {
@@ -92,7 +103,7 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "customer_id",
         "type_info": "Uuid",
         "origin": {
@@ -103,7 +114,7 @@
         }
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "name",
         "type_info": "Text",
         "origin": {
@@ -114,7 +125,7 @@
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "email",
         "type_info": "Text",
         "origin": {
@@ -125,7 +136,7 @@
         }
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "scenario",
         "type_info": "Text",
         "origin": {
@@ -136,7 +147,7 @@
         }
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "order_ref?",
         "type_info": "Text",
         "origin": {
@@ -147,7 +158,7 @@
         }
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "placed_at?",
         "type_info": "Timestamptz",
         "origin": {
@@ -158,7 +169,7 @@
         }
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "delivered_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -169,7 +180,7 @@
         }
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "item_name?",
         "type_info": "Text",
         "origin": {
@@ -180,7 +191,7 @@
         }
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "category?",
         "type_info": "Text",
         "origin": {
@@ -191,7 +202,7 @@
         }
       },
       {
-        "ordinal": 17,
+        "ordinal": 18,
         "name": "item_amount_cents?",
         "type_info": "Int8",
         "origin": {
@@ -202,7 +213,7 @@
         }
       },
       {
-        "ordinal": 18,
+        "ordinal": 19,
         "name": "final_sale?",
         "type_info": "Bool",
         "origin": {
@@ -226,6 +237,7 @@
       true,
       false,
       true,
+      true,
       false,
       false,
       false,
@@ -240,5 +252,5 @@
       true
     ]
   },
-  "hash": "ab7f1da23ab9747ef8a5ff3f5caf95e92d8bd414a5d626335a8b68af45f38042"
+  "hash": "31ed788df0bc8e7b0ec90ebba15f993906d5fe8dd567ce75355235ff8d9088d3"
 }

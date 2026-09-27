@@ -17,6 +17,7 @@ export const SECTIONS: Array<{ key: string; href: string; label: string; icon: I
   { key: "requests", href: "/admin/requests", label: "Requests", icon: "list" },
   { key: "escalations", href: "/admin/escalations", label: "Escalations", icon: "warning" },
   { key: "policy", href: "/admin/policy", label: "Policy", icon: "policy" },
+  { key: "settings", href: "/admin/settings", label: "Settings", icon: "settings" },
 ];
 
 /**
@@ -124,7 +125,7 @@ export function AdminShell({ principal, children }: { principal: Principal; chil
 
       <nav
         aria-label="Admin sections"
-        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
       >
         {SECTIONS.map((s) => {
           const on = s === current;

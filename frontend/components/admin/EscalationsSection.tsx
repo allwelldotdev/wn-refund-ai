@@ -21,6 +21,10 @@ const OLD_AFTER_MS = 24 * 3600 * 1000;
 
 /** Why the engine sent it to a person, in words: the escalating rules, then the flags. */
 function whyEscalated(d: RequestDetail | undefined): string | null {
+  if (d?.request.disputed_at) {
+    const denial = d.audit?.rule_trace.find((f) => f.verdict === "denied")?.explanation;
+    return `The assistant denied this automatically${denial ? ` (${denial.replace(/\.$/, "")})` : ""}. The customer disputed it from Your requests, so a person needs to decide.`;
+  }
   if (!d?.audit) return d ? "Seeded history: escalated before this system existed." : null;
   const rules = d.audit.rule_trace.filter((f) => f.verdict === "escalated" && f.kind !== "fail_closed").map((f) => f.explanation);
   const flags = distinctFlags(d.audit.flags).map((f) => FLAG_META[f].tip.replace(/^[^:]+:\s*/, ""));
@@ -125,7 +129,7 @@ export function EscalationsSection() {
                 </p>
                 {d ? <ReviewDraft review={d.review} createdAt={d.request.created_at} /> : <Skeleton className="h-16 rounded-lg" />}
                 <div className="flex flex-wrap items-end justify-between gap-3 border-t border-muted pt-3">
-                  <FlagChips flags={r.flags} full />
+                  <FlagChips flags={r.flags} disputed={r.disputed_at !== null} full />
                   <div role="group" aria-label="Your decision" className="ml-auto flex flex-wrap items-center gap-2">
                     <span className="text-caption font-semibold tracking-[0.05em] text-ink-subtle uppercase">Your decision</span>
                     <Button variant="ghost" onClick={() => openDrawer(r.ref)}>

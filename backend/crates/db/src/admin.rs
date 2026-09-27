@@ -20,6 +20,8 @@ pub struct ListFilter {
     /// Each group is a set of flag names; a request matches when its decision
     /// audit carries at least one flag from every group.
     pub flag_groups: Vec<Vec<Flag>>,
+    /// Only requests a customer disputed.
+    pub disputed: bool,
     pub limit: i64,
     pub offset: i64,
 }
@@ -39,6 +41,7 @@ pub struct ListItem {
     pub review_status: Option<String>,
     pub created_at: DateTime<Utc>,
     pub resolved_at: Option<DateTime<Utc>>,
+    pub disputed_at: Option<DateTime<Utc>>,
 }
 
 /// Counts for the admin overview. `created` covers requests created at or
@@ -132,18 +135,20 @@ pub async fn list_requests(db: &Db, f: &ListFilter) -> Result<(Vec<ListItem>, i6
              AND ($3::timestamptz IS NULL OR r.created_at >= $3)
              AND NOT EXISTS (
                    SELECT 1 FROM unnest($4::text[]) AS g(grp)
-                   WHERE NOT (coalesce(a.flags, '[]'::jsonb) ?| string_to_array(g.grp, ',')))"#,
+                   WHERE NOT (coalesce(a.flags, '[]'::jsonb) ?| string_to_array(g.grp, ',')))
+             AND (NOT $5 OR r.disputed_at IS NOT NULL)"#,
         state,
         pattern,
         f.since,
         &groups,
+        f.disputed,
     )
     .fetch_one(&db.0)
     .await?;
     let rows = sqlx::query!(
         r#"SELECT r.ref, r.state, c.name, c.email, o.ref AS "order_ref?", i.name AS "item_name?",
                   r.amount_cents, r.reason_category, a.flags AS "flags?", v.status AS "review_status?",
-                  r.created_at, r.resolved_at
+                  r.created_at, r.resolved_at, r.disputed_at
            FROM refund_requests r
            JOIN customers c ON c.id = r.customer_id
            LEFT JOIN orders o ON o.id = r.order_id
@@ -157,12 +162,14 @@ pub async fn list_requests(db: &Db, f: &ListFilter) -> Result<(Vec<ListItem>, i6
              AND NOT EXISTS (
                    SELECT 1 FROM unnest($4::text[]) AS g(grp)
                    WHERE NOT (coalesce(a.flags, '[]'::jsonb) ?| string_to_array(g.grp, ',')))
+             AND (NOT $5 OR r.disputed_at IS NOT NULL)
            ORDER BY r.created_at DESC, r.id
-           LIMIT $5 OFFSET $6"#,
+           LIMIT $6 OFFSET $7"#,
         state,
         pattern,
         f.since,
         &groups,
+        f.disputed,
         f.limit,
         f.offset,
     )
@@ -184,6 +191,7 @@ pub async fn list_requests(db: &Db, f: &ListFilter) -> Result<(Vec<ListItem>, i6
                 review_status: r.review_status,
                 created_at: r.created_at,
                 resolved_at: r.resolved_at,
+                disputed_at: r.disputed_at,
             })
         })
         .collect::<Result<_, DbError>>()?;
@@ -210,6 +218,7 @@ pub struct RequestInfo {
     pub amount_cents: Option<i64>,
     pub created_at: DateTime<Utc>,
     pub resolved_at: Option<DateTime<Utc>>,
+    pub disputed_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -313,7 +322,7 @@ pub async fn get_request_detail(
 ) -> Result<Option<RequestDetail>, DbError> {
     let Some(r) = sqlx::query!(
         r#"SELECT r.id, r.ref, r.state, r.reason_category, r.amount_cents, r.created_at, r.resolved_at,
-                  r.conversation_id, c.id AS customer_id, c.name, c.email, c.scenario,
+                  r.disputed_at, r.conversation_id, c.id AS customer_id, c.name, c.email, c.scenario,
                   o.ref AS "order_ref?", o.placed_at AS "placed_at?", o.delivered_at,
                   i.name AS "item_name?", i.category AS "category?",
                   i.amount_cents AS "item_amount_cents?", i.final_sale AS "final_sale?"
@@ -459,6 +468,7 @@ pub async fn get_request_detail(
             amount_cents: r.amount_cents,
             created_at: r.created_at,
             resolved_at: r.resolved_at,
+            disputed_at: r.disputed_at,
         },
         customer: CustomerInfo {
             id: r.customer_id,

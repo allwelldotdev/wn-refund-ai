@@ -2,6 +2,17 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.5.0] — 2026-09-27
+### New
+- Customers can dispute an automatic denial once from Your requests, with an optional reason.
+- Admins can turn customer disputes on or off in a new Settings page.
+
+### Improved
+- Disputed requests are tagged, filterable and shown in the request timeline.
+
+### Changed
+- Decisions made by an admin can't be disputed.
+
 ## [0.4.0] — 2026-09-27
 ### New
 - Once a request is approved or denied, the chat replaces the message box with a "Start new request" button; a request still with a specialist stays open so you can add details.

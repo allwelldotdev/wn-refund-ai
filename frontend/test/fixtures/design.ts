@@ -60,6 +60,8 @@ export const designConversations: ConversationSummary[] = [
     amount_cents: 18000,
     created_at: day("21"),
     resolved_at: null,
+    disputed_at: null,
+    can_dispute: false,
   }),
   conversation("c-5790", {
     id: "r-5790",
@@ -70,6 +72,8 @@ export const designConversations: ConversationSummary[] = [
     amount_cents: 1400,
     created_at: day("18"),
     resolved_at: day("18"),
+    disputed_at: null,
+    can_dispute: false,
   }),
   conversation("c-5391", {
     id: "r-5391",
@@ -80,6 +84,8 @@ export const designConversations: ConversationSummary[] = [
     amount_cents: 9600,
     created_at: day("20"),
     resolved_at: null,
+    disputed_at: null,
+    can_dispute: false,
   }),
   conversation("c-empty", null),
 ];

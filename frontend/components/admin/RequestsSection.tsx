@@ -53,7 +53,7 @@ export function RequestsSection() {
   const [since] = useState(() => Object.fromEntries(RANGES.map((r) => [r.value, sinceFor(r.value)])) as Record<Range, string | null>);
   const flagGroups: Flag[][] = [];
   const reason = REASON_FILTERS.find((r) => r.value === filters.reason);
-  if (reason) flagGroups.push(reason.flags);
+  if (reason?.flags.length) flagGroups.push(reason.flags);
   if (filters.injection) flagGroups.push(INJECTION_FLAGS);
 
   const list = useRequests({
@@ -61,6 +61,7 @@ export function RequestsSection() {
     q: filters.q,
     since: since[filters.range],
     flagGroups,
+    disputed: reason?.disputed,
     limit: PAGE,
     offset: (page - 1) * PAGE,
   });
