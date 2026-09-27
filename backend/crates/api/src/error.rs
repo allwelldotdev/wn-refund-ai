@@ -16,7 +16,10 @@ use serde_json::{Map, Value, json};
 #[derive(Debug)]
 pub enum ApiError {
     Unauthorized,
-    InvalidCredentials,
+    /// `attempts_left` before sign-in for this email pauses.
+    InvalidCredentials {
+        attempts_left: u32,
+    },
     Forbidden(&'static str),
     NotFound,
     /// `extra` is merged into the error object (e.g. `latest` for `stale_base`).
@@ -32,6 +35,13 @@ pub enum ApiError {
         message: String,
     },
     RateLimited(Duration),
+    /// Too many failed sign-ins for one email.
+    SignInPaused(Duration),
+    /// A dependency (e.g. the model) failed; nothing was changed.
+    Unavailable {
+        code: &'static str,
+        message: &'static str,
+    },
     Internal(anyhow::Error),
 }
 
@@ -61,12 +71,16 @@ impl IntoResponse for ApiError {
                 "Sign in to continue.".to_owned(),
                 Map::new(),
             ),
-            ApiError::InvalidCredentials => (
-                StatusCode::UNAUTHORIZED,
-                "invalid_credentials",
-                "Email or password is incorrect.".to_owned(),
-                Map::new(),
-            ),
+            ApiError::InvalidCredentials { attempts_left } => {
+                let mut extra = Map::new();
+                extra.insert("attempts_left".into(), attempts_left.into());
+                (
+                    StatusCode::UNAUTHORIZED,
+                    "invalid_credentials",
+                    "Email or password is incorrect.".to_owned(),
+                    extra,
+                )
+            }
             ApiError::Forbidden(code) => (
                 StatusCode::FORBIDDEN,
                 code,
@@ -96,18 +110,21 @@ impl IntoResponse for ApiError {
             }
             ApiError::BadBody { status, message } => (status, "invalid_body", message, Map::new()),
             ApiError::RateLimited(retry_after) => {
-                let secs = retry_after.as_secs().max(1);
-                let mut response = error_response(
-                    StatusCode::TOO_MANY_REQUESTS,
-                    "rate_limited",
-                    format!("Too many messages. Try again in {secs} seconds."),
-                    Map::new(),
-                );
-                response
-                    .headers_mut()
-                    .insert(header::RETRY_AFTER, HeaderValue::from(secs));
-                return response;
+                return too_many(retry_after, |secs| {
+                    format!("Too many messages. Try again in {secs} seconds.")
+                });
             }
+            ApiError::SignInPaused(retry_after) => {
+                return too_many(retry_after, |secs| {
+                    format!("Too many sign-in attempts. Try again in {secs} seconds.")
+                });
+            }
+            ApiError::Unavailable { code, message } => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                code,
+                message.to_owned(),
+                Map::new(),
+            ),
             ApiError::Internal(err) => {
                 tracing::error!(error = ?err, "internal error");
                 (
@@ -120,6 +137,21 @@ impl IntoResponse for ApiError {
         };
         error_response(status, code, message, extra)
     }
+}
+
+/// 429 `rate_limited` with a `Retry-After` header in whole seconds (at least 1).
+fn too_many(retry_after: Duration, message: impl FnOnce(u64) -> String) -> Response {
+    let secs = retry_after.as_secs_f64().ceil().max(1.0) as u64;
+    let mut response = error_response(
+        StatusCode::TOO_MANY_REQUESTS,
+        "rate_limited",
+        message(secs),
+        Map::new(),
+    );
+    response
+        .headers_mut()
+        .insert(header::RETRY_AFTER, HeaderValue::from(secs));
+    response
 }
 
 fn error_response(

@@ -56,14 +56,23 @@ pub enum Stage {
     Intake,
     Responder,
     Review,
+    Notice,
 }
 
 impl Stage {
+    pub const ALL: [Stage; 4] = [
+        Stage::Intake,
+        Stage::Responder,
+        Stage::Review,
+        Stage::Notice,
+    ];
+
     pub fn as_str(self) -> &'static str {
         match self {
             Stage::Intake => "intake",
             Stage::Responder => "responder",
             Stage::Review => "review",
+            Stage::Notice => "notice",
         }
     }
 }
@@ -82,6 +91,7 @@ pub struct AiConfig {
     pub intake: StageModel,
     pub responder: StageModel,
     pub review: StageModel,
+    pub notice: StageModel,
     pub fallback_model: String,
 }
 
@@ -111,7 +121,7 @@ impl AiConfig {
                 .map(|v| v.trim().to_owned())
                 .filter(|v| !v.is_empty())
         };
-        for stage in [Stage::Intake, Stage::Responder, Stage::Review] {
+        for stage in Stage::ALL {
             let prefix = format!("AI_{}", stage.as_str().to_uppercase());
             let target = config.stage_mut(stage);
             if let Some(model) = get(&format!("{prefix}_MODEL")) {
@@ -135,6 +145,7 @@ impl AiConfig {
             Stage::Intake => &self.intake,
             Stage::Responder => &self.responder,
             Stage::Review => &self.review,
+            Stage::Notice => &self.notice,
         }
     }
 
@@ -143,6 +154,7 @@ impl AiConfig {
             Stage::Intake => &mut self.intake,
             Stage::Responder => &mut self.responder,
             Stage::Review => &mut self.review,
+            Stage::Notice => &mut self.notice,
         }
     }
 

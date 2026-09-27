@@ -11,7 +11,7 @@ use chrono::Utc;
 use db::seed::{SCENARIOS, Scenario, item_id, stable_id};
 use db::{Db, seed};
 use domain::engine::decide;
-use domain::intake::{IntakeOutput, IntakeStatus};
+use domain::intake::{IntakeOutput, IntakeStatus, Intent};
 use domain::prescan::{WindowMessage, prescan, prescan_window};
 use domain::types::{Flag, ReasonCategory};
 use sqlx::PgPool;
@@ -21,11 +21,12 @@ use uuid::Uuid;
 fn reading(key: &str) -> (ReasonCategory, usize, &'static [&'static str]) {
     use ReasonCategory::*;
     match key {
-        "clean_wrong_item" => (WrongItem, 0, &["ORD-1003"]),
-        "conflicting_not_received" => (NotReceived, 0, &["ORD-1010"]),
-        "cross_customer_attack" => (Damaged, 0, &["ORD-1006"]),
-        "changed_mind" => (ChangedMind, 0, &["ORD-1014"]),
-        "multi_item" => (Damaged, 0, &["ORD-1016"]),
+        "clean_wrong_item" => (WrongItem, 0, &["ORD-10362"]),
+        "above_threshold" => (ChangedMind, 0, &[]),
+        "conflicting_not_received" => (NotReceived, 0, &["ORD-10418"]),
+        "cross_customer_attack" => (Damaged, 0, &["ORD-10388"]),
+        "changed_mind" => (ChangedMind, 0, &["ORD-10409"]),
+        "multi_item" => (Damaged, 0, &["ORD-10261"]),
         _ => (Damaged, 0, &[]),
     }
 }
@@ -39,6 +40,7 @@ fn correct_intake(s: &Scenario) -> IntakeOutput {
         mentioned.push(target.to_owned());
     }
     IntakeOutput {
+        intent: Intent::RefundRequest,
         status: IntakeStatus::Complete,
         missing: vec![],
         order_id: s.target_order_ref.map(|r| stable_id("order", r)),

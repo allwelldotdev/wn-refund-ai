@@ -1,0 +1,260 @@
+@import "tailwindcss";
+
+/*
+ * Worknoon Support design tokens (design system v0.1, light theme only).
+ * Values come from the Foundations board; names marked "extension" are
+ * colours and sizes the component boards use without naming them.
+ * The design's Pending and Processing status palettes are kept as the
+ * neutral and info palettes: refunds have no such states (ADR-025).
+ */
+@theme {
+  --color-*: initial;
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+
+  --color-white: #ffffff;
+  --color-canvas: #f6f7f5;
+  --color-surface: #ffffff;
+  --color-muted: #eef0ed;
+  --color-border: #dce0db;
+  --color-border-strong: #858f89;
+  --color-border-control: #c4cac5; /* extension: secondary button, dashed empties */
+  --color-ink: #151a18;
+  --color-ink-muted: #48524d;
+  --color-ink-subtle: #5f6963;
+  --color-ink-disabled: #8a938d;
+  --color-primary: #1d2724;
+  --color-primary-hover: #0e1412;
+  --color-danger: #b42318;
+  --color-danger-hover: #912018;
+  --color-focus: #2457c5;
+  --color-link-hover: #1a4299; /* extension */
+  --color-scrim: rgb(21 26 24 / 0.45);
+  --color-skeleton: #e4e7e3; /* extension */
+  --color-selected: #f1f4f0; /* extension: selected row / card */
+
+  --color-approved-fg: #17603a;
+  --color-approved-icon: #1f7a4a;
+  --color-approved-bg: #e7f4ec;
+  --color-approved-border: #b5dcc3;
+  --color-denied-fg: #a1261b;
+  --color-denied-icon: #b42318;
+  --color-denied-bg: #fcecea;
+  --color-denied-border: #f1c2bc;
+  --color-escalated-fg: #86480a;
+  --color-escalated-icon: #b45309;
+  --color-escalated-bg: #fdf2e0;
+  --color-escalated-border: #edcf98;
+  --color-neutral-fg: #454f4a;
+  --color-neutral-icon: #5f6963;
+  --color-neutral-bg: #eef0ed;
+  --color-neutral-border: #d2d7d2;
+  --color-info-fg: #2f4f86;
+  --color-info-icon: #2f5fa8;
+  --color-info-bg: #eaf0fa;
+  --color-info-border: #c3d2ec;
+  --color-info-tint: #f5f8fd; /* extension: "Reviewing" card */
+
+  --text-display: 2rem;
+  --text-display--line-height: 2.5rem;
+  --text-display--letter-spacing: -0.02em;
+  --text-title-lg: 1.5rem;
+  --text-title-lg--line-height: 2rem;
+  --text-title-lg--letter-spacing: -0.01em;
+  --text-page: 1.375rem; /* extension: admin topbar h1, 22/30 */
+  --text-page--line-height: 1.875rem;
+  --text-page--letter-spacing: -0.01em;
+  --text-title: 1.25rem;
+  --text-title--line-height: 1.75rem;
+  --text-title-md: 1.125rem; /* extension: dialog title, mobile h1, 18/26 */
+  --text-title-md--line-height: 1.625rem;
+  --text-title-sm: 1rem;
+  --text-title-sm--line-height: 1.5rem;
+  --text-body: 1rem;
+  --text-body--line-height: 1.5rem;
+  --text-lead: 0.9375rem; /* extension: 15/22 list items, lg buttons */
+  --text-lead--line-height: 1.375rem;
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.25rem;
+  --text-meta: 0.8125rem; /* extension: 13/18 errors, toast body, footers */
+  --text-meta--line-height: 1.125rem;
+  --text-control-sm: 0.8125rem; /* extension: 13/16 badges, sm buttons */
+  --text-control-sm--line-height: 1rem;
+  --text-mono: 0.8125rem; /* mono IDs, amounts, dates: 13/20 */
+  --text-mono--line-height: 1.25rem;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --text-micro: 0.6875rem; /* extension: bottom tab labels, 11/14 */
+  --text-micro--line-height: 0.875rem;
+  --text-metric: 1.75rem; /* extension: stat tiles, 28/36 */
+  --text-metric--line-height: 2.25rem;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+
+  --shadow-xs: 0 1px 2px rgb(21 26 24 / 0.06);
+  --shadow-sm: 0 1px 2px rgb(21 26 24 / 0.06), 0 1px 3px rgb(21 26 24 / 0.08);
+  --shadow-md: 0 4px 12px -2px rgb(21 26 24 / 0.1), 0 2px 4px -2px rgb(21 26 24 / 0.06);
+  --shadow-lg: 0 16px 40px -8px rgb(21 26 24 / 0.18), 0 4px 12px -4px rgb(21 26 24 / 0.08);
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  --animate-wn-spin: wn-spin 0.8s linear infinite;
+  --animate-wn-pulse: wn-pulse 1.6s cubic-bezier(0.2, 0, 0, 1) infinite;
+  --animate-wn-in: wn-in 200ms cubic-bezier(0.2, 0, 0, 1);
+  --animate-wn-blink: wn-blink 1s steps(1) infinite;
+  --animate-wn-drawer: wn-drawer 300ms cubic-bezier(0.2, 0, 0, 1);
+  --animate-wn-fade: wn-fade 200ms cubic-bezier(0.2, 0, 0, 1);
+
+  @keyframes wn-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes wn-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+  @keyframes wn-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes wn-blink {
+    50% {
+      opacity: 0;
+    }
+  }
+  @keyframes wn-drawer {
+    from {
+      transform: translateX(24px);
+      opacity: 0;
+    }
+    to {
+      transform: none;
+      opacity: 1;
+    }
+  }
+  @keyframes wn-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  button,
+  input,
+  select,
+  textarea {
+    font-family: inherit;
+  }
+  /* Tailwind v4 gives buttons the arrow cursor; the design wants a pointer on
+     every enabled control and not-allowed on disabled ones. Utilities such as
+     `cursor-progress` still win, being in a later layer. */
+  button:not(:disabled),
+  a[href],
+  select:not(:disabled),
+  label[for],
+  [role="button"],
+  [role="tab"],
+  [role="switch"],
+  input[type="checkbox"]:not(:disabled) {
+    cursor: pointer;
+  }
+  button:disabled,
+  select:disabled,
+  input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+  }
+  input[readonly] {
+    cursor: default;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+}
+
+@utility link {
+  color: var(--color-focus);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  &:hover {
+    color: var(--color-link-hover);
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hover/focus tooltip for chips (`data-tip`), as drawn on the admin boards. */
+@layer components {
+  .wn-tip {
+    position: relative;
+    cursor: help;
+  }
+  .wn-tip::after {
+    content: attr(data-tip);
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 8px);
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: 240px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: var(--color-ink);
+    color: var(--color-white);
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    white-space: normal;
+    text-align: left;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms;
+    z-index: 20;
+  }
+  .wn-tip:hover::after,
+  .wn-tip:focus-visible::after {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

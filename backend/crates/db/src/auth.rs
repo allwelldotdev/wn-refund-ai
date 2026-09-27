@@ -2,9 +2,11 @@
 //! module only stores and looks up.
 
 use chrono::{DateTime, Utc};
+use domain::types::Verdict;
 use serde::Serialize;
 use uuid::Uuid;
 
+use crate::seed::{ADMINS, SCENARIOS};
 use crate::{Db, DbError};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize)]
@@ -47,12 +49,19 @@ pub struct Account {
     pub password_hash: String,
 }
 
+/// A seeded account as the login page lists it. `title` and `description`
+/// come from the seed matrix; `expected_verdict` and `order_ref` describe a
+/// customer's scenario under the default policy.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct DemoAccount {
     pub name: String,
     pub email: String,
     pub role: Role,
     pub scenario: Option<String>,
+    pub title: String,
+    pub description: String,
+    pub expected_verdict: Option<Verdict>,
+    pub order_ref: Option<String>,
 }
 
 /// Customer and admin emails live in separate tables; the seed keeps them disjoint.
@@ -141,7 +150,8 @@ pub async fn delete_session(db: &Db, id: Uuid) -> Result<bool, DbError> {
     Ok(deleted == 1)
 }
 
-/// Every seeded account, admins first, for the login page.
+/// Every account, for the login page: admins, then customers in scenario-matrix
+/// order. Accounts the seed does not describe come last, by name.
 pub async fn list_demo_accounts(db: &Db) -> Result<Vec<DemoAccount>, DbError> {
     let rows = sqlx::query!(
         r#"SELECT name AS "name!", email AS "email!", role AS "role!", scenario
@@ -152,14 +162,49 @@ pub async fn list_demo_accounts(db: &Db) -> Result<Vec<DemoAccount>, DbError> {
     )
     .fetch_all(&db.0)
     .await?;
-    rows.into_iter()
+    let mut accounts = rows
+        .into_iter()
         .map(|r| {
-            Ok(DemoAccount {
+            let role = Role::parse(&r.role)?;
+            let (rank, title, description, expected_verdict, order_ref) = match role {
+                Role::Admin => ADMINS
+                    .iter()
+                    .position(|a| a.email == r.email)
+                    .map(|i| (i, ADMINS[i].title, ADMINS[i].summary, None, None)),
+                Role::Customer => r
+                    .scenario
+                    .as_deref()
+                    .and_then(|key| SCENARIOS.iter().position(|s| s.key == key))
+                    .map(|i| {
+                        let s = &SCENARIOS[i];
+                        (
+                            i,
+                            s.title,
+                            s.summary,
+                            s.files_request().then_some(s.expected_verdict),
+                            s.target_order_ref,
+                        )
+                    }),
+            }
+            .unwrap_or((usize::MAX, "", "", None, None));
+            let account = DemoAccount {
+                title: if title.is_empty() {
+                    r.name.clone()
+                } else {
+                    title.to_owned()
+                },
                 name: r.name,
                 email: r.email,
-                role: Role::parse(&r.role)?,
+                role,
                 scenario: r.scenario,
-            })
+                description: description.to_owned(),
+                expected_verdict,
+                order_ref: order_ref.map(str::to_owned),
+            };
+            Ok((rank, account))
         })
-        .collect()
+        .collect::<Result<Vec<_>, DbError>>()?;
+    // Stable sort keeps the SQL's role-then-name order within equal ranks.
+    accounts.sort_by_key(|(rank, a)| (a.role == Role::Customer, *rank));
+    Ok(accounts.into_iter().map(|(_, a)| a).collect())
 }

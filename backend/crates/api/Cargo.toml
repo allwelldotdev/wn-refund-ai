@@ -28,6 +28,7 @@ serde_json.workspace = true
 uuid.workspace = true
 chrono.workspace = true
 argon2.workspace = true
+form_urlencoded.workspace = true
 
 [dev-dependencies]
 sqlx.workspace = true

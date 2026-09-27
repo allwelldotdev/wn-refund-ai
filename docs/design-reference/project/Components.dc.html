@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Worknoon Support — Controls</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;color:#151A18;background:#F6F7F5;-webkit-font-smoothing:antialiased}
+a{color:#2457C5}a:hover{color:#1A4299}
+:focus-visible{outline:2px solid #2457C5;outline-offset:2px}
+button,input,select,textarea{font-family:inherit}
+@keyframes wn-spin{to{transform:rotate(360deg)}}
+.wn-spin{animation:wn-spin 0.8s linear infinite;transform-origin:center}
+@media (prefers-reduced-motion: reduce){.wn-spin{animation:none}}
+</style>
+</helmet>
+<div style="width: 1440px; height: 2520px; box-sizing: border-box; padding: 80px; background: #F6F7F5; display: flex; flex-direction: column; gap: 72px">
+
+<header style="display: flex; flex-direction: column; gap: 10px; padding-bottom: 32px; border-bottom: 1px solid #DCE0DB">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #5F6963">Worknoon Support · Design system v0.1</span>
+<h1 style="margin: 0; font-size: 40px; line-height: 48px; font-weight: 600; letter-spacing: -0.02em">Components — Controls</h1>
+<p style="margin: 0; font-size: 16px; line-height: 24px; color: #48524D; max-width: 760px">Buttons, status badges, form fields, inline errors and tabs. Each block names the React component and its props.</p>
+</header>
+
+<section style="display: flex; flex-direction: column; gap: 24px" aria-labelledby="h-btn">
+<div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h2 id="h-btn" style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 600">Button</h2>
+<p style="margin: 0; font-size: 15px; line-height: 22px; color: #48524D; max-width: 760px">One primary per view. Loading keeps the button's width, swaps in a spinner and a present-tense label, and sets <code style="font-family: 'IBM Plex Mono', monospace; font-size: 14px">aria-busy</code>. Disabled uses the native attribute, never just a style.</p>
+</div>
+<code style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #48524D; background: #EEF0ED; padding: 8px 12px; border-radius: 6px; white-space: nowrap">&lt;Button variant size loading disabled&gt;</code>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #DCE0DB; border-radius: 10px; padding: 8px 28px 24px">
+<div style="display: grid; grid-template-columns: 160px repeat(5, minmax(0, 1fr)); gap: 16px; padding: 16px 0 12px; border-bottom: 1px solid #EEF0ED">
+<span></span>
+<span style="font-size: 12px; line-height: 16px; font-weight: 500; color: #5F6963; text-transform: uppercase; letter-spacing: 0.06em">Default</span>
+<span style="font-size: 12px; line-height: 16px; font-weight: 500; color: #5F6963; text-transform: uppercase; letter-spacing: 0.06em">Hover</span>
+<span style="font-size: 12px; line-height: 16px; font-weight: 500; color: #5F6963; text-transform: uppercase; letter-spacing: 0.06em">Focus-visible</span>
+<span style="font-size: 12px; line-height: 16px; font-weight: 500; color: #5F6963; text-transform: uppercase; letter-spacing: 0.06em">Loading</span>
+<span style="font-size: 12px; line-height: 16px; font-weight: 500; color: #5F6963; text-transform: uppercase; letter-spacing: 0.06em">Disabled</span>
+</div>
+<sc-for list="{{buttonRows}}" as="row" hint-placeholder-count="4">
+<div style="display: grid; grid-template-columns: 160px repeat(5, minmax(0, 1fr)); gap: 16px; align-items: center; padding: 18px 0; border-bottom: 1px solid #EEF0ED">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 14px; line-height: 20px; font-weight: 600">{{row.name}}</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 16px; color: #5F6963">{{row.prop}}</span>
+</div>
+<sc-for list="{{row.cells}}" as="c" hint-placeholder-count="5">
+<div style="display: flex">
+<button type="button" disabled="{{c.disabled}}" aria-busy="{{c.busy}}" style="{{c.style}}">
+<sc-if value="{{c.loading}}" hint-placeholder-val="{{ false }}">
+<svg class="wn-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke-opacity="0.25"></circle><path d="M21 12a9 9 0 0 0-9-9"></path></svg>
+</sc-if>
+<span>{{c.label}}</span>
+</button>
+</div>
+</sc-for>
+</div>
+</sc-for>
+<div style="display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 16px; align-items: center; padding-top: 20px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 14px; line-height: 20px; font-weight: 600">Sizes</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 16px; color: #5F6963">size="sm|md|lg"</span>
+</div>
+<div style="display: flex; gap: 24px; align-items: center; flex-wrap: wrap">
+<div style="display: flex; align-items: center; gap: 10px">
+<button type="button" style="height: 32px; padding: 0 12px; border-radius: 6px; border: 0; background: #1D2724; color: #FFFFFF; font-size: 13px; line-height: 16px; font-weight: 500">Approve</button>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #5F6963">sm · 32 · table rows</span>
+</div>
+<div style="display: flex; align-items: center; gap: 10px">
+<button type="button" style="height: 40px; padding: 0 16px; border-radius: 6px; border: 0; background: #1D2724; color: #FFFFFF; font-size: 14px; line-height: 20px; font-weight: 500">Approve refund</button>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #5F6963">md · 40 · admin default</span>
+</div>
+<div style="display: flex; align-items: center; gap: 10px">
+<button type="button" style="height: 44px; padding: 0 20px; border-radius: 6px; border: 0; background: #1D2724; color: #FFFFFF; font-size: 15px; line-height: 20px; font-weight: 500">Request a refund</button>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #5F6963">lg · 44 · customer, touch</span>
+</div>
+<div style="display: flex; align-items: center; gap: 10px">
+<button type="button" aria-label="Close" style="width: 40px; height: 40px; border-radius: 6px; border: 0; background: transparent; color: #48524D; display: inline-flex; align-items: center; justify-content: center">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+</button>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #5F6963">icon · needs aria-label</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 24px" aria-labelledby="h-badge">
+<div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h2 id="h-badge" style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 600">Status badge</h2>
+<p style="margin: 0; font-size: 15px; line-height: 22px; color: #48524D; max-width: 760px">The only way a refund status appears anywhere. Icon is decorative (<code style="font-family: 'IBM Plex Mono', monospace; font-size: 14px">aria-hidden</code>); the visible label is the accessible name. Shape differs per status, so it reads in grayscale.</p>
+</div>
+<code style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #48524D; background: #EEF0ED; padding: 8px 12px; border-radius: 6px; white-space: nowrap">&lt;StatusBadge status="escalated" size="md" /&gt;</code>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #DCE0DB; border-radius: 10px; padding: 28px; display: grid; grid-template-columns: 160px minmax(0, 1fr); row-gap: 24px; column-gap: 16px; align-items: center">
+<span style="font-size: 14px; line-height: 20px; font-weight: 600">md · 24 px</span>
+<div style="display: flex; gap: 12px; flex-wrap: wrap">
+<sc-for list="{{statuses}}" as="s" hint-placeholder-count="5">
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px 0 8px; border-radius: 999px; font-size: 13px; line-height: 16px; font-weight: 500; color: {{s.fg}}; background: {{s.bg}}; border: 1px solid {{s.bd}}">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{s.ic}}" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{s.icon}}"></path></svg>
+{{s.label}}
+</span>
+</sc-for>
+</div>
+<span style="font-size: 14px; line-height: 20px; font-weight: 600">sm · 20 px</span>
+<div style="display: flex; gap: 12px; flex-wrap: wrap">
+<sc-for list="{{statuses}}" as="s" hint-placeholder-count="5">
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px 0 6px; border-radius: 999px; font-size: 12px; line-height: 16px; font-weight: 500; color: {{s.fg}}; background: {{s.bg}}; border: 1px solid {{s.bd}}">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{s.ic}}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{s.icon}}"></path></svg>
+{{s.label}}
+</span>
+</sc-for>
+</div>
+<span style="font-size: 14px; line-height: 20px; font-weight: 600">In context</span>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D; display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #151A18">ORD-10388</span>
+<span>· Private Office Deposit · $1,200.00 ·</span>
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px 0 8px; border-radius: 999px; font-size: 13px; line-height: 16px; font-weight: 500; color: #86480A; background: #FDF2E0; border: 1px solid #EDCF98">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5L2.8 19.5h18.4ZM12 10v4M12 17h.01"></path></svg>
+Escalated
+</span>
+<span>— large refund (over $500), needs review</span>
+</p>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 24px" aria-labelledby="h-form">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h2 id="h-form" style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 600">Input, select, textarea</h2>
+<p style="margin: 0; font-size: 15px; line-height: 22px; color: #48524D; max-width: 820px">Label always visible above the field; placeholder is an example, never the label. Help and error text are linked with <code style="font-family: 'IBM Plex Mono', monospace; font-size: 14px">aria-describedby</code>. 40 px tall on admin, 44 px in customer chat.</p>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #DCE0DB; border-radius: 10px; padding: 28px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12px; line-height: 16px; font-weight: 500; color: #5F6963; text-transform: uppercase; letter-spacing: 0.06em">Default</span>
+<label for="f1" style="font-size: 14px; line-height: 20px; font-weight: 500; margin-top: 8px">Order ID</label>
+<input id="f1" type="text" placeholder="e.g. ORD-10421" aria-describedby="f1h" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #858F89; border-radius: 6px; background: #FFFFFF; font-size: 14px; color: #151A18">
+<span id="f1h" style="font-size: 12px; line-height: 16px; color: #5F6963">In your confirmation email.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12px; line-height: 16px; font-weight: 500; color: #5F6963; text-transform: uppercase; letter-spacing: 0.06em">Focus</span>
+<label for="f2" style="font-size: 14px; line-height: 20px; font-weight: 500; margin-top: 8px">Order ID</label>
+<input id="f2" type="text" value="ORD-104" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #2457C5; border-radius: 6px; background: #FFFFFF; font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #151A18; outline: 2px solid #2457C5; outline-offset: 2px">
+<span style="font-size: 12px; line-height: 16px; color: #5F6963">In your confirmation email.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12px; line-height: 16px; font-weight: 500; color: #5F6963; text-transform: uppercase; letter-spacing: 0.06em">Filled</span>
+<label for="f3" style="font-size: 14px; line-height: 20px; font-weight: 500; margin-top: 8px">Order ID</label>
+<input id="f3" type="text" value="ORD-10421" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #858F89; border-radius: 6px; background: #FFFFFF; font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #151A18">
+<span style="font-size: 12px; line-height: 16px; color: #5F6963">Flex Day Pass 10-pack · $180.00</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12px; line-height: 16px; font-weight: 500; color: #5F6963; text-transform: uppercase; letter-spacing: 0.06em">Error</span>
+<label for="f4" style="font-size: 14px; line-height: 20px; font-weight: 500; margin-top: 8px">Order ID</label>
+<input id="f4" type="text" value="ORD-10999" aria-invalid="true" aria-describedby="f4e" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1.5px solid #B42318; border-radius: 6px; background: #FFFFFF; font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #151A18">
+<span id="f4e" style="display: flex; gap: 6px; align-items: flex-start; font-size: 13px; line-height: 18px; color: #A1261B">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B42318" stroke-width="2.25" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 8v5M12 16h.01"></path></svg>
+<span>No order ORD-10999 on your account. Check the ID in your email.</span>
+</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12px; line-height: 16px; font-weight: 500; color: #5F6963; text-transform: uppercase; letter-spacing: 0.06em">Disabled</span>
+<label for="f5" style="font-size: 14px; line-height: 20px; font-weight: 500; margin-top: 8px; color: #5F6963">Refund amount</label>
+<input id="f5" type="text" value="$180.00" disabled style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #DCE0DB; border-radius: 6px; background: #EEF0ED; font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #8A938D">
+<span style="font-size: 12px; line-height: 16px; color: #5F6963">Set by policy. Admins can override.</span>
+</div>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #DCE0DB; border-radius: 10px; padding: 28px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="f6" style="font-size: 14px; line-height: 20px; font-weight: 500">Refund reason</label>
+<div style="position: relative; display: flex">
+<select id="f6" style="flex-grow: 1; height: 40px; box-sizing: border-box; padding: 0 36px 0 12px; border: 1px solid #858F89; border-radius: 6px; background: #FFFFFF; font-size: 14px; color: #151A18; appearance: none">
+<option>Booking not used</option>
+<option>Charged twice</option>
+<option>Space unavailable on arrival</option>
+<option>Wrong plan purchased</option>
+<option>Other</option>
+</select>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#48524D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; right: 12px; top: 12px; pointer-events: none"><path d="M6 9l6 6 6-6"></path></svg>
+</div>
+<span style="font-size: 12px; line-height: 16px; color: #5F6963">Native select: free keyboard and screen-reader support.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="f7" style="font-size: 14px; line-height: 20px; font-weight: 500">Search requests</label>
+<div style="position: relative; display: flex">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5F6963" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="position: absolute; left: 12px; top: 12px; pointer-events: none"><path d="M4 11a7 7 0 1 0 14 0a7 7 0 1 0-14 0M20 20l-3.5-3.5"></path></svg>
+<input id="f7" type="search" placeholder="Order ID, customer or email" style="flex-grow: 1; height: 40px; box-sizing: border-box; padding: 0 12px 0 36px; border: 1px solid #858F89; border-radius: 6px; background: #FFFFFF; font-size: 14px; color: #151A18">
+</div>
+<span style="font-size: 12px; line-height: 16px; color: #5F6963">Debounced 250 ms; results announced via a live region.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<label for="f8" style="font-size: 14px; line-height: 20px; font-weight: 500">What happened?</label>
+<span style="font-size: 12px; line-height: 16px; color: #5F6963">Optional</span>
+</div>
+<textarea id="f8" rows="3" aria-describedby="f8c" style="box-sizing: border-box; padding: 10px 12px; border: 1px solid #858F89; border-radius: 6px; background: #FFFFFF; font-size: 14px; line-height: 20px; color: #151A18; resize: vertical">The meeting room was double-booked when I arrived, so I couldn't use my 4-hour slot on Sep 20.</textarea>
+<span id="f8c" style="font-size: 12px; line-height: 16px; color: #5F6963; align-self: flex-end; font-variant-numeric: tabular-nums">96 / 500</span>
+</div>
+</div>
+</section>
+
+<section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px" aria-labelledby="h-err">
+<div style="display: flex; flex-direction: column; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h2 id="h-err" style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 600">Inline error</h2>
+<p style="margin: 0; font-size: 15px; line-height: 22px; color: #48524D">Say what went wrong and how to fix it. Icon + red text + thicker border — never color alone. On submit, a summary takes focus and links to each field.</p>
+</div>
+<div role="alert" style="background: #FCECEA; border: 1px solid #F1C2BC; border-radius: 10px; padding: 16px 20px; display: flex; gap: 12px">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B42318" stroke-width="2.25" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 8v5M12 16h.01"></path></svg>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 14px; line-height: 20px; font-weight: 600; color: #A1261B">2 fields need attention</span>
+<ul style="margin: 0; padding-left: 18px; font-size: 14px; line-height: 22px; color: #151A18">
+<li><a href="#f4" style="color: #A1261B">Order ID — no matching order on your account</a></li>
+<li><a href="#f6" style="color: #A1261B">Refund reason — choose one to continue</a></li>
+</ul>
+</div>
+</div>
+<div style="display: flex; gap: 12px; align-items: center; font-size: 13px; line-height: 18px; color: #A1261B">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B42318" stroke-width="2.25" stroke-linecap="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 8v5M12 16h.01"></path></svg>
+<span>Couldn't load the refund policy. <a href="#h-err" style="color: #A1261B; font-weight: 500">Try again</a></span>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h2 id="h-tabs" style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 600">Tabs</h2>
+<p style="margin: 0; font-size: 15px; line-height: 22px; color: #48524D">Filters the queue by status. Arrow keys move between tabs, Home/End jump; only the active tab is in the Tab order. Try it in Play.</p>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #DCE0DB; border-radius: 10px; padding: 8px 24px 24px; display: flex; flex-direction: column; gap: 20px">
+<div role="tablist" aria-label="Filter by status" onKeyDown="{{onKeys}}" style="display: flex; gap: 4px; border-bottom: 1px solid #DCE0DB">
+<sc-for list="{{tabs}}" as="t" hint-placeholder-count="6">
+<button type="button" role="tab" id="tab-{{t.id}}" aria-selected="{{t.selectedStr}}" aria-controls="panel-q" tabindex="{{t.tabindex}}" onClick="{{t.pick}}" style="{{t.style}}">
+<span>{{t.label}}</span>
+<span style="{{t.countStyle}}">{{t.count}}</span>
+</button>
+</sc-for>
+</div>
+<div id="panel-q" role="tabpanel" aria-labelledby="tab-{{activeId}}" style="display: flex; align-items: center; gap: 12px; font-size: 14px; line-height: 20px; color: #48524D">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 20px; line-height: 28px; color: #151A18; font-weight: 500">{{activeCount}}</span>
+<span>{{activeText}}</span>
+</div>
+</div>
+<code style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #48524D; background: #EEF0ED; padding: 8px 12px; border-radius: 6px; align-self: flex-start">&lt;Tabs value onValueChange&gt; · &lt;TabsTrigger count&gt;</code>
+</div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2520}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tab: 'escalated' };
+  }
+  renderVals() {
+    var self = this;
+    var CIRCLE = 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0';
+    var base = 'height: 40px; min-width: 132px; padding: 0 16px; border-radius: 6px; font-size: 14px; line-height: 20px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; ';
+    var focus = 'outline: 2px solid #2457C5; outline-offset: 2px; ';
+    var dis = base + 'border: 1px solid #DCE0DB; background: #EEF0ED; color: #8A938D; cursor: not-allowed; ';
+    var V = {
+      primary: { name: 'Primary', label: 'Approve refund', busy: 'Approving…', rest: 'border: 1px solid #1D2724; background: #1D2724; color: #FFFFFF; ', hover: 'border: 1px solid #0E1412; background: #0E1412; color: #FFFFFF; ' },
+      secondary: { name: 'Secondary', label: 'Request info', busy: 'Sending…', rest: 'border: 1px solid #C4CAC5; background: #FFFFFF; color: #151A18; ', hover: 'border: 1px solid #858F89; background: #F6F7F5; color: #151A18; ' },
+      destructive: { name: 'Destructive', label: 'Deny refund', busy: 'Denying…', rest: 'border: 1px solid #B42318; background: #B42318; color: #FFFFFF; ', hover: 'border: 1px solid #912018; background: #912018; color: #FFFFFF; ' },
+      ghost: { name: 'Ghost', label: 'Cancel', busy: 'Cancelling…', rest: 'border: 1px solid transparent; background: transparent; color: #151A18; ', hover: 'border: 1px solid transparent; background: #EEF0ED; color: #151A18; ' }
+    };
+    var buttonRows = ['primary', 'secondary', 'destructive', 'ghost'].map(function (k) {
+      var v = V[k];
+      return {
+        name: v.name,
+        prop: 'variant="' + k + '"',
+        cells: [
+          { label: v.label, style: base + v.rest, disabled: false, loading: false, busy: 'false' },
+          { label: v.label, style: base + v.hover, disabled: false, loading: false, busy: 'false' },
+          { label: v.label, style: base + v.rest + focus, disabled: false, loading: false, busy: 'false' },
+          { label: v.busy, style: base + v.rest + 'cursor: progress; ', disabled: false, loading: true, busy: 'true' },
+          { label: v.label, style: dis, disabled: true, loading: false, busy: 'false' }
+        ]
+      };
+    });
+    var statuses = [
+      { label: 'Approved', fg: '#17603A', bg: '#E7F4EC', bd: '#B5DCC3', ic: '#1F7A4A', icon: CIRCLE + 'M8.5 12.5l2.5 2.5 4.5-5' },
+      { label: 'Denied', fg: '#A1261B', bg: '#FCECEA', bd: '#F1C2BC', ic: '#B42318', icon: CIRCLE + 'M9 9l6 6M15 9l-6 6' },
+      { label: 'Escalated', fg: '#86480A', bg: '#FDF2E0', bd: '#EDCF98', ic: '#B45309', icon: 'M12 3.5L2.8 19.5h18.4ZM12 10v4M12 17h.01' },
+      { label: 'Pending', fg: '#454F4A', bg: '#EEF0ED', bd: '#D2D7D2', ic: '#5F6963', icon: CIRCLE + 'M12 7v5l3 2' },
+      { label: 'Processing', fg: '#2F4F86', bg: '#EAF0FA', bd: '#C3D2EC', ic: '#2F5FA8', icon: 'M20 11a8 8 0 0 0-14.3-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.5L20 16M20 20v-4h-4' }
+    ];
+    var T = [
+      { id: 'all', label: 'All', count: 15, text: 'refund requests in the last 60 days.' },
+      { id: 'pending', label: 'Pending', count: 2, text: 'requests waiting for the AI assessment.' },
+      { id: 'processing', label: 'Processing', count: 2, text: 'approved refunds being paid out.' },
+      { id: 'escalated', label: 'Escalated', count: 3, text: 'requests need a human decision. Oldest: ORD-10288, 47 days.' },
+      { id: 'approved', label: 'Approved', count: 5, text: 'refunds approved, $343.00 returned.' },
+      { id: 'denied', label: 'Denied', count: 3, text: 'requests denied under policy.' }
+    ];
+    var cur = this.state.tab;
+    var active = T.filter(function (t) { return t.id === cur; })[0];
+    var tabs = T.map(function (t) {
+      var on = t.id === cur;
+      return {
+        id: t.id, label: t.label, count: t.count,
+        selectedStr: on ? 'true' : 'false',
+        tabindex: on ? '0' : '-1',
+        pick: function () { self.setState({ tab: t.id }); },
+        style: 'height: 44px; padding: 0 12px; margin-bottom: -1px; border: 0; border-bottom: 2px solid ' + (on ? '#151A18' : 'transparent') + '; background: transparent; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; line-height: 20px; font-weight: ' + (on ? '600' : '500') + '; color: ' + (on ? '#151A18' : '#48524D') + '; cursor: pointer; transition: color 120ms cubic-bezier(0.2,0,0,1)',
+        countStyle: 'min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 999px; font-size: 12px; line-height: 20px; font-weight: 500; font-variant-numeric: tabular-nums; text-align: center; background: ' + (on ? '#151A18' : '#EEF0ED') + '; color: ' + (on ? '#FFFFFF' : '#48524D')
+      };
+    });
+    var onKeys = function (e) {
+      var ids = T.map(function (t) { return t.id; });
+      var i = ids.indexOf(self.state.tab);
+      var n = -1;
+      if (e.key === 'ArrowRight') n = (i + 1) % ids.length;
+      else if (e.key === 'ArrowLeft') n = (i - 1 + ids.length) % ids.length;
+      else if (e.key === 'Home') n = 0;
+      else if (e.key === 'End') n = ids.length - 1;
+      if (n < 0) return;
+      e.preventDefault();
+      var list = e.currentTarget;
+      self.setState({ tab: ids[n] }, function () {
+        var btn = list.querySelector('#tab-' + ids[n]);
+        if (btn) btn.focus();
+      });
+    };
+    return { buttonRows: buttonRows, statuses: statuses, tabs: tabs, onKeys: onKeys, activeId: active.id, activeCount: active.count, activeText: active.text };
+  }
+}
+</script>
+</body>
+</html>

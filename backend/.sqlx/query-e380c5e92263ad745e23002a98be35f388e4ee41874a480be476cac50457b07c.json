@@ -1,0 +1,131 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT r.id AS \"id!\", r.ref AS \"ref!\", r.state AS \"state!\",\n                  o.ref AS \"order_ref?\", i.name AS \"item_name?\",\n                  r.amount_cents, r.created_at AS \"created_at!\", r.resolved_at, r.disputed_at,\n                  (r.state = 'denied' AND r.disputed_at IS NULL\n                   AND (SELECT allow_disputes FROM app_settings)) AS \"can_dispute!\"\n           FROM refund_requests r\n           LEFT JOIN orders o ON o.id = r.order_id\n           LEFT JOIN order_items i ON i.id = r.order_item_id\n           WHERE r.conversation_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "refund_requests",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "ref!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "refund_requests",
+            "name": "ref"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "state!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "refund_requests",
+            "name": "state"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "order_ref?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "orders",
+            "name": "ref"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "item_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "order_items",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "amount_cents",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "refund_requests",
+            "name": "amount_cents"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at!",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "refund_requests",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "resolved_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "refund_requests",
+            "name": "resolved_at"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "disputed_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "refund_requests",
+            "name": "disputed_at"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "can_dispute!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "e380c5e92263ad745e23002a98be35f388e4ee41874a480be476cac50457b07c"
+}

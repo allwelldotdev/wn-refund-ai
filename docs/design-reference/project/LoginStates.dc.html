@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Worknoon Support — Sign-in states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+:focus-visible{outline:2px solid #2457C5;outline-offset:2px}
+button,input{font-family:inherit}
+@keyframes wn-spin{to{transform:rotate(360deg)}}
+.wn-spin{animation:wn-spin 0.8s linear infinite;transform-origin:center}
+@media (prefers-reduced-motion: reduce){.wn-spin{animation:none}}
+</style>
+</helmet>
+<div style="width: 2552px; height: 900px; box-sizing: border-box; padding: 64px 80px; background: #F6F7F5; font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; color: #151A18; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 48px; align-items: start">
+<sc-for list="{{states}}" as="s" hint-placeholder-count="5">
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 20px; color: #5F6963">{{s.n}}</span>
+<h2 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600">{{s.title}}</h2>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D; min-height: 60px">{{s.note}}</p>
+</div>
+<dc-import name="Login" layout="card" scenario="{{s.key}}" hint-size="440px,600px"></dc-import>
+</div>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2552,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      states: [
+        { n: 'A', key: 'default', title: 'Default', note: 'Empty form. Email field gets focus on load, unless a demo account was picked.' },
+        { n: 'B', key: 'submitting', title: 'Submitting', note: 'Button shows a spinner and "Signing in…". Fields go read-only and demo accounts are disabled until the request returns.' },
+        { n: 'C', key: 'invalid', title: 'Invalid credentials', note: 'One message for both fields, so the form never reveals which emails have accounts. Password is cleared and gets focus.' },
+        { n: 'D', key: 'expired', title: 'Session expired', note: 'Arrived from a redirect with ?reason=expired. Email is prefilled; after sign-in the user returns to the page they were on.' },
+        { n: 'E', key: 'ratelimited', title: 'Rate-limited', note: 'After 5 failed attempts. Sign in is disabled and the countdown ticks down live; fields stay editable.' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

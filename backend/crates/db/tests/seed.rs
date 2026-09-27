@@ -45,9 +45,9 @@ async fn seed_is_idempotent(pool: PgPool) {
 
     assert_eq!(count(&pool, "customers").await, 15);
     assert_eq!(count(&pool, "admins").await, 2);
-    assert_eq!(count(&pool, "orders").await, 18);
-    assert_eq!(count(&pool, "order_items").await, 19);
-    assert_eq!(count(&pool, "refund_requests").await, 3);
+    assert_eq!(count(&pool, "orders").await, 23);
+    assert_eq!(count(&pool, "order_items").await, 26);
+    assert_eq!(count(&pool, "refund_requests").await, 4);
     assert_eq!(count(&pool, "policy_versions").await, 1);
 }
 
@@ -95,14 +95,14 @@ async fn reseed_refreshes_relative_dates(pool: PgPool) {
         .unwrap();
     seed::run(&db, DEFAULT_POLICY).await.unwrap();
     let age_days: f64 = sqlx::query_scalar(
-        "SELECT extract(epoch FROM now() - delivered_at)::float8 / 86400 FROM orders WHERE ref = 'ORD-1001'",
+        "SELECT extract(epoch FROM now() - delivered_at)::float8 / 86400 FROM orders WHERE ref = 'ORD-10437'",
     )
     .fetch_one(&pool)
     .await
     .unwrap();
     assert!(
-        (age_days - 9.0).abs() < 0.01,
-        "ORD-1001 should be delivered 9 days ago, got {age_days}"
+        (age_days - 3.0).abs() < 0.01,
+        "ORD-10437 should be delivered 3 days ago, got {age_days}"
     );
 }
 
@@ -110,11 +110,12 @@ async fn reseed_refreshes_relative_dates(pool: PgPool) {
 async fn demo_password_verifies(pool: PgPool) {
     use argon2::password_hash::{PasswordVerifier, phc::PasswordHash};
     seed::run(&Db(pool.clone()), DEFAULT_POLICY).await.unwrap();
-    let hash: String =
-        sqlx::query_scalar("SELECT password_hash FROM customers WHERE email = 'alice@example.com'")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let hash: String = sqlx::query_scalar(
+        "SELECT password_hash FROM customers WHERE email = 'amara.okafor@example.com'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
     let parsed = PasswordHash::new(&hash).unwrap();
     assert!(
         argon2::Argon2::default()

@@ -351,6 +351,7 @@ fn denial_outranks_review_when_both_fire() {
 fn rule_order_never_changes_the_decision() {
     let busy = with(|f| {
         item(f).final_sale = true;
+        item(f).category = "Accessories".into();
         item(f).amount_cents = 60_000;
         f.order.as_mut().unwrap().delivered_at = Some(days_ago(45));
         f.claims.contradictory_statements = true;
@@ -368,7 +369,7 @@ fn rule_order_never_changes_the_decision() {
     });
     let base = default_policy();
     let expected = decide(&base, &busy);
-    assert_eq!(expected.fired.len(), 7, "every rule and fail_closed fire");
+    assert_eq!(expected.fired.len(), 8, "every rule and fail_closed fire");
 
     let mut count = 0;
     for_each_permutation(&mut base.rules.clone(), 0, &mut |rules| {
@@ -378,7 +379,7 @@ fn rule_order_never_changes_the_decision() {
         assert_eq!(decide(&shuffled, &busy), expected);
         count += 1;
     });
-    assert_eq!(count, 720);
+    assert_eq!(count, 5040);
 }
 
 fn for_each_permutation<T: Clone>(items: &mut [T], k: usize, f: &mut impl FnMut(&[T])) {

@@ -86,17 +86,37 @@ string_enum! {
 }
 
 string_enum! {
-    pub enum MessageRole {
-        Customer = "customer",
-        Assistant = "assistant",
+    /// How far along an order is: a product that arrived, a booking or pass
+    /// already used, a booking that starts later, or a plan still running.
+    pub enum Fulfilment {
+        Delivered = "delivered",
+        Used = "used",
+        Confirmed = "confirmed",
+        Active = "active",
     }
 }
 
 string_enum! {
+    /// `Admin` carries an admin's decision to the customer; `System` is a note
+    /// such as "You disputed this decision".
+    pub enum MessageRole {
+        Customer = "customer",
+        Assistant = "assistant",
+        Admin = "admin",
+        System = "system",
+    }
+}
+
+string_enum! {
+    /// The last three file no request: the item already has one (said where it
+    /// stands), the customer needs nothing else, or the message was off-topic.
     pub enum AssistantKind {
         Clarify = "clarify",
         Verdict = "verdict",
         Holding = "holding",
+        ExistingRequest = "existing_request",
+        Closing = "closing",
+        Redirect = "redirect",
     }
 }
 
@@ -141,15 +161,24 @@ mod tests {
     use super::*;
     use std::str::FromStr;
 
-    const MIGRATION: &str = include_str!("../../../migrations/0001_initial.sql");
+    /// Oldest first. A later migration that redefines a CHECK replaces it.
+    const MIGRATIONS: &[&str] = &[
+        include_str!("../../../migrations/0001_initial.sql"),
+        include_str!("../../../migrations/0002_assistant_scope.sql"),
+        include_str!("../../../migrations/0003_disputes.sql"),
+        include_str!("../../../migrations/0004_test_orders.sql"),
+    ];
 
-    /// The quoted values of the first `CHECK (<column> IN (...))` in the migration.
+    /// The quoted values of the first `CHECK (<column> IN (...))` in the newest
+    /// migration that has one.
     fn check_values(column: &str) -> Vec<String> {
         let needle = format!("CHECK ({column} IN");
-        let at = MIGRATION
-            .find(&needle)
-            .unwrap_or_else(|| panic!("no `{needle}` in migration"));
-        let rest = &MIGRATION[at + needle.len()..];
+        let (sql, at) = MIGRATIONS
+            .iter()
+            .rev()
+            .find_map(|sql| sql.find(&needle).map(|at| (sql, at)))
+            .unwrap_or_else(|| panic!("no `{needle}` in migrations"));
+        let rest = &sql[at + needle.len()..];
         let open = rest.find('(').unwrap();
         let close = rest.find(')').unwrap();
         rest[open + 1..close]
@@ -176,6 +205,7 @@ mod tests {
         assert_eq!(strings(RequestState::ALL), check_values("state"));
         assert_eq!(strings(OrderStatus::ALL), check_values("status"));
         assert_eq!(strings(MessageRole::ALL), check_values("role"));
+        assert_eq!(strings(Fulfilment::ALL), check_values("fulfilment"));
         assert_eq!(strings(AssistantKind::ALL), check_values("assistant_kind"));
         assert_eq!(
             strings(ReasonCategory::ALL),

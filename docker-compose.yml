@@ -30,6 +30,8 @@ services:
       AI_RESPONDER_EFFORT: ${AI_RESPONDER_EFFORT:-}
       AI_REVIEW_MODEL: ${AI_REVIEW_MODEL:-}
       AI_REVIEW_EFFORT: ${AI_REVIEW_EFFORT:-}
+      AI_NOTICE_MODEL: ${AI_NOTICE_MODEL:-}
+      AI_NOTICE_EFFORT: ${AI_NOTICE_EFFORT:-}
       AI_FALLBACK_MODEL: ${AI_FALLBACK_MODEL:-}
       RUST_LOG: ${RUST_LOG:-info,sqlx=warn}
     ports:
@@ -39,6 +41,24 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      # Server-side only: the browser talks to the BFF, never to the API.
+      BACKEND_URL: http://backend:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/login >/dev/null || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 30

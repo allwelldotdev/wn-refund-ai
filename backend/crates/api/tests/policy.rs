@@ -11,6 +11,7 @@ fn default_rules() -> Value {
     serde_json::from_str(api::DEFAULT_POLICY_JSON).unwrap()
 }
 
+/// Sets the all-scope refund window, rule 2 in the default policy (14 days).
 fn rules_with_window(days: i64) -> Value {
     let mut rules = default_rules();
     rules["rules"][1]["days"] = days.into();
@@ -20,7 +21,7 @@ fn rules_with_window(days: i64) -> Value {
 #[sqlx::test(migrations = "../../migrations")]
 async fn customers_read_the_rendered_policy_but_not_admin_routes(pool: PgPool) {
     let app = TestApp::new(pool).await;
-    let token = app.login("alice@example.com").await;
+    let token = app.login("amara.okafor@example.com").await;
     let res = app.get("/api/policy", &token).await;
     assert_eq!(res.status, StatusCode::OK);
     assert_eq!(res.json(), json!({ "version": 1, "prose": POLICY_MD }));
@@ -43,7 +44,7 @@ async fn customers_read_the_rendered_policy_but_not_admin_routes(pool: PgPool) {
 #[sqlx::test(migrations = "../../migrations")]
 async fn admin_edits_then_reverts(pool: PgPool) {
     let app = TestApp::new(pool).await;
-    let admin = app.login("admin@example.com").await;
+    let admin = app.login("ngozi.adeyemi@worknoon.example").await;
     let current = app.get("/api/admin/policy/current", &admin).await.json();
     assert_eq!(current["version"]["version"], 1);
     assert_eq!(current["version"]["author_kind"], "system");
@@ -55,17 +56,17 @@ async fn admin_edits_then_reverts(pool: PgPool) {
         .post(
             "/api/admin/policy/versions",
             &admin,
-            json!({ "base_version_id": v1_id, "rules": rules_with_window(14), "change_note": " Holiday rules " }),
+            json!({ "base_version_id": v1_id, "rules": rules_with_window(30), "change_note": " Holiday rules " }),
         )
         .await;
     assert_eq!(res.status, StatusCode::CREATED);
     let v2 = res.json();
     assert_eq!(v2["version"]["version"], 2);
-    assert_eq!(v2["version"]["author_name"], "Sam Admin");
+    assert_eq!(v2["version"]["author_name"], "Ngozi Adeyemi");
     assert_eq!(v2["version"]["change_note"], "Holiday rules");
-    assert!(v2["prose"].as_str().unwrap().contains("within 14 days"));
+    assert!(v2["prose"].as_str().unwrap().contains("within 30 days"));
 
-    let customer = app.login("alice@example.com").await;
+    let customer = app.login("amara.okafor@example.com").await;
     assert_eq!(app.get("/api/policy", &customer).await.json()["version"], 2);
 
     let res = app
@@ -100,7 +101,7 @@ async fn admin_edits_then_reverts(pool: PgPool) {
 #[sqlx::test(migrations = "../../migrations")]
 async fn stale_no_op_invalid_and_missing_versions(pool: PgPool) {
     let app = TestApp::new(pool).await;
-    let admin = app.login("admin@example.com").await;
+    let admin = app.login("ngozi.adeyemi@worknoon.example").await;
     let v1_id = app.get("/api/admin/policy/current", &admin).await.json()["version"]["id"].clone();
     let create = |rules: Value, base: &Value| json!({ "base_version_id": base, "rules": rules });
 
@@ -120,7 +121,7 @@ async fn stale_no_op_invalid_and_missing_versions(pool: PgPool) {
         .post(
             "/api/admin/policy/versions",
             &admin,
-            create(rules_with_window(14), &v1_id),
+            create(rules_with_window(30), &v1_id),
         )
         .await;
     assert_eq!(res.status, StatusCode::CREATED);
@@ -136,7 +137,7 @@ async fn stale_no_op_invalid_and_missing_versions(pool: PgPool) {
     let body = res.json();
     assert_eq!(body["error"]["code"], "stale_base");
     assert_eq!(body["error"]["latest"]["version"]["version"], 2);
-    assert_eq!(body["error"]["latest"]["rules"], rules_with_window(14));
+    assert_eq!(body["error"]["latest"]["rules"], rules_with_window(30));
 
     let res = app
         .post(
@@ -182,12 +183,13 @@ async fn stale_no_op_invalid_and_missing_versions(pool: PgPool) {
 #[sqlx::test(migrations = "../../migrations")]
 async fn preview_renders_without_saving(pool: PgPool) {
     let app = TestApp::new(pool).await;
-    let admin = app.login("ops@example.com").await;
+    let admin = app.login("sam.whitfield@worknoon.example").await;
+    assert!(!POLICY_MD.contains("within 10 days"));
     let res = app
         .post(
             "/api/admin/policy/preview",
             &admin,
-            json!({ "rules": rules_with_window(7) }),
+            json!({ "rules": rules_with_window(10) }),
         )
         .await;
     assert_eq!(res.status, StatusCode::OK);
@@ -195,7 +197,7 @@ async fn preview_renders_without_saving(pool: PgPool) {
         res.json()["prose"]
             .as_str()
             .unwrap()
-            .contains("within 7 days")
+            .contains("within 10 days")
     );
     let versions = app.get("/api/admin/policy/versions", &admin).await.json();
     assert_eq!(versions.as_array().unwrap().len(), 1);

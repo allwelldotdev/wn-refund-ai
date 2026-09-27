@@ -46,8 +46,8 @@ test: ## Backend tests (database tests use the compose postgres)
 redteam: ## Red-team suite against the live model (available from milestone 7)
 	@echo "Red-team suite is added in milestone 7." && exit 1
 
-check: ## fmt, clippy -D warnings, tests; tsc + eslint once the frontend exists
+check: ## fmt, clippy -D warnings, tests; frontend tsc, eslint and unit tests
 	cd backend && cargo fmt --all -- --check
 	cd backend && cargo clippy --workspace --all-targets -- -D warnings
 	$(MAKE) test
-	@if [ -d frontend ]; then cd frontend && npx tsc --noEmit && npm run lint; fi
+	cd frontend && { [ -d node_modules ] || npm ci --no-audit --no-fund; } && npx tsc --noEmit && npm run lint && npm test

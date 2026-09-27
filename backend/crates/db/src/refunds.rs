@@ -1,5 +1,7 @@
 //! Refund requests, their decision audit, and escalation reviews.
 
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use domain::engine::{Facts, FiredRule, PriorClaim};
 use domain::intake::IntakeOutput;
@@ -167,6 +169,93 @@ pub async fn find_request_for_conversation(
     .transpose()
 }
 
+/// A conversation's request as a dispute sees it, row-locked until commit.
+pub struct DisputeTarget {
+    pub id: Uuid,
+    pub state: RequestState,
+    pub disputed_at: Option<DateTime<Utc>>,
+    /// The admin setting, read at dispute time.
+    pub allow_disputes: bool,
+}
+
+pub async fn lock_for_dispute(
+    conn: &mut PgConnection,
+    conversation_id: Uuid,
+) -> Result<Option<DisputeTarget>, DbError> {
+    let r = sqlx::query!(
+        r#"SELECT id, state, disputed_at,
+                  (SELECT allow_disputes FROM app_settings) AS "allow_disputes!"
+           FROM refund_requests WHERE conversation_id = $1
+           FOR UPDATE"#,
+        conversation_id,
+    )
+    .fetch_optional(&mut *conn)
+    .await?;
+    r.map(|r| {
+        Ok(DisputeTarget {
+            id: r.id,
+            state: parse_enum(&r.state)?,
+            disputed_at: r.disputed_at,
+            allow_disputes: r.allow_disputes,
+        })
+    })
+    .transpose()
+}
+
+/// Back to a person: escalated with `disputed_at`, a `disputed` event and a
+/// pending review. The decision audit is left as it was.
+pub async fn mark_disputed(conn: &mut PgConnection, request_id: Uuid) -> Result<(), DbError> {
+    sqlx::query!(
+        "UPDATE refund_requests SET state = 'escalated', disputed_at = now() WHERE id = $1",
+        request_id,
+    )
+    .execute(&mut *conn)
+    .await?;
+    sqlx::query!(
+        "INSERT INTO request_events (refund_request_id, kind, actor_kind)
+         VALUES ($1, 'disputed', 'customer')",
+        request_id,
+    )
+    .execute(&mut *conn)
+    .await?;
+    sqlx::query!(
+        "INSERT INTO escalation_reviews (refund_request_id, status) VALUES ($1, 'pending')",
+        request_id,
+    )
+    .execute(&mut *conn)
+    .await?;
+    Ok(())
+}
+
+/// The newest request for each of the customer's items that has one, in any
+/// state, keyed by order item id.
+pub async fn item_requests(
+    db: &Db,
+    customer_id: Uuid,
+) -> Result<HashMap<Uuid, domain::intake::ExistingRequest>, DbError> {
+    let rows = sqlx::query!(
+        r#"SELECT DISTINCT ON (order_item_id)
+                  order_item_id AS "order_item_id!", ref, state,
+                  COALESCE(resolved_at, created_at) AS "decided_at!"
+           FROM refund_requests
+           WHERE customer_id = $1 AND order_item_id IS NOT NULL
+           ORDER BY order_item_id, created_at DESC"#,
+        customer_id,
+    )
+    .fetch_all(&db.0)
+    .await?;
+    rows.into_iter()
+        .map(|r| {
+            let request = domain::intake::ExistingRequest {
+                request_ref: r.r#ref,
+                state: parse_enum(&r.state)?,
+                decided_at: r.decided_at,
+            };
+            Ok((r.order_item_id, request))
+        })
+        .collect()
+}
+
 /// The customer's other requests, in any state, dated by creation.
 pub async fn prior_claims(
     db: &Db,
@@ -195,6 +284,7 @@ pub async fn prior_claims(
 /// What the review model is shown for a pending escalation.
 pub struct ReviewCase {
     pub request_ref: String,
+    pub disputed_at: Option<DateTime<Utc>>,
     pub conversation_id: Uuid,
     pub evaluated_through_seq: i32,
     pub facts: Facts,
@@ -210,7 +300,7 @@ pub async fn pending_review_case(
     refund_request_id: Uuid,
 ) -> Result<Option<ReviewCase>, DbError> {
     let r = sqlx::query!(
-        "SELECT r.ref, r.conversation_id, a.evaluated_through_seq, a.facts, a.extracted,
+        "SELECT r.ref, r.disputed_at, r.conversation_id, a.evaluated_through_seq, a.facts, a.extracted,
                 a.rule_trace, a.flags, p.rules
          FROM refund_requests r
          JOIN escalation_reviews v ON v.refund_request_id = r.id AND v.status = 'pending'
@@ -224,6 +314,7 @@ pub async fn pending_review_case(
     r.map(|r| {
         Ok(ReviewCase {
             request_ref: r.r#ref,
+            disputed_at: r.disputed_at,
             conversation_id: r.conversation_id,
             evaluated_through_seq: r.evaluated_through_seq,
             facts: from_json(r.facts)?,

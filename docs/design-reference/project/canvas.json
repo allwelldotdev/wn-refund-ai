@@ -1,0 +1,464 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Admin.dc.html": {
+      "h": 960,
+      "is_interactive": true,
+      "page": "admin",
+      "title": "Overview — desktop",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "AdminEscDialog.dc.html": {
+      "h": 960,
+      "is_interactive": true,
+      "page": "admin",
+      "title": "Escalations — deny dialog, note too short",
+      "w": 1440,
+      "x": 4560,
+      "y": 0
+    },
+    "AdminEscalations.dc.html": {
+      "h": 960,
+      "is_interactive": true,
+      "page": "admin",
+      "title": "Escalations — AI review drafts (ready, drafting, failed)",
+      "w": 1440,
+      "x": 3040,
+      "y": 0
+    },
+    "AdminMobile.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "page": "admin",
+      "title": "Mobile — Overview",
+      "w": 390,
+      "x": 1104,
+      "y": 2760
+    },
+    "AdminMobileDrawer.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "page": "admin",
+      "title": "Mobile — request detail sheet",
+      "w": 390,
+      "x": 1574,
+      "y": 2760
+    },
+    "AdminMobileEsc.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "page": "admin",
+      "title": "Mobile — Escalations",
+      "w": 390,
+      "x": 2044,
+      "y": 2760
+    },
+    "AdminMobilePolicy.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "page": "admin",
+      "title": "Mobile — policy edit, Preview tab",
+      "w": 390,
+      "x": 2514,
+      "y": 2760
+    },
+    "AdminPolicy.dc.html": {
+      "h": 960,
+      "is_interactive": true,
+      "page": "admin",
+      "title": "Policy — current version, Rules tab",
+      "w": 1440,
+      "x": 0,
+      "y": 1380
+    },
+    "AdminPolicyConflict.dc.html": {
+      "h": 960,
+      "is_interactive": true,
+      "page": "admin",
+      "title": "Policy — edit, newer version conflict",
+      "w": 1440,
+      "x": 4560,
+      "y": 1380
+    },
+    "AdminPolicyEdit.dc.html": {
+      "h": 960,
+      "is_interactive": true,
+      "page": "admin",
+      "title": "Policy — edit, no changes (Save disabled)",
+      "w": 1440,
+      "x": 7600,
+      "y": 1380
+    },
+    "AdminPolicyErrors.dc.html": {
+      "h": 960,
+      "is_interactive": true,
+      "page": "admin",
+      "title": "Policy — edit, validation errors (submitted)",
+      "w": 1440,
+      "x": 3040,
+      "y": 1380
+    },
+    "AdminPolicyRevert.dc.html": {
+      "h": 960,
+      "is_interactive": true,
+      "page": "admin",
+      "title": "Policy — viewing v5 (reverted from v3) + revert dialog",
+      "w": 1440,
+      "x": 1520,
+      "y": 1380
+    },
+    "AdminPolicyText.dc.html": {
+      "h": 960,
+      "is_interactive": true,
+      "page": "admin",
+      "title": "Policy — Policy text tab (generated)",
+      "w": 1440,
+      "x": 6080,
+      "y": 1380
+    },
+    "AdminRequests.dc.html": {
+      "h": 960,
+      "is_interactive": true,
+      "page": "admin",
+      "title": "Requests — filters, LLM error flag + drawer with timeline (REQ-5902)",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    },
+    "AdminSettings.dc.html": {
+      "h": 960,
+      "is_interactive": true,
+      "page": "admin",
+      "title": "Settings — customer disputes toggle",
+      "w": 1440,
+      "x": 6580,
+      "y": 0
+    },
+    "AdminStates.dc.html": {
+      "h": 2280,
+      "is_interactive": true,
+      "page": "admin",
+      "title": "Loading, empty and error — per section",
+      "w": 4856,
+      "x": 0,
+      "y": 4024
+    },
+    "AdminTablet.dc.html": {
+      "h": 768,
+      "is_interactive": true,
+      "page": "admin",
+      "title": "Tablet 1024 — Requests",
+      "w": 1024,
+      "x": 0,
+      "y": 2760
+    },
+    "ChatPanel.dc.html": {
+      "h": 600,
+      "is_interactive": true,
+      "page": "customer",
+      "title": "Chat widget — component (live)",
+      "w": 400,
+      "x": 0,
+      "y": 1320
+    },
+    "ChatStates.dc.html": {
+      "h": 2408,
+      "is_interactive": true,
+      "page": "customer",
+      "title": "Chat widget — states A–O",
+      "w": 2800,
+      "x": 480,
+      "y": 1320
+    },
+    "Components.dc.html": {
+      "h": 2520,
+      "is_interactive": true,
+      "page": "design-system",
+      "title": "02 Controls — button, badge, fields, tabs",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    },
+    "Customer.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "customer",
+      "title": "My orders — desktop, chat closed",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "CustomerAddOrder.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "customer",
+      "title": "Add order (demo) — date picker open",
+      "w": 1440,
+      "x": 4460,
+      "y": 0
+    },
+    "CustomerAddOrderErrors.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "customer",
+      "title": "Add order (demo) — validation errors, Active period ended",
+      "w": 1440,
+      "x": 5980,
+      "y": 0
+    },
+    "CustomerMobile.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "page": "customer",
+      "title": "Mobile — orders",
+      "w": 390,
+      "x": 3040,
+      "y": 0
+    },
+    "CustomerMobileAddOrder.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "page": "customer",
+      "title": "Mobile — Add order, filled",
+      "w": 390,
+      "x": 7500,
+      "y": 0
+    },
+    "CustomerMobileChat.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "page": "customer",
+      "title": "Mobile — chat sheet",
+      "w": 390,
+      "x": 3510,
+      "y": 0
+    },
+    "CustomerOpen.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "customer",
+      "title": "My orders — desktop, chat open",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    },
+    "Data.dc.html": {
+      "h": 2700,
+      "page": "design-system",
+      "title": "04 Table & overlays — table, drawer, dialog",
+      "w": 1440,
+      "x": 4560,
+      "y": 0
+    },
+    "Feedback.dc.html": {
+      "h": 2060,
+      "page": "design-system",
+      "title": "03 Surfaces & feedback — card, toast, empty, skeleton",
+      "w": 1440,
+      "x": 3040,
+      "y": 0
+    },
+    "Login.dc.html": {
+      "h": 1720,
+      "is_interactive": true,
+      "page": "sign-in",
+      "title": "Sign in — desktop (interactive)",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "LoginMobile.dc.html": {
+      "h": 2240,
+      "is_interactive": true,
+      "page": "sign-in",
+      "title": "Sign in — mobile 390 (interactive)",
+      "w": 390,
+      "x": 1520,
+      "y": 0
+    },
+    "LoginStates.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "page": "sign-in",
+      "title": "Sign-in card — states A–E",
+      "w": 2552,
+      "x": 0,
+      "y": 2660
+    },
+    "Main.dc.html": {
+      "h": 3260,
+      "page": "design-system",
+      "title": "01 Foundations — tokens",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-09-23T22:30:21Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "page": "sign-in",
+    "view": "canvas"
+  },
+  "notes": {
+    "adminNotes": {
+      "fill": "gray",
+      "maxH": 1200,
+      "page": "admin",
+      "text": "Build notes — admin\n\n• Shell: CSS grid [nav | main], h-dvh. ≥1280 full nav (248px); 768–1279 icon rail (84px); <768 bottom tab bar + safe-area padding.\n• Tables: <table> with caption; tablet drops Order + Reason columns; mobile switches to card lists. Rows are clickable, but the reference is the real <button> for keyboard users.\n• Drawer: role=dialog aria-modal, focus trap, Esc closes, focus returns to the row. 600px desktop, 560px tablet, full-screen sheet on mobile.\n• Customer messages: every message renders as a text node only (never innerHTML/markdown), oldest first, with assistant replies muted in between. Tags: 'Used in decision' / 'After decision' / 'Not yet reviewed'. Threads over 4 entries show first + last 2 with 'Show N earlier'. Attachments are file chips, never previews. Injection matches are underlined + tinted AND explained in words, with the message number.\n• Escalation decisions: note ≥10 chars, confirm dialog, then log {by, at, note}. Cancel is the default focus.\n• Policy = typed rules (5 fixed kinds, scoped Refund window). Prose is generated from rules, never edited. Hash = digest of the normalized rules.\n• Validation runs client + server; field errors inline, summary on submit. Duplicate kind+scope is invalid on the later card.\n• Saves use optimistic concurrency (If-Match: base version) → 409 shows the conflict banner and keeps the draft.\n• Revert = new version copying the old rules, marked 'Reverted from vX'; history is append-only.\n• AI review drafts are advisory, generated in the background after the customer is answered; failures never block a decision.\n• Model name on the drawer is a placeholder — show whatever the backend logs.\n• Settings → Customer disputes: role=switch with aria-checked, label + description linked. Server-side flag, read at dispute time; turning it off doesn't cancel disputes already sent.\n• Disputed requests: Escalated with a 'Disputed' flag and 'Customer dispute' escalation reason; the timeline adds a Disputed step. Admin-decided requests show 'Approved/Denied after review'.",
+      "w": 420,
+      "x": 6080,
+      "y": 0
+    },
+    "adminPolicyTitle": {
+      "kind": "title1",
+      "maxW": 8000,
+      "page": "admin",
+      "text": "Admin — Policy",
+      "w": 240,
+      "x": 0,
+      "y": 1080
+    },
+    "adminResponsiveTitle": {
+      "kind": "title1",
+      "maxW": 2904,
+      "page": "admin",
+      "text": "Tablet and mobile",
+      "w": 240,
+      "x": 0,
+      "y": 2460
+    },
+    "adminStatesTitle": {
+      "kind": "title1",
+      "maxW": 4856,
+      "page": "admin",
+      "text": "Section states",
+      "w": 240,
+      "x": 0,
+      "y": 3724
+    },
+    "adminTitle": {
+      "kind": "title1",
+      "maxW": 8000,
+      "page": "admin",
+      "text": "Admin — Overview, Requests, Escalations, Settings",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "buildNotes": {
+      "fill": "gray",
+      "maxH": 1400,
+      "page": "customer",
+      "text": "Build notes\n\n• Page shell: min-h-dvh (100dvh), never 100vh.\n• Launcher: fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))]; right-6 bottom-6 on desktop.\n• Desktop panel: fixed, 400×600 (max-h: calc(100dvh-3rem)), shadow-lg, rounded-xl.\n• Mobile (<640px): fixed inset-0 h-dvh sheet; pad with env(safe-area-inset-*). Needs viewport-fit=cover in the viewport meta.\n• Esc closes; focus returns to the launcher (or the order's help link).\n• 'Get help with this order' opens the widget with that order preselected; a new order starts a new thread.\n• Thread is role=log aria-live=polite; verdict cards are <article> with the ref ID in the header.\n• Composer: 16px font on mobile so iOS doesn't zoom; soft 500-char limit.\n• Verdict card renders badge + ref first; explanation streams (aria-busy on the card until done, so screen readers get it once).\n• Automatic-review failure → normal Escalated card; never an error to the customer.\n• Once a request is decided (Approved / Denied, automatic or after review) or in progress, its order chip is marked with that status and can't be picked; the marker opens the request. In My orders the row's link becomes 'View refund request' and opens that request's read-only chat. Chat and table share one session list of requests.\n• Pointer cursor on every enabled button, link, select, tab and label; not-allowed on disabled controls.\n• Answered requests close: after Approved or Denied the composer is replaced by a full-width 'Start new request' button. Escalated stays open so the customer can add details.\n• Your requests: each card opens a read-only transcript (no composer). Labels: Approved / Denied (automatic), Approved after review / Denied after review (admin).\n• Dispute: only for automatic denials, only when the admin setting is on, once per request, with a confirm step. It moves the request to Escalations. Admin decisions are final — no dispute option.\n• Add order (demo only): order number is next in sequence and read-only; dates use one accessible date picker (grid, arrow keys, Enter, Esc); catalog has 3 categories + search; total is computed; status Delivered (delivery date), Used (= order date), Confirmed (start date) or Active (since order date + duration). Suggests a status from the items and previews the likely decision. Added orders are tagged Test and work in the chat.\n• My orders: 10 per page, Previous/Next + page numbers; adding a test order jumps to page 1.\n• Chat order chips: only orders inside the refund window; first 5, 'Show N more' up to 8, then a hint to type any other order number (lookup still hits every order).\n• Picking an order with an earlier decided item shows that request's history and status inline, plus a note that the rest of the order can still be requested.\n• Thread auto-scrolls on every new message, streamed token and status change (instant scroll, no smooth animation).",
+      "w": 400,
+      "x": 3980,
+      "y": 0
+    },
+    "chatTitle": {
+      "kind": "title1",
+      "maxW": 3280,
+      "page": "customer",
+      "text": "Chat widget",
+      "w": 240,
+      "x": 0,
+      "y": 1020
+    },
+    "customerTitle": {
+      "kind": "title1",
+      "maxW": 7900,
+      "page": "customer",
+      "text": "Customer — My orders + help chat",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "signinTitle": {
+      "kind": "title1",
+      "maxW": 1910,
+      "page": "sign-in",
+      "text": "Sign in — homepage",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "statesTitle": {
+      "kind": "title1",
+      "maxW": 2552,
+      "page": "sign-in",
+      "text": "Sign-in states",
+      "w": 240,
+      "x": 0,
+      "y": 2400
+    },
+    "title": {
+      "kind": "title1",
+      "maxW": 6000,
+      "page": "design-system",
+      "text": "Worknoon Support — Design System v0.1",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Components.dc.html",
+    "Feedback.dc.html",
+    "Data.dc.html",
+    "Login.dc.html",
+    "LoginMobile.dc.html",
+    "LoginStates.dc.html",
+    "Customer.dc.html",
+    "CustomerOpen.dc.html",
+    "CustomerMobile.dc.html",
+    "CustomerMobileChat.dc.html",
+    "CustomerAddOrder.dc.html",
+    "CustomerAddOrderErrors.dc.html",
+    "CustomerMobileAddOrder.dc.html",
+    "ChatPanel.dc.html",
+    "ChatStates.dc.html",
+    "Admin.dc.html",
+    "AdminRequests.dc.html",
+    "AdminEscalations.dc.html",
+    "AdminEscDialog.dc.html",
+    "AdminSettings.dc.html",
+    "AdminPolicy.dc.html",
+    "AdminPolicyRevert.dc.html",
+    "AdminPolicyErrors.dc.html",
+    "AdminPolicyConflict.dc.html",
+    "AdminPolicyText.dc.html",
+    "AdminPolicyEdit.dc.html",
+    "AdminTablet.dc.html",
+    "AdminMobile.dc.html",
+    "AdminMobileDrawer.dc.html",
+    "AdminMobileEsc.dc.html",
+    "AdminMobilePolicy.dc.html",
+    "AdminStates.dc.html"
+  ],
+  "pages": [
+    {
+      "id": "design-system",
+      "name": "design system"
+    },
+    {
+      "id": "sign-in",
+      "name": "Sign in"
+    },
+    {
+      "id": "customer",
+      "name": "Customer"
+    },
+    {
+      "id": "admin",
+      "name": "Admin"
+    }
+  ],
+  "title": "Worknoon Support — Design System"
+}

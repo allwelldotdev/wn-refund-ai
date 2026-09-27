@@ -48,6 +48,7 @@ async fn main() -> anyhow::Result<()> {
         intake = %ai.intake.model,
         responder = %ai.responder.model,
         review = %ai.review.model,
+        notice = %ai.notice.model,
         fallback = %ai.fallback_model,
         "LLM provider: OpenRouter"
     );
@@ -56,6 +57,7 @@ async fn main() -> anyhow::Result<()> {
         assistant: Arc::new(assistant),
         ai: Arc::new(config.ai),
         rate: RateLimiter::default(),
+        login_throttle: Default::default(),
     };
 
     tokio::spawn(api::review_job::sweep_pending(state.clone()));

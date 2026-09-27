@@ -2,7 +2,7 @@
 //! rows, and the final human decision on escalations.
 
 use chrono::{DateTime, Utc};
-use domain::types::{AssistantKind, MessageRole, ReasonCategory, RequestState, SignalScope};
+use domain::types::{AssistantKind, Flag, MessageRole, ReasonCategory, RequestState, SignalScope};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use uuid::Uuid;
@@ -15,6 +15,13 @@ pub struct ListFilter {
     /// Matched case-insensitively against request ref, customer name and
     /// email, and order ref.
     pub q: Option<String>,
+    /// Only requests created at or after this instant.
+    pub since: Option<DateTime<Utc>>,
+    /// Each group is a set of flag names; a request matches when its decision
+    /// audit carries at least one flag from every group.
+    pub flag_groups: Vec<Vec<Flag>>,
+    /// Only requests a customer disputed.
+    pub disputed: bool,
     pub limit: i64,
     pub offset: i64,
 }
@@ -34,6 +41,58 @@ pub struct ListItem {
     pub review_status: Option<String>,
     pub created_at: DateTime<Utc>,
     pub resolved_at: Option<DateTime<Utc>>,
+    pub disputed_at: Option<DateTime<Utc>>,
+}
+
+/// Counts for the admin overview. `created` covers requests created at or
+/// after `since`, by their current state; the open-escalation figures cover
+/// every request still waiting for an admin.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct Stats {
+    pub since: DateTime<Utc>,
+    pub created: CreatedCounts,
+    pub open_escalations: i64,
+    pub oldest_open_escalation_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct CreatedCounts {
+    pub total: i64,
+    pub approved: i64,
+    pub denied: i64,
+    pub escalated: i64,
+    pub resolved_approved: i64,
+    pub resolved_denied: i64,
+}
+
+pub async fn stats(db: &Db, since: DateTime<Utc>) -> Result<Stats, DbError> {
+    let r = sqlx::query!(
+        r#"SELECT count(*) FILTER (WHERE created_at >= $1) AS "total!",
+                  count(*) FILTER (WHERE created_at >= $1 AND state = 'approved') AS "approved!",
+                  count(*) FILTER (WHERE created_at >= $1 AND state = 'denied') AS "denied!",
+                  count(*) FILTER (WHERE created_at >= $1 AND state = 'escalated') AS "escalated!",
+                  count(*) FILTER (WHERE created_at >= $1 AND state = 'resolved_approved') AS "resolved_approved!",
+                  count(*) FILTER (WHERE created_at >= $1 AND state = 'resolved_denied') AS "resolved_denied!",
+                  count(*) FILTER (WHERE state = 'escalated') AS "open_escalations!",
+                  min(created_at) FILTER (WHERE state = 'escalated') AS oldest_open_escalation_at
+           FROM refund_requests"#,
+        since,
+    )
+    .fetch_one(&db.0)
+    .await?;
+    Ok(Stats {
+        since,
+        created: CreatedCounts {
+            total: r.total,
+            approved: r.approved,
+            denied: r.denied,
+            escalated: r.escalated,
+            resolved_approved: r.resolved_approved,
+            resolved_denied: r.resolved_denied,
+        },
+        open_escalations: r.open_escalations,
+        oldest_open_escalation_at: r.oldest_open_escalation_at,
+    })
 }
 
 /// `%`, `_` and `\` in the search text match literally.
@@ -53,23 +112,43 @@ pub async fn list_requests(db: &Db, f: &ListFilter) -> Result<(Vec<ListItem>, i6
             .map(str::trim)
             .filter(|q| !q.is_empty())
             .map(like_pattern);
+    // One comma-joined string per group keeps the query static.
+    let groups: Vec<String> = f
+        .flag_groups
+        .iter()
+        .map(|g| {
+            g.iter()
+                .map(|flag| flag.as_str())
+                .collect::<Vec<_>>()
+                .join(",")
+        })
+        .collect();
     let total = sqlx::query_scalar!(
         r#"SELECT count(*) AS "total!"
            FROM refund_requests r
            JOIN customers c ON c.id = r.customer_id
            LEFT JOIN orders o ON o.id = r.order_id
+           LEFT JOIN decision_audit a ON a.refund_request_id = r.id
            WHERE ($1::text IS NULL OR r.state = $1)
              AND ($2::text IS NULL OR r.ref ILIKE $2 OR c.name ILIKE $2
-                  OR c.email ILIKE $2 OR o.ref ILIKE $2)"#,
+                  OR c.email ILIKE $2 OR o.ref ILIKE $2)
+             AND ($3::timestamptz IS NULL OR r.created_at >= $3)
+             AND NOT EXISTS (
+                   SELECT 1 FROM unnest($4::text[]) AS g(grp)
+                   WHERE NOT (coalesce(a.flags, '[]'::jsonb) ?| string_to_array(g.grp, ',')))
+             AND (NOT $5 OR r.disputed_at IS NOT NULL)"#,
         state,
         pattern,
+        f.since,
+        &groups,
+        f.disputed,
     )
     .fetch_one(&db.0)
     .await?;
     let rows = sqlx::query!(
         r#"SELECT r.ref, r.state, c.name, c.email, o.ref AS "order_ref?", i.name AS "item_name?",
                   r.amount_cents, r.reason_category, a.flags AS "flags?", v.status AS "review_status?",
-                  r.created_at, r.resolved_at
+                  r.created_at, r.resolved_at, r.disputed_at
            FROM refund_requests r
            JOIN customers c ON c.id = r.customer_id
            LEFT JOIN orders o ON o.id = r.order_id
@@ -79,10 +158,18 @@ pub async fn list_requests(db: &Db, f: &ListFilter) -> Result<(Vec<ListItem>, i6
            WHERE ($1::text IS NULL OR r.state = $1)
              AND ($2::text IS NULL OR r.ref ILIKE $2 OR c.name ILIKE $2
                   OR c.email ILIKE $2 OR o.ref ILIKE $2)
+             AND ($3::timestamptz IS NULL OR r.created_at >= $3)
+             AND NOT EXISTS (
+                   SELECT 1 FROM unnest($4::text[]) AS g(grp)
+                   WHERE NOT (coalesce(a.flags, '[]'::jsonb) ?| string_to_array(g.grp, ',')))
+             AND (NOT $5 OR r.disputed_at IS NOT NULL)
            ORDER BY r.created_at DESC, r.id
-           LIMIT $3 OFFSET $4"#,
+           LIMIT $6 OFFSET $7"#,
         state,
         pattern,
+        f.since,
+        &groups,
+        f.disputed,
         f.limit,
         f.offset,
     )
@@ -104,6 +191,7 @@ pub async fn list_requests(db: &Db, f: &ListFilter) -> Result<(Vec<ListItem>, i6
                 review_status: r.review_status,
                 created_at: r.created_at,
                 resolved_at: r.resolved_at,
+                disputed_at: r.disputed_at,
             })
         })
         .collect::<Result<_, DbError>>()?;
@@ -130,6 +218,7 @@ pub struct RequestInfo {
     pub amount_cents: Option<i64>,
     pub created_at: DateTime<Utc>,
     pub resolved_at: Option<DateTime<Utc>>,
+    pub disputed_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -233,7 +322,7 @@ pub async fn get_request_detail(
 ) -> Result<Option<RequestDetail>, DbError> {
     let Some(r) = sqlx::query!(
         r#"SELECT r.id, r.ref, r.state, r.reason_category, r.amount_cents, r.created_at, r.resolved_at,
-                  r.conversation_id, c.id AS customer_id, c.name, c.email, c.scenario,
+                  r.disputed_at, r.conversation_id, c.id AS customer_id, c.name, c.email, c.scenario,
                   o.ref AS "order_ref?", o.placed_at AS "placed_at?", o.delivered_at,
                   i.name AS "item_name?", i.category AS "category?",
                   i.amount_cents AS "item_amount_cents?", i.final_sale AS "final_sale?"
@@ -379,6 +468,7 @@ pub async fn get_request_detail(
             amount_cents: r.amount_cents,
             created_at: r.created_at,
             resolved_at: r.resolved_at,
+            disputed_at: r.disputed_at,
         },
         customer: CustomerInfo {
             id: r.customer_id,
@@ -458,23 +548,69 @@ pub struct Resolved {
     pub resolved_at: DateTime<Utc>,
 }
 
-/// Escalated → resolved_*, with the admin's note on the review and a
-/// `resolved` event. `NotFound`, `Conflict("not_escalated")`, or
+/// What the resolution notice is written from.
+pub struct NoticeFacts {
+    pub state: RequestState,
+    pub customer_name: String,
+    pub item_name: Option<String>,
+    pub order_ref: Option<String>,
+    pub amount_cents: Option<i64>,
+}
+
+pub async fn notice_facts(db: &Db, request_ref: &str) -> Result<Option<NoticeFacts>, DbError> {
+    let r = sqlx::query!(
+        r#"SELECT r.state AS "state!", c.name AS "customer_name!", i.name AS "item_name?",
+                  o.ref AS "order_ref?", r.amount_cents
+           FROM refund_requests r
+           JOIN customers c ON c.id = r.customer_id
+           LEFT JOIN orders o ON o.id = r.order_id
+           LEFT JOIN order_items i ON i.id = r.order_item_id
+           WHERE r.ref = $1"#,
+        request_ref,
+    )
+    .fetch_optional(&db.0)
+    .await?;
+    r.map(|r| {
+        Ok(NoticeFacts {
+            state: parse_enum(&r.state)?,
+            customer_name: r.customer_name,
+            item_name: r.item_name,
+            order_ref: r.order_ref,
+            amount_cents: r.amount_cents,
+        })
+    })
+    .transpose()
+}
+
+/// The admin's decision, and what the customer is told about it.
+pub struct Resolve<'a> {
+    pub resolution: Resolution,
+    /// Kept for the audit; never shown to the customer as written.
+    pub note: &'a str,
+    /// Posted to the chat as a message from the support team.
+    pub message: &'a str,
+    /// Posted to the chat as a system note.
+    pub summary: &'a str,
+}
+
+/// Escalated → resolved_*, with the admin's note on the review, a `resolved`
+/// event, and the message and summary posted to the customer's chat, all in
+/// one transaction. `NotFound`, `Conflict("not_escalated")`, or
 /// `Conflict("duplicate_active_refund")` when approving an item that already
 /// has an approved refund.
 pub async fn resolve_request(
     db: &Db,
     request_ref: &str,
     admin_id: Uuid,
-    resolution: Resolution,
-    note: &str,
+    r: &Resolve<'_>,
 ) -> Result<Resolved, DbError> {
+    let (resolution, note) = (r.resolution, r.note);
     let state = resolution.state();
     let mut tx = db.0.begin().await?;
     let updated = sqlx::query!(
         "UPDATE refund_requests SET state = $2, resolved_at = now()
          WHERE ref = $1 AND state = 'escalated'
-         RETURNING id, resolved_at AS \"resolved_at!\"",
+         RETURNING id, conversation_id, resolved_at AS \"resolved_at!\"",
         request_ref,
         state.as_str(),
     )
@@ -522,6 +658,9 @@ pub async fn resolve_request(
     )
     .execute(&mut *tx)
     .await?;
+    let chat = updated.conversation_id;
+    crate::messages::insert_note(&mut tx, chat, MessageRole::Admin, r.message).await?;
+    crate::messages::insert_note(&mut tx, chat, MessageRole::System, r.summary).await?;
     tx.commit().await?;
     Ok(Resolved {
         request_ref: request_ref.to_owned(),

@@ -6,32 +6,35 @@
 //! 2. Window pre-scan. Any signal skips intake and fails closed.
 //! 3. Intake (LLM, with one fallback model) extracts claims. Rust then checks
 //!    every id against the customer's own orders and raises flags.
-//! 4. Missing order, item or reason: ask a clarifying question, up to
-//!    `MAX_CLARIFY_TURNS`, then escalate.
+//! 4. A customer who is done, an off-topic message, or an item that already
+//!    has a request gets a reply that files nothing. Otherwise, missing order,
+//!    item or reason: ask a clarifying question, up to `MAX_CLARIFY_TURNS`,
+//!    then escalate. Low confidence waits for the same point: it only
+//!    escalates a complete request or one out of questions.
 //! 5. `domain::engine::decide` returns the verdict. The responder only words it,
 //!    and a reply that names another outcome is rejected.
 //! 6. Request, audit, event and reply commit in one transaction.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::time::{Duration, Instant};
 
 use ai::{AiConfig, AiError, Completed, Stage, StageModel, StageRecord};
 use chrono::{DateTime, Utc};
 use db::DbError;
-use db::conversations::RequestSummary;
 use db::messages::{Message, SignalRow};
 use db::orders::{Order, OrderItem};
 use db::refunds::{NewAudit, NewRefundRequest};
 use domain::engine::{Claims, Facts, ItemFacts, OrderFacts, PriorClaim, decide};
 use domain::intake::{
-    CustomerMessage, IntakeInput, IntakeOutput, IntakeStatus, ItemSummary, LOW_CONFIDENCE,
+    CustomerMessage, ExistingRequest, IntakeInput, IntakeOutput, IntakeStatus, Intent, ItemSummary,
     MAX_CLARIFY_TURNS, MissingField, OrderSummary,
 };
 use domain::prescan::{WindowMessage, prescan_window};
 use domain::prose::render_policy;
 use domain::responder::{
-    ResponderInput, Target, clean_reply, fallback_reply, holding_reply, validate_reply,
+    PriorRequest, ResponderInput, Target, clean_reply, fallback_reply, holding_reply,
+    validate_reply,
 };
 use domain::types::{AssistantKind, Flag, MessageRole, RequestState, SignalScope, Verdict};
 use serde::Serialize;
@@ -186,7 +189,9 @@ pub async fn screen_intake(
     if !intake.injection_signals.is_empty() {
         flags.push(Flag::IntakeInjectionSignal);
     }
-    if intake.confidence.is_nan() || intake.confidence < LOW_CONFIDENCE {
+    // An incomplete request is expected to be unclear; the clarifying
+    // questions deal with it, and `process` adds the flag if they run out.
+    if intake.low_confidence() && missing_fields(orders, intake).is_empty() {
         flags.push(Flag::LowConfidence);
     }
     Ok(flags)
@@ -219,7 +224,38 @@ pub fn missing_fields(orders: &[Order], intake: &IntakeOutput) -> Vec<MissingFie
     missing
 }
 
-fn order_summaries(orders: &[Order]) -> Vec<OrderSummary> {
+/// The reply for a message that files no request, if it is one: the customer
+/// is done, the message is off-topic, or the item it is about already has a
+/// request in any state.
+fn no_request_reply(
+    orders: &[Order],
+    item_requests: &HashMap<Uuid, ExistingRequest>,
+    intake: &IntakeOutput,
+) -> Option<(AssistantKind, ResponderInput)> {
+    match intake.intent {
+        Intent::Finished => return Some((AssistantKind::Closing, ResponderInput::Closing)),
+        Intent::OutOfScope => return Some((AssistantKind::Redirect, ResponderInput::Redirect)),
+        Intent::RefundRequest => {}
+    }
+    let (order, item) = resolve_target(orders, intake)?;
+    let existing = item_requests.get(&item.id)?;
+    let request = PriorRequest::new(
+        &existing.request_ref,
+        &order.order_ref,
+        &item.name,
+        existing.state,
+        existing.decided_at,
+    );
+    Some((
+        AssistantKind::ExistingRequest,
+        ResponderInput::ExistingRequest { request },
+    ))
+}
+
+fn order_summaries(
+    orders: &[Order],
+    item_requests: &HashMap<Uuid, ExistingRequest>,
+) -> Vec<OrderSummary> {
     orders
         .iter()
         .map(|o| OrderSummary {
@@ -237,6 +273,7 @@ fn order_summaries(orders: &[Order]) -> Vec<OrderSummary> {
                     category: i.category.clone(),
                     amount_cents: i.amount_cents,
                     final_sale: i.final_sale,
+                    existing_request: item_requests.get(&i.id).cloned(),
                 })
                 .collect(),
         })
@@ -313,6 +350,7 @@ async fn process(
             .collect();
         let signals = window_prescan(state, conversation_id, &customer).await?;
         let orders = db::orders::list_orders_for_customer(db, customer_id).await?;
+        let item_requests = db::refunds::item_requests(db, customer_id).await?;
 
         let mut flags = Vec::new();
         let mut stages = Stages::default();
@@ -321,7 +359,7 @@ async fn process(
             flags.push(Flag::PrescanSignal);
         } else {
             let input = IntakeInput {
-                orders: order_summaries(&orders),
+                orders: order_summaries(&orders, &item_requests),
                 selected_order_id: customer.iter().rev().find_map(|m| m.order_id),
                 messages: customer
                     .iter()
@@ -351,11 +389,26 @@ async fn process(
         if flags.is_empty()
             && let Some(extracted) = &intake
         {
+            // Not a clarify turn: a model failure falls back to the template
+            // rather than escalating, since nothing is being decided.
+            if let Some((kind, input)) = no_request_reply(&orders, &item_requests, extracted) {
+                let (reply, _) = respond(state, &input).await;
+                let body = reply.unwrap_or_else(|| fallback_reply(&input.expectation(), None));
+                let mut conn = db.0.acquire().await?;
+                let reply =
+                    db::messages::insert_assistant_message(&mut conn, conversation_id, kind, &body)
+                        .await?;
+                out.reply(&reply).await;
+                return Ok(None);
+            }
             let missing = missing_fields(&orders, extracted);
             if !missing.is_empty() {
                 let asked = db::messages::clarify_count(db, conversation_id).await?;
                 if asked >= i64::from(MAX_CLARIFY_TURNS) {
                     flags.push(Flag::ClarificationLimit);
+                    if extracted.low_confidence() {
+                        flags.push(Flag::LowConfidence);
+                    }
                 } else {
                     let policy = db::policy::latest_policy(db).await?;
                     let input = ResponderInput::Clarify {
@@ -442,12 +495,12 @@ async fn window_prescan(
 /// Responder with fallback; a reply that fails validation counts as a failed
 /// call. `None` means both models failed.
 async fn respond(state: &AppState, input: &ResponderInput) -> (Option<String>, StageLog) {
-    let expectation = input.expectation();
+    let expectation = &input.expectation();
     let assistant = &state.assistant;
     call_with_fallback(&state.ai, Stage::Responder, |m| async move {
         let mut done = assistant.respond(input, &m).await?;
         done.output = clean_reply(&done.output);
-        validate_reply(&done.output, &expectation).map_err(|v| AiError::Rejected(v.0))?;
+        validate_reply(&done.output, expectation).map_err(|v| AiError::Rejected(v.0))?;
         Ok(done)
     })
     .await
@@ -562,16 +615,8 @@ async fn decide_and_reply(
         "refund request decided"
     );
     out.reply(&reply).await;
-    out.send(SseEvent::RequestUpdated(RequestSummary {
-        id: created.id,
-        request_ref: created.request_ref,
-        state: created.state,
-        order_ref: order.map(|o| o.order_ref.clone()),
-        item_name: order.map(|o| o.item.name.clone()),
-        amount_cents: request.amount_cents,
-        created_at: created.created_at,
-        resolved_at: None,
-    }))
-    .await;
+    if let Some(summary) = db::conversations::find_request_summary(db, conversation_id).await? {
+        out.send(SseEvent::RequestUpdated(summary)).await;
+    }
     Ok((decision.verdict == Verdict::Escalated).then_some(created.id))
 }

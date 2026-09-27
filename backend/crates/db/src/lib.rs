@@ -4,6 +4,7 @@
 
 pub mod admin;
 pub mod auth;
+pub mod catalog;
 pub mod conversations;
 pub mod lock;
 pub mod messages;
@@ -11,6 +12,7 @@ pub mod orders;
 pub mod policy;
 pub mod refunds;
 pub mod seed;
+pub mod settings;
 
 use std::time::Duration;
 

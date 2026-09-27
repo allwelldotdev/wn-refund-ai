@@ -1,0 +1,124 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT r.ref, r.disputed_at, r.conversation_id, a.evaluated_through_seq, a.facts, a.extracted,\n                a.rule_trace, a.flags, p.rules\n         FROM refund_requests r\n         JOIN escalation_reviews v ON v.refund_request_id = r.id AND v.status = 'pending'\n         JOIN decision_audit a ON a.refund_request_id = r.id\n         JOIN policy_versions p ON p.id = a.policy_version_id\n         WHERE r.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "ref",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "refund_requests",
+            "name": "ref"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "disputed_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "refund_requests",
+            "name": "disputed_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "conversation_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "refund_requests",
+            "name": "conversation_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "evaluated_through_seq",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "decision_audit",
+            "name": "evaluated_through_seq"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "facts",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "decision_audit",
+            "name": "facts"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "extracted",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "decision_audit",
+            "name": "extracted"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "rule_trace",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "decision_audit",
+            "name": "rule_trace"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "flags",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "decision_audit",
+            "name": "flags"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "rules",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "policy_versions",
+            "name": "rules"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "6624eb764f541e9191cfd57072e0ec509e3aa6c6e4f8d322c6ca72ba47b62b7a"
+}

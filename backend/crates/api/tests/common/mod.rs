@@ -13,7 +13,7 @@ use axum::Router;
 use axum::body::{Body, Bytes};
 use axum::http::{HeaderMap, Method, Request, StatusCode, header};
 use db::Db;
-use domain::intake::{IntakeOutput, IntakeStatus, MissingField};
+use domain::intake::{IntakeOutput, IntakeStatus, Intent, MissingField};
 use domain::types::ReasonCategory;
 use http_body_util::BodyExt;
 use serde_json::Value;
@@ -99,6 +99,7 @@ impl TestApp {
             assistant: fake.clone(),
             ai: Arc::new(AiConfig::load().expect("default AI config")),
             rate: RateLimiter::default(),
+            login_throttle: Default::default(),
         };
         TestApp {
             router: build_router(state.clone()),
@@ -149,6 +150,38 @@ impl TestApp {
     pub async fn post(&self, path: &str, token: &str, body: Value) -> TestResponse {
         self.call(Method::POST, path, Some(token), Some(&body))
             .await
+    }
+
+    /// Drafts the customer notice, then resolves with it, as the admin UI
+    /// does. Returns the draft's response if drafting fails.
+    pub async fn resolve(
+        &self,
+        token: &str,
+        request_ref: &str,
+        resolution: &str,
+        note: &str,
+    ) -> TestResponse {
+        let path = format!("/api/admin/requests/{request_ref}/resolve");
+        let draft = self
+            .post(
+                &format!("{path}/draft"),
+                token,
+                serde_json::json!({ "resolution": resolution, "note": note }),
+            )
+            .await;
+        if draft.status != StatusCode::OK {
+            return draft;
+        }
+        let d = draft.json();
+        self.post(
+            &path,
+            token,
+            serde_json::json!({
+                "resolution": resolution, "note": note,
+                "message": d["message"], "summary": d["summary"],
+            }),
+        )
+        .await
     }
 
     /// Signs in with the demo password and returns the bearer token.
@@ -219,6 +252,7 @@ pub fn order_id(order_ref: &str) -> Uuid {
 /// What a correct intake returns for the first item of a seeded order.
 pub fn complete_intake(order_ref: &str, reason: ReasonCategory) -> IntakeOutput {
     IntakeOutput {
+        intent: Intent::RefundRequest,
         status: IntakeStatus::Complete,
         missing: vec![],
         order_id: Some(order_id(order_ref)),
@@ -234,6 +268,7 @@ pub fn complete_intake(order_ref: &str, reason: ReasonCategory) -> IntakeOutput 
 
 pub fn needs_info_intake(missing: Vec<MissingField>) -> IntakeOutput {
     IntakeOutput {
+        intent: Intent::RefundRequest,
         status: IntakeStatus::NeedsInfo,
         missing,
         order_id: None,

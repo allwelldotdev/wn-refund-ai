@@ -1,0 +1,215 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT o.id AS order_id, o.ref, o.placed_at, o.delivered_at, o.status, o.total_cents,\n                  o.fulfilment, o.starts_at, o.ends_at, o.is_test,\n                  i.id AS item_id, i.name, i.category, i.quantity, i.amount_cents, i.final_sale,\n                  EXISTS (SELECT 1 FROM refund_requests r\n                          WHERE r.order_item_id = i.id\n                            AND r.state IN ('approved', 'resolved_approved')) AS \"active_refund!\"\n           FROM orders o\n           JOIN order_items i ON i.order_id = o.id\n           WHERE o.customer_id = $1\n           ORDER BY o.is_test DESC, CASE WHEN o.is_test THEN o.created_at END DESC,\n                    o.placed_at DESC, o.id, i.name, i.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "order_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "orders",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "ref",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "orders",
+            "name": "ref"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "placed_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "orders",
+            "name": "placed_at"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "delivered_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "orders",
+            "name": "delivered_at"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "orders",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "total_cents",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "orders",
+            "name": "total_cents"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "fulfilment",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "orders",
+            "name": "fulfilment"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "starts_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "orders",
+            "name": "starts_at"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "ends_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "orders",
+            "name": "ends_at"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "is_test",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "orders",
+            "name": "is_test"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "item_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "order_items",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "order_items",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "category",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "order_items",
+            "name": "category"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "quantity",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "order_items",
+            "name": "quantity"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "amount_cents",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "order_items",
+            "name": "amount_cents"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "final_sale",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "order_items",
+            "name": "final_sale"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "active_refund!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "a6d0222ff66abebf263f4fbd44edb505a69c99b88188c1246a4e620b4d9de2db"
+}

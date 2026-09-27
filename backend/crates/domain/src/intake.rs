@@ -8,9 +8,10 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::types::{OrderStatus, ReasonCategory};
+use crate::types::{OrderStatus, ReasonCategory, RequestState};
 
-/// Below this, intake output raises `Flag::LowConfidence`.
+/// Below this, intake output raises `Flag::LowConfidence`, but only once the
+/// request is complete or the clarifying questions have run out.
 pub const LOW_CONFIDENCE: f32 = 0.6;
 /// Clarifying questions allowed per conversation before it escalates.
 pub const MAX_CLARIFY_TURNS: u8 = 3;
@@ -22,6 +23,18 @@ pub struct ItemSummary {
     pub category: String,
     pub amount_cents: i64,
     pub final_sale: bool,
+    /// The newest refund request already made for this item, in any state.
+    pub existing_request: Option<ExistingRequest>,
+}
+
+/// A refund request made earlier for an item (trusted, from the database).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ExistingRequest {
+    #[serde(rename = "ref")]
+    pub request_ref: String,
+    pub state: RequestState,
+    /// When it was decided, or resolved by a person if it was escalated.
+    pub decided_at: DateTime<Utc>,
 }
 
 /// One of the customer's own orders, from the database (trusted).
@@ -58,6 +71,16 @@ pub enum IntakeStatus {
     NeedsInfo,
 }
 
+/// What the customer's latest message is for. Only `RefundRequest` can lead
+/// to a decision; the other two get a reply that files nothing.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Intent {
+    RefundRequest,
+    OutOfScope,
+    Finished,
+}
+
 #[derive(
     Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
 )]
@@ -81,6 +104,7 @@ pub struct InjectionSignal {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct IntakeOutput {
+    pub intent: Intent,
     pub status: IntakeStatus,
     pub missing: Vec<MissingField>,
     pub order_id: Option<Uuid>,
@@ -95,6 +119,13 @@ pub struct IntakeOutput {
     pub confidence: f32,
 }
 
+impl IntakeOutput {
+    /// Below `LOW_CONFIDENCE`, or not a number at all.
+    pub fn low_confidence(&self) -> bool {
+        self.confidence.is_nan() || self.confidence < LOW_CONFIDENCE
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -105,6 +136,7 @@ mod tests {
         assert_eq!(schema["additionalProperties"], false);
         let text = schema.to_string();
         for name in [
+            "out_of_scope",
             "needs_info",
             "wrong_item",
             "not_as_described",
@@ -117,7 +149,7 @@ mod tests {
     #[test]
     fn unknown_fields_are_rejected() {
         let ok = serde_json::json!({
-            "status": "complete", "missing": [], "order_id": null, "order_item_id": null,
+            "intent": "refund_request", "status": "complete", "missing": [], "order_id": null, "order_item_id": null,
             "mentioned_order_refs": [], "reason_category": "damaged", "claimed_amount_cents": null,
             "contradictory_statements": false, "injection_signals": [], "confidence": 0.9
         });

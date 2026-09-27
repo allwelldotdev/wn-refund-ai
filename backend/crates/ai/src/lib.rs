@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use domain::intake::{IntakeInput, IntakeOutput};
+use domain::notice::{NoticeInput, NoticeOutput};
 use domain::responder::ResponderInput;
 use domain::review::{ReviewInput, ReviewOutput};
 use serde::{Deserialize, Serialize};
@@ -71,9 +72,9 @@ pub enum AiError {
     Rejected(String),
 }
 
-/// The three LLM stages. Implementations never see the decision logic: intake
-/// extracts claims, the responder words a verdict that is already made, and
-/// review drafts notes for a human.
+/// The LLM stages. Implementations never see the decision logic: intake
+/// extracts claims, the responder words a verdict that is already made, review
+/// drafts notes for a human, and notice words a human's decision.
 #[async_trait]
 pub trait RefundAssistant: Send + Sync {
     async fn intake(
@@ -93,6 +94,12 @@ pub trait RefundAssistant: Send + Sync {
         input: &ReviewInput,
         model: &StageModel,
     ) -> Result<Completed<ReviewOutput>, AiError>;
+
+    async fn notice(
+        &self,
+        input: &NoticeInput,
+        model: &StageModel,
+    ) -> Result<Completed<NoticeOutput>, AiError>;
 }
 
 pub type SharedAssistant = Arc<dyn RefundAssistant>;

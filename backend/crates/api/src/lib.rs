@@ -7,6 +7,7 @@ pub mod auth;
 pub mod config;
 pub mod conversations;
 pub mod error;
+pub mod orders;
 pub mod pipeline;
 pub mod policy;
 pub mod rate_limit;
@@ -25,7 +26,7 @@ use serde_json::{Value, json};
 use tower_http::trace::TraceLayer;
 
 use crate::error::ApiError;
-use crate::rate_limit::RateLimiter;
+use crate::rate_limit::{LoginThrottle, RateLimiter};
 
 /// Seed source for policy version 1 (ADR-016). Compiled in so the container
 /// needs no extra files at runtime.
@@ -40,6 +41,7 @@ pub struct AppState {
     pub assistant: SharedAssistant,
     pub ai: Arc<AiConfig>,
     pub rate: RateLimiter,
+    pub login_throttle: LoginThrottle,
 }
 
 /// Applies migrations, then the idempotent seed. Runs on every startup.
@@ -54,6 +56,7 @@ pub fn build_router(state: AppState) -> Router {
         .merge(auth::routes())
         .merge(policy::routes())
         .merge(conversations::routes())
+        .merge(orders::routes())
         .merge(admin::routes())
         .fallback(|| async { ApiError::NotFound })
         .layer(DefaultBodyLimit::max(BODY_LIMIT_BYTES))

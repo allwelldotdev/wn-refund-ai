@@ -14,6 +14,9 @@ pub struct ReviewInput {
     pub request_ref: String,
     /// When the engine decided; the reference point for time-based rules.
     pub decided_at: DateTime<Utc>,
+    /// Set when the customer disputed an automatic denial; their reason, if
+    /// any, is among the messages after the decision.
+    pub disputed_at: Option<DateTime<Utc>>,
     pub order: Option<OrderFacts>,
     pub extracted: Option<IntakeOutput>,
     pub fired: Vec<FiredRule>,

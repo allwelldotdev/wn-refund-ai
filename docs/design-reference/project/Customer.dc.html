@@ -1,0 +1,741 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Worknoon — My orders</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+:focus-visible{outline:2px solid #2457C5;outline-offset:2px}
+button,input,textarea,select{font-family:inherit}
+button:not(:disabled),a[href],select:not(:disabled),label[for],[role="button"],[role="tab"]{cursor:pointer}
+button:disabled,select:disabled{cursor:not-allowed}
+input[readonly]{cursor:default}
+@keyframes wn-spin{to{transform:rotate(360deg)}}
+.wn-spin{animation:wn-spin 0.8s linear infinite;transform-origin:center}
+@keyframes wn-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.wn-in{animation:wn-in 200ms cubic-bezier(0.2,0,0,1)}
+@keyframes wn-blink{50%{opacity:0}}
+.wn-caret{display:inline-block;margin-left:1px;color:#48524D;animation:wn-blink 1s steps(1) infinite}
+@media (prefers-reduced-motion: reduce){.wn-spin,.wn-in,.wn-caret{animation:none}}
+</style>
+</helmet>
+<div style="{{rootStyle}}">
+
+<header style="{{topbarStyle}}">
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="width: 28px; height: 28px; border-radius: 6px; background: #1D2724; display: flex; align-items: center; justify-content: center">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6l4.5 12L12 8l4.5 10L21 6"></path></svg>
+</span>
+<span style="font-size: 16px; line-height: 24px; font-weight: 600; letter-spacing: -0.01em">Worknoon Support</span>
+</div>
+<div style="display: flex; align-items: center; gap: 12px">
+<span style="display: flex; align-items: center; gap: 8px; font-size: 14px; line-height: 20px">
+<span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 999px; background: #EEF0ED; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #48524D">AO</span>
+<span><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0)">Signed in as </span>{{displayName}}</span>
+</span>
+<a href="Login.dc.html" style="height: 44px; padding: 0 12px; border-radius: 6px; display: inline-flex; align-items: center; font-size: 14px; line-height: 20px; font-weight: 500; color: #151A18; text-decoration: underline; text-underline-offset: 3px">Sign out</a>
+</div>
+</header>
+
+<main style="{{mainStyle}}">
+<div style="{{containerStyle}}">
+<div id="wn-orders-top" style="display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; scroll-margin-top: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h1 style="{{h1Style}}">My orders</h1>
+<p style="margin: 0; font-size: 14px; line-height: 20px; color: #48524D">Orders from the last 60 days.</p>
+</div>
+<div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+<button type="button" onClick="{{openRequests}}" style="height: 44px; padding: 0 4px; border: 0; background: transparent; color: #2457C5; font-size: 14px; line-height: 20px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; cursor: pointer">Your refund requests ({{reqCount}})</button>
+<button id="add-order-btn" type="button" onClick="{{openAdd}}" aria-haspopup="dialog" style="height: 40px; padding: 0 14px 0 12px; border-radius: 6px; border: 1px solid #C4CAC5; background: #FFFFFF; color: #151A18; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; line-height: 20px; font-weight: 500; cursor: pointer">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+Add order
+</button>
+</div>
+</div>
+
+<sc-if value="{{notice}}" hint-placeholder-val="{{ false }}">
+<div role="status" style="display: flex; align-items: center; gap: 10px; padding: 10px 8px 10px 14px; background: #E7F4EC; border: 1px solid #B5DCC3; border-radius: 10px; font-size: 14px; line-height: 20px; color: #17603A">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1F7A4A" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M8.5 12.5l2.5 2.5 4.5-5"></path></svg>
+<span style="flex-grow: 1">{{notice}}</span>
+<button type="button" onClick="{{dismissNotice}}" aria-label="Dismiss" style="width: 36px; height: 36px; flex-shrink: 0; border: 0; border-radius: 6px; background: transparent; color: #17603A; display: inline-flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+</div>
+</sc-if>
+
+<sc-if value="{{desktop}}" hint-placeholder-val="{{ true }}">
+<div style="background: #FFFFFF; border: 1px solid #DCE0DB; border-radius: 10px; box-shadow: 0 1px 2px rgb(21 26 24 / 0.06)">
+<table style="width: 100%; border-collapse: collapse; font-size: 14px; line-height: 20px">
+<caption style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0)">Your orders, newest first</caption>
+<thead>
+<tr style="background: #F6F7F5; border-bottom: 1px solid #DCE0DB">
+<th scope="col" style="text-align: left; padding: 12px 20px; font-size: 12px; line-height: 16px; font-weight: 600; color: #48524D; text-transform: uppercase; letter-spacing: 0.05em; border-radius: 10px 0 0 0">Order</th>
+<th scope="col" style="text-align: left; padding: 12px 16px; font-size: 12px; line-height: 16px; font-weight: 600; color: #48524D; text-transform: uppercase; letter-spacing: 0.05em">Date</th>
+<th scope="col" style="text-align: left; padding: 12px 16px; font-size: 12px; line-height: 16px; font-weight: 600; color: #48524D; text-transform: uppercase; letter-spacing: 0.05em">Items</th>
+<th scope="col" style="text-align: right; padding: 12px 16px; font-size: 12px; line-height: 16px; font-weight: 600; color: #48524D; text-transform: uppercase; letter-spacing: 0.05em">Total</th>
+<th scope="col" style="text-align: left; padding: 12px 16px; font-size: 12px; line-height: 16px; font-weight: 600; color: #48524D; text-transform: uppercase; letter-spacing: 0.05em">Delivery</th>
+<th scope="col" style="padding: 12px 20px; border-radius: 0 10px 0 0"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0)">Help</span></th>
+</tr>
+</thead>
+<tbody>
+<sc-for list="{{orders}}" as="o" hint-placeholder-count="5">
+<tr style="border-bottom: 1px solid #EEF0ED">
+<td style="padding: 14px 20px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 500; white-space: nowrap">{{o.id}}<sc-if value="{{o.isTest}}" hint-placeholder-val="{{ false }}"> <span style="margin-left: 6px; font-family: 'IBM Plex Sans', sans-serif; font-size: 11px; line-height: 16px; font-weight: 600; padding: 0 6px; border-radius: 4px; background: #EAF0FA; border: 1px solid #C3D2EC; color: #2F4F86; text-transform: uppercase; letter-spacing: 0.06em">Test</span></sc-if></td>
+<td style="padding: 14px 16px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #48524D; white-space: nowrap">{{o.date}}</td>
+<td style="padding: 14px 16px">{{o.items}}</td>
+<td style="padding: 14px 16px; text-align: right; font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-variant-numeric: tabular-nums">{{o.total}}</td>
+<td style="padding: 14px 16px; color: #48524D">
+<span style="display: inline-flex; align-items: center; gap: 6px; white-space: nowrap">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5F6963" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{o.dIcon}}"></path></svg>
+{{o.delivery}}
+</span>
+</td>
+<td style="padding: 8px 20px; text-align: right">
+<button type="button" onClick="{{o.help}}" aria-label="{{o.aria}}" style="min-height: 44px; padding: 0 4px; border: 0; background: transparent; color: #2457C5; font-size: 14px; line-height: 20px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; white-space: nowrap">{{o.helpText}}</button>
+</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</sc-if>
+
+<sc-if value="{{mobile}}" hint-placeholder-val="{{ false }}">
+<ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px">
+<sc-for list="{{orders}}" as="o" hint-placeholder-count="5">
+<li style="background: #FFFFFF; border: 1px solid #DCE0DB; border-radius: 10px; padding: 14px 16px 6px; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 18px">
+<span style="font-weight: 500">{{o.id}}<sc-if value="{{o.isTest}}" hint-placeholder-val="{{ false }}"> <span style="margin-left: 6px; font-family: 'IBM Plex Sans', sans-serif; font-size: 11px; line-height: 16px; font-weight: 600; padding: 0 6px; border-radius: 4px; background: #EAF0FA; border: 1px solid #C3D2EC; color: #2F4F86; text-transform: uppercase; letter-spacing: 0.06em">Test</span></sc-if></span><span style="color: #48524D">{{o.date}}</span>
+</div>
+<span style="font-size: 15px; line-height: 22px">{{o.items}}</span>
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; line-height: 18px; color: #48524D">
+<span style="display: inline-flex; align-items: center; gap: 6px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5F6963" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{o.dIcon}}"></path></svg>
+{{o.delivery}}
+</span>
+<span style="font-family: 'IBM Plex Mono', monospace; color: #151A18; font-variant-numeric: tabular-nums">{{o.total}}</span>
+</div>
+<button type="button" onClick="{{o.help}}" aria-label="{{o.aria}}" style="align-self: flex-start; min-height: 44px; padding: 0; border: 0; background: transparent; color: #2457C5; font-size: 14px; line-height: 20px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; cursor: pointer">{{o.helpText}}</button>
+</li>
+</sc-for>
+</ul>
+</sc-if>
+
+<sc-if value="{{showPager}}" hint-placeholder-val="{{ true }}">
+<nav aria-label="Orders pages" style="{{pagerStyle}}">
+<span aria-live="polite" style="font-size: 13px; line-height: 18px; color: #48524D">{{pagerText}}</span>
+<div style="display: flex; align-items: center; gap: 4px; justify-content: center">
+<button type="button" onClick="{{prevPage}}" disabled="{{prevDisabled}}" style="{{prevStyle}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>Previous</button>
+<sc-for list="{{pageBtns}}" as="b" hint-placeholder-count="2">
+<button type="button" onClick="{{b.go}}" aria-current="{{b.current}}" aria-label="{{b.aria}}" style="{{b.style}}">{{b.n}}</button>
+</sc-for>
+<button type="button" onClick="{{nextPage}}" disabled="{{nextDisabled}}" style="{{nextStyle}}">Next<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>
+</div>
+</nav>
+</sc-if>
+</div>
+</main>
+
+<sc-if value="{{showLauncher}}" hint-placeholder-val="{{ true }}">
+<button id="wn-launcher" type="button" onClick="{{openChat}}" aria-expanded="false" aria-controls="wn-chat" style="{{launcherStyle}}">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4Z"></path></svg>
+<span>Need help with an order?</span>
+</button>
+</sc-if>
+
+<div id="wn-chat" style="{{panelWrapStyle}}">
+<dc-import name="ChatPanel" layout="{{panelLayout}}" scenario="{{chatScenario}}" preselect="{{preselect}}" preselect-key="{{key}}" start-view="{{startView}}" on-close="{{closeChat}}" extra-orders="{{extraOrders}}" session="{{session}}" on-session="{{onSession}}" disputes-enabled="{{disputesEnabled}}" hint-size="{{panelHint}}"></dc-import>
+</div>
+
+<sc-if value="{{addOpen}}" hint-placeholder-val="{{ false }}">
+<div aria-hidden="true" onClick="{{closeAdd}}" style="position: absolute; inset: 0; z-index: 40; background: rgb(21 26 24 / 0.45)"></div>
+<div style="{{addWrapStyle}}">
+<div role="dialog" aria-modal="true" aria-labelledby="ao-title" aria-describedby="ao-desc" onKeyDown="{{addKey}}" style="{{addDialogStyle}}">
+<header style="flex-shrink: 0; padding: 16px 12px 14px 24px; border-bottom: 1px solid #DCE0DB; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; align-items: center; gap: 8px">
+<h2 id="ao-title" style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">Add a test order</h2>
+<span style="font-size: 11px; line-height: 16px; font-weight: 600; padding: 0 6px; border-radius: 4px; background: #EEF0ED; border: 1px solid #D2D7D2; color: #48524D; text-transform: uppercase; letter-spacing: 0.06em">Demo</span>
+</div>
+<p id="ao-desc" style="margin: 0; font-size: 13px; line-height: 18px; color: #48524D">Creates a simulated order for Amara Okafor so you can try the refund chat with it. Nothing is charged.</p>
+</div>
+<button type="button" onClick="{{closeAdd}}" aria-label="Close" style="width: 44px; height: 44px; flex-shrink: 0; border: 0; border-radius: 6px; background: transparent; color: #48524D; display: inline-flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+</header>
+
+<div style="flex-grow: 1; min-height: 0; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 20px">
+
+<sc-if value="{{aoShowSummary}}" hint-placeholder-val="{{ false }}">
+<div id="ao-errors" role="alert" tabindex="-1" style="background: #FCECEA; border: 1px solid #F1C2BC; border-radius: 10px; padding: 12px 14px; display: flex; gap: 10px">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B42318" stroke-width="2.25" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 8v5M12 16h.01"></path></svg>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 14px; line-height: 20px; font-weight: 600; color: #A1261B">Fix these before adding the order</span>
+<ul style="margin: 0; padding-left: 18px; font-size: 13px; line-height: 18px; color: #151A18"><sc-for list="{{aoErrList}}" as="x" hint-placeholder-count="1"><li>{{x}}</li></sc-for></ul>
+</div>
+</div>
+</sc-if>
+
+<div style="{{aoRowStyle}}">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="ao-num" style="font-size: 13px; line-height: 18px; font-weight: 500">Order number</label>
+<input id="ao-num" type="text" value="{{aoNum}}" readOnly="{{ true }}" aria-describedby="ao-num-help" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #DCE0DB; border-radius: 6px; background: #EEF0ED; font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #151A18">
+<span id="ao-num-help" style="font-size: 12px; line-height: 16px; color: #5F6963">Next in sequence · can't be changed</span>
+</div>
+<sc-for list="{{dpOrder}}" as="p" hint-placeholder-count="1">
+<div style="position: relative; display: flex; flex-direction: column; gap: 6px">
+<span id="{{p.labelId}}" style="font-size: 13px; line-height: 18px; font-weight: 500">{{p.label}}</span>
+<button type="button" id="{{p.id}}" onClick="{{p.toggle}}" aria-haspopup="dialog" aria-expanded="{{p.openStr}}" aria-labelledby="{{p.labelId}} {{p.id}}" aria-describedby="{{p.helpId}}" style="{{p.fieldStyle}}">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#48524D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16v14H4ZM4 10h16M8 3v4M16 3v4"></path></svg>
+<span style="flex-grow: 1; text-align: left; font-family: 'IBM Plex Mono', monospace; font-size: 14px">{{p.valueText}}</span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#48524D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+</button>
+<span id="{{p.helpId}}" style="{{p.helpStyle}}">{{p.help}}</span>
+<sc-if value="{{p.open}}" hint-placeholder-val="{{ false }}">
+<div role="dialog" aria-modal="false" aria-label="{{p.dialogLabel}}" onKeyDown="{{p.onKey}}" style="position: absolute; z-index: 10; top: 70px; left: 0; width: 300px; box-sizing: border-box; padding: 12px; background: #FFFFFF; border: 1px solid #DCE0DB; border-radius: 10px; box-shadow: 0 16px 40px -8px rgb(21 26 24 / 0.18), 0 4px 12px -4px rgb(21 26 24 / 0.08); display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between; align-items: center">
+<button type="button" onClick="{{p.prev}}" disabled="{{p.prevDisabled}}" aria-label="Previous month" style="width: 36px; height: 36px; border: 0; border-radius: 6px; background: transparent; color: #151A18; display: inline-flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg></button>
+<span aria-live="polite" style="font-size: 14px; line-height: 20px; font-weight: 600">{{p.monthLabel}}</span>
+<button type="button" onClick="{{p.next}}" disabled="{{p.nextDisabled}}" aria-label="Next month" style="width: 36px; height: 36px; border: 0; border-radius: 6px; background: transparent; color: #151A18; display: inline-flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>
+</div>
+<div role="grid" aria-label="{{p.monthLabel}}" onKeyDown="{{p.onGridKey}}" style="display: flex; flex-direction: column; gap: 2px">
+<div role="row" style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr))">
+<sc-for list="{{p.dow}}" as="w" hint-placeholder-count="7"><span role="columnheader" aria-label="{{w.long}}" style="height: 24px; display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 14px; font-weight: 600; color: #5F6963">{{w.short}}</span></sc-for>
+</div>
+<sc-for list="{{p.weeks}}" as="wk" hint-placeholder-count="5">
+<div role="row" style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px">
+<sc-for list="{{wk.days}}" as="d" hint-placeholder-count="7">
+<span role="gridcell" aria-selected="{{d.selStr}}" style="display: flex"><button type="button" id="{{d.id}}" onClick="{{d.pick}}" disabled="{{d.disabled}}" tabindex="{{d.tabindex}}" aria-label="{{d.aria}}" aria-current="{{d.current}}" style="{{d.style}}">{{d.n}}</button></span>
+</sc-for>
+</div>
+</sc-for>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: center; padding-top: 6px; border-top: 1px solid #EEF0ED">
+<button type="button" onClick="{{p.pickToday}}" disabled="{{p.todayDisabled}}" style="height: 32px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: #2457C5; font-size: 13px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px">Today</button>
+<span style="font-size: 12px; line-height: 16px; color: #5F6963">{{p.rangeText}}</span>
+<button type="button" onClick="{{p.close}}" style="height: 32px; padding: 0 10px; border-radius: 6px; border: 1px solid #C4CAC5; background: #FFFFFF; color: #151A18; font-size: 13px; font-weight: 500">Close</button>
+</div>
+</div>
+</sc-if>
+</div>
+</sc-for>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; line-height: 18px; font-weight: 500">Customer</span>
+<span style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #DCE0DB; border-radius: 6px; background: #EEF0ED; display: flex; align-items: center; font-size: 14px; color: #151A18">Amara Okafor</span>
+<span style="font-size: 12px; line-height: 16px; color: #5F6963">Signed-in customer</span>
+</div>
+</div>
+
+<section aria-labelledby="ao-items-h" style="display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px">
+<h3 id="ao-items-h" style="margin: 0; font-size: 15px; line-height: 22px; font-weight: 600">Items <span style="font-weight: 400; color: #48524D">({{aoItemCount}})</span></h3>
+<sc-if value="{{aoItemErr}}" hint-placeholder-val="{{ false }}"><span id="ao-items-err" style="font-size: 12px; line-height: 16px; color: #A1261B">{{aoItemErr}}</span></sc-if>
+</div>
+<sc-if value="{{aoNoItems}}" hint-placeholder-val="{{ true }}">
+<p style="margin: 0; padding: 14px; border: 1px dashed #C4CAC5; border-radius: 10px; font-size: 13px; line-height: 18px; color: #48524D; text-align: center">No items yet. Add workspace bookings, add-ons or products from the catalog below.</p>
+</sc-if>
+<ul aria-label="Items in this order" style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px">
+<sc-for list="{{aoLines}}" as="l" hint-placeholder-count="0">
+<li style="display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 10px; align-items: center; padding: 8px 8px 8px 12px; border: 1px solid #DCE0DB; border-radius: 10px; background: #FFFFFF">
+<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+<span style="font-size: 14px; line-height: 20px; font-weight: 500">{{l.display}}</span>
+<span style="font-size: 12px; line-height: 16px; color: #5F6963">{{l.catLabel}} · {{l.unitText}}</span>
+</span>
+<span role="group" aria-label="{{l.qtyLabel}}" style="display: inline-flex; align-items: center; border: 1px solid #C4CAC5; border-radius: 6px">
+<button type="button" onClick="{{l.dec}}" disabled="{{l.decDisabled}}" aria-label="{{l.decAria}}" style="width: 32px; height: 32px; border: 0; background: transparent; color: #151A18; font-size: 16px">−</button>
+<span aria-live="polite" style="min-width: 44px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 13px">{{l.qtyText}}</span>
+<button type="button" onClick="{{l.inc}}" disabled="{{l.incDisabled}}" aria-label="{{l.incAria}}" style="width: 32px; height: 32px; border: 0; background: transparent; color: #151A18; font-size: 16px">+</button>
+</span>
+<span style="min-width: 72px; text-align: right; font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-variant-numeric: tabular-nums">{{l.lineText}}</span>
+<button type="button" onClick="{{l.remove}}" aria-label="{{l.removeAria}}" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; color: #48524D; display: inline-flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+</li>
+</sc-for>
+</ul>
+
+<div style="border: 1px solid #DCE0DB; border-radius: 10px; background: #F6F7F5; display: flex; flex-direction: column">
+<div style="padding: 10px 12px 0; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap">
+<span style="font-size: 13px; line-height: 18px; font-weight: 600">Catalog</span>
+<div style="position: relative; display: flex; width: 220px; max-width: 100%">
+<label for="ao-search" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0)">Search the catalog</label>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5F6963" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="position: absolute; left: 10px; top: 11px; pointer-events: none"><path d="M4 11a7 7 0 1 0 14 0a7 7 0 1 0-14 0M20 20l-3.5-3.5"></path></svg>
+<input id="ao-search" type="search" value="{{aoQ}}" onChange="{{onAoQ}}" placeholder="Search all items" style="flex-grow: 1; min-width: 0; height: 36px; box-sizing: border-box; padding: 0 10px 0 30px; border: 1px solid #858F89; border-radius: 6px; background: #FFFFFF; font-size: 13px; color: #151A18">
+</div>
+</div>
+<div role="tablist" aria-label="Catalog categories" style="display: flex; gap: 2px; border-bottom: 1px solid #DCE0DB; overflow-x: auto">
+<sc-for list="{{aoCats}}" as="c" hint-placeholder-count="3">
+<button type="button" role="tab" id="{{c.id}}" aria-selected="{{c.sel}}" aria-controls="ao-catalog" tabindex="{{c.tabindex}}" onClick="{{c.pick}}" onKeyDown="{{aoCatKey}}" style="{{c.style}}">{{c.label}} <span style="font-size: 11px; color: #5F6963">{{c.count}}</span></button>
+</sc-for>
+</div>
+</div>
+<ul id="ao-catalog" role="tabpanel" aria-labelledby="{{aoCatTabId}}" style="margin: 0; padding: 6px; list-style: none; max-height: 212px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px">
+<sc-for list="{{aoCatalog}}" as="it" hint-placeholder-count="6">
+<li style="display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 6px 6px 6px 8px; border-radius: 6px; background: #FFFFFF; border: 1px solid #EEF0ED">
+<span style="display: flex; flex-direction: column; min-width: 0">
+<span style="font-size: 13px; line-height: 18px; font-weight: 500">{{it.name}}</span>
+<span style="font-size: 12px; line-height: 16px; color: #5F6963">{{it.meta}}</span>
+</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #151A18; white-space: nowrap">{{it.priceText}}</span>
+<button type="button" onClick="{{it.add}}" aria-label="{{it.aria}}" style="height: 32px; padding: 0 10px; border-radius: 6px; border: 1px solid #C4CAC5; background: #FFFFFF; color: #151A18; font-size: 12px; font-weight: 500; white-space: nowrap">{{it.addText}}</button>
+</li>
+</sc-for>
+<sc-if value="{{aoNoMatch}}" hint-placeholder-val="{{ false }}"><li style="padding: 12px; font-size: 13px; color: #48524D; text-align: center">No items match “{{aoQ}}”.</li></sc-if>
+</ul>
+</div>
+</section>
+
+<div style="{{aoRowStyle}}">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; line-height: 18px; font-weight: 500">Total</span>
+<span aria-live="polite" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #DCE0DB; border-radius: 6px; background: #EEF0ED; display: flex; align-items: center; font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 500; color: #151A18">{{aoTotal}}</span>
+<span style="font-size: 12px; line-height: 16px; color: #5F6963">Calculated from the items</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="ao-status" style="font-size: 13px; line-height: 18px; font-weight: 500">Delivery status</label>
+<select id="ao-status" value="{{aoStatus}}" onChange="{{onAoStatus}}" aria-invalid="{{aoStatusInvalid}}" aria-describedby="ao-status-help" style="{{aoStatusStyle}}">
+<option value="">Choose a status</option>
+<option value="delivered">Delivered</option>
+<option value="used">Used</option>
+<option value="confirmed">Confirmed</option>
+<option value="active">Active</option>
+</select>
+<span id="ao-status-help" style="{{aoStatusHelpStyle}}">{{aoStatusHelp}}</span>
+</div>
+<sc-if value="{{aoSecondDate}}" hint-placeholder-val="{{ false }}">
+<sc-for list="{{dpSecond}}" as="p" hint-placeholder-count="1">
+<div style="position: relative; display: flex; flex-direction: column; gap: 6px">
+<span id="{{p.labelId}}" style="font-size: 13px; line-height: 18px; font-weight: 500">{{p.label}}</span>
+<button type="button" id="{{p.id}}" onClick="{{p.toggle}}" aria-haspopup="dialog" aria-expanded="{{p.openStr}}" aria-labelledby="{{p.labelId}} {{p.id}}" aria-describedby="{{p.helpId}}" style="{{p.fieldStyle}}">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#48524D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16v14H4ZM4 10h16M8 3v4M16 3v4"></path></svg>
+<span style="flex-grow: 1; text-align: left; font-family: 'IBM Plex Mono', monospace; font-size: 14px">{{p.valueText}}</span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#48524D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+</button>
+<span id="{{p.helpId}}" style="{{p.helpStyle}}">{{p.help}}</span>
+<sc-if value="{{p.open}}" hint-placeholder-val="{{ false }}">
+<div role="dialog" aria-modal="false" aria-label="{{p.dialogLabel}}" onKeyDown="{{p.onKey}}" style="position: absolute; z-index: 10; top: 70px; left: 0; width: 300px; box-sizing: border-box; padding: 12px; background: #FFFFFF; border: 1px solid #DCE0DB; border-radius: 10px; box-shadow: 0 16px 40px -8px rgb(21 26 24 / 0.18), 0 4px 12px -4px rgb(21 26 24 / 0.08); display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between; align-items: center">
+<button type="button" onClick="{{p.prev}}" disabled="{{p.prevDisabled}}" aria-label="Previous month" style="width: 36px; height: 36px; border: 0; border-radius: 6px; background: transparent; color: #151A18; display: inline-flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg></button>
+<span aria-live="polite" style="font-size: 14px; line-height: 20px; font-weight: 600">{{p.monthLabel}}</span>
+<button type="button" onClick="{{p.next}}" disabled="{{p.nextDisabled}}" aria-label="Next month" style="width: 36px; height: 36px; border: 0; border-radius: 6px; background: transparent; color: #151A18; display: inline-flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>
+</div>
+<div role="grid" aria-label="{{p.monthLabel}}" onKeyDown="{{p.onGridKey}}" style="display: flex; flex-direction: column; gap: 2px">
+<div role="row" style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr))">
+<sc-for list="{{p.dow}}" as="w" hint-placeholder-count="7"><span role="columnheader" aria-label="{{w.long}}" style="height: 24px; display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 14px; font-weight: 600; color: #5F6963">{{w.short}}</span></sc-for>
+</div>
+<sc-for list="{{p.weeks}}" as="wk" hint-placeholder-count="5">
+<div role="row" style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px">
+<sc-for list="{{wk.days}}" as="d" hint-placeholder-count="7">
+<span role="gridcell" aria-selected="{{d.selStr}}" style="display: flex"><button type="button" id="{{d.id}}" onClick="{{d.pick}}" disabled="{{d.disabled}}" tabindex="{{d.tabindex}}" aria-label="{{d.aria}}" aria-current="{{d.current}}" style="{{d.style}}">{{d.n}}</button></span>
+</sc-for>
+</div>
+</sc-for>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: center; padding-top: 6px; border-top: 1px solid #EEF0ED">
+<button type="button" onClick="{{p.pickToday}}" disabled="{{p.todayDisabled}}" style="height: 32px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: #2457C5; font-size: 13px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px">Today</button>
+<span style="font-size: 12px; line-height: 16px; color: #5F6963">{{p.rangeText}}</span>
+<button type="button" onClick="{{p.close}}" style="height: 32px; padding: 0 10px; border-radius: 6px; border: 1px solid #C4CAC5; background: #FFFFFF; color: #151A18; font-size: 13px; font-weight: 500">Close</button>
+</div>
+</div>
+</sc-if>
+</div>
+</sc-for>
+</sc-if>
+<sc-if value="{{aoIsUsed}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; line-height: 18px; font-weight: 500">Used on</span>
+<span style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #DCE0DB; border-radius: 6px; background: #EEF0ED; display: flex; align-items: center; font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #151A18">{{aoDateText}}</span>
+<span style="font-size: 12px; line-height: 16px; color: #5F6963">Same as the order date</span>
+</div>
+</sc-if>
+<sc-if value="{{aoIsActive}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="ao-run" style="font-size: 13px; line-height: 18px; font-weight: 500">Runs for</label>
+<select id="ao-run" value="{{aoRun}}" onChange="{{onAoRun}}" aria-invalid="{{aoRunInvalid}}" aria-describedby="ao-run-help" style="{{aoRunStyle}}">
+<option value="7">1 week</option><option value="30">1 month</option><option value="90">3 months</option><option value="365">12 months</option>
+</select>
+<span id="ao-run-help" style="{{aoRunHelpStyle}}">{{aoRunHelp}}</span>
+</div>
+</sc-if>
+</div>
+
+<div style="display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border: 1px solid #DCE0DB; border-radius: 10px; background: #FFFFFF">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#48524D" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 11v5M12 8h.01"></path></svg>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 13px; line-height: 18px; font-weight: 600">What the assistant will likely decide</span>
+<span style="font-size: 13px; line-height: 18px; color: #48524D">{{aoPreview}}</span>
+</div>
+</div>
+</div>
+
+<footer style="{{addFooterStyle}}">
+<button type="button" onClick="{{closeAdd}}" style="height: 44px; padding: 0 16px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: #151A18; font-size: 14px; font-weight: 500">Cancel</button>
+<button type="button" onClick="{{submitAdd}}" style="height: 44px; padding: 0 20px; border-radius: 6px; border: 1px solid #1D2724; background: #1D2724; color: #FFFFFF; font-size: 14px; font-weight: 500">Add order {{aoNum}}</button>
+</footer>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"layout":{"editor":"enum","options":["desktop","mobile"],"default":"desktop"},"startOpen":{"editor":"boolean","default":false},"chatScenario":{"editor":"enum","options":["live","typing","processing","streaming","approved","denied","escalated","error","ratelimited","expired","noorders","requests","reqdetail","reqfinal"],"default":"live"},"disputesEnabled":{"editor":"boolean","default":true},"addDemo":{"editor":"enum","options":["none","empty","filled","calendar","errors"],"default":"none"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { open: !!props.startOpen, key: 0, preselect: '', startView: 'chat', added: [], session: null, page: 1, addOpen: false, ao: this.blankOrder(), aoSubmitted: false, dp: null, notice: '' };
+    var demo = props.addDemo || 'none';
+    if (demo !== 'none') this.state.addOpen = true;
+    if (demo === 'filled' || demo === 'calendar') this.state.ao = { date: '2026-09-19', lines: [{ id: 'meeting-hr', qty: 3 }, { id: 'coffee-addon', qty: 1 }], status: 'used', second: '', run: '30', cat: 'workspace', q: '' };
+    if (demo === 'calendar') this.state.dp = { key: 'order', view: '2026-09', focus: '2026-09-19' };
+    if (demo === 'errors') { this.state.ao = { date: '2026-08-01', lines: [], status: 'active', second: '', run: '7', cat: 'workspace', q: '' }; this.state.aoSubmitted = true; }
+  }
+  componentDidUpdate(prev) {
+    if (prev.startOpen !== this.props.startOpen) this.setState({ open: !!this.props.startOpen });
+  }
+  // ---------- dates (UTC, ISO yyyy-mm-dd) ----------
+  today() { return '2026-09-24'; }
+  toD(iso) { var p = iso.split('-'); return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])); }
+  toIso(d) { return d.toISOString().slice(0, 10); }
+  addDays(iso, n) { var d = this.toD(iso); d.setUTCDate(d.getUTCDate() + n); return this.toIso(d); }
+  diff(a, b) { return Math.round((this.toD(b) - this.toD(a)) / 86400000); }
+  fmt(iso, short) {
+    var M = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    var d = this.toD(iso);
+    return M[d.getUTCMonth()] + ' ' + d.getUTCDate() + (short ? '' : ', ' + d.getUTCFullYear());
+  }
+  money(n) { return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  catalog() {
+    return [
+      { id: 'day-pass', cat: 'workspace', name: 'Day Pass', price: 25, kind: 'booking', unit: 'per pass' },
+      { id: 'flex-10', cat: 'workspace', name: 'Flex Day Pass, 10-pack', price: 180, kind: 'plan', unit: '10 passes' },
+      { id: 'hotdesk-w', cat: 'workspace', name: 'Hot Desk, weekly', price: 79, kind: 'plan', unit: '1 week' },
+      { id: 'hotdesk-m', cat: 'workspace', name: 'Hot Desk, monthly', price: 249, kind: 'plan', unit: '1 month' },
+      { id: 'dedicated-m', cat: 'workspace', name: 'Dedicated Desk, monthly', price: 329, kind: 'plan', unit: '1 month' },
+      { id: 'meeting-hr', cat: 'workspace', name: 'Meeting Room', price: 24, kind: 'booking', unit: 'per hour', hourly: true },
+      { id: 'podcast-hr', cat: 'workspace', name: 'Podcast Studio', price: 45, kind: 'booking', unit: 'per hour', hourly: true },
+      { id: 'event-half', cat: 'workspace', name: 'Event Space, half day', price: 420, kind: 'booking', unit: 'half day' },
+      { id: 'office-dep', cat: 'workspace', name: 'Private Office, monthly deposit', price: 950, kind: 'deposit', unit: 'deposit' },
+      { id: 'virtual-yr', cat: 'workspace', name: 'Virtual Office, annual', price: 588, kind: 'plan', unit: '12 months' },
+      { id: 'locker-1', cat: 'workspace', name: 'Locker Rental, 1 month', price: 20, kind: 'plan', unit: '1 month' },
+      { id: 'locker-3', cat: 'workspace', name: 'Locker Rental, 3 months', price: 45, kind: 'plan', unit: '3 months' },
+      { id: 'coffee-addon', cat: 'services', name: 'Coffee add-on', price: 8, kind: 'booking', unit: 'per booking' },
+      { id: 'print-100', cat: 'services', name: 'Printing Credits, 100 pages', price: 10, kind: 'service', unit: '100 pages' },
+      { id: 'print-500', cat: 'services', name: 'Printing Credits, 500 pages', price: 30, kind: 'service', unit: '500 pages' },
+      { id: 'mail-q', cat: 'services', name: 'Mail Handling, quarterly', price: 60, kind: 'plan', unit: '3 months' },
+      { id: 'coffee-sub', cat: 'services', name: 'Coffee Subscription', price: 28, kind: 'plan', unit: 'per month' },
+      { id: 'lamp', cat: 'products', name: 'Worknoon Desk Lamp', price: 62, kind: 'product', unit: 'each' },
+      { id: 'hub', cat: 'products', name: 'USB-C Hub', price: 24, kind: 'product', unit: 'each' },
+      { id: 'stand', cat: 'products', name: 'Laptop Stand', price: 48, kind: 'product', unit: 'each' },
+      { id: 'keyboard', cat: 'products', name: 'Wireless Keyboard', price: 69, kind: 'product', unit: 'each' },
+      { id: 'headset', cat: 'products', name: 'Noise-cancelling Headset', price: 129, kind: 'product', unit: 'each' },
+      { id: 'mug', cat: 'products', name: 'Worknoon Mug', price: 14, kind: 'product', unit: 'each' },
+      { id: 'notebook', cat: 'products', name: 'Worknoon Notebook, A5', price: 12, kind: 'product', unit: 'each' }
+    ];
+  }
+  blankOrder() { return { date: this.today(), lines: [], status: '', second: '', run: '30', cat: 'workspace', q: '' }; }
+  nextNum() {
+    var max = 10437;
+    (this.state && this.state.added || []).forEach(function (o) { var n = +o.id.slice(4); if (n > max) max = n; });
+    return 'ORD-' + (max + 1);
+  }
+  lineName(l, c) { return c.hourly ? c.name + ' (' + l.qty + (l.qty === 1 ? ' hr)' : ' hrs)') : l.qty > 1 ? c.name + ' × ' + l.qty : c.name; }
+  suggest(lines, C) {
+    var kinds = {}; lines.forEach(function (l) { kinds[C[l.id].kind] = true; });
+    var k = Object.keys(kinds);
+    if (!k.length) return '';
+    if (k.length === 1 && k[0] === 'product') return 'delivered';
+    if (k.every(function (x) { return x === 'booking'; })) return 'used';
+    if (kinds.deposit) return 'confirmed';
+    if (kinds.plan) return 'active';
+    if (kinds.product) return 'delivered';
+    return 'used';
+  }
+  evaluate(ao, C) {
+    var self = this;
+    var total = ao.lines.reduce(function (a, l) { return a + C[l.id].price * l.qty; }, 0);
+    var hasDeposit = ao.lines.some(function (l) { return C[l.id].kind === 'deposit'; });
+    var window = hasDeposit ? 30 : 14;
+    var age = this.diff(ao.date, this.today());
+    var allBooking = ao.lines.length && ao.lines.every(function (l) { return C[l.id].kind === 'booking'; });
+    if (!ao.lines.length) return { outcome: '', text: 'Add items and a delivery status to see how the refund policy applies.' };
+    if (age > window) return { outcome: 'expired', age: age, text: 'Denied: the order is ' + age + ' days old, past the ' + window + '-day refund window.' };
+    if (ao.status === 'used' && allBooking) return { outcome: 'denied', text: 'Denied: bookings that were used can’t be refunded.' };
+    if (total > 500) return { outcome: 'escalated', text: 'Escalated: ' + self.money(total) + ' is a large refund (over $500), so a support specialist reviews it.' };
+    return { outcome: 'approved', text: 'Approved: within the ' + window + '-day window (open until ' + self.fmt(self.addDays(ao.date, window), true) + ') and under $500.' };
+  }
+  validate(ao) {
+    var e = {};
+    if (!ao.lines.length) e.items = 'Add at least one item.';
+    if (!ao.status) e.status = 'Choose a delivery status.';
+    if (ao.status === 'delivered' && ao.second && this.diff(ao.date, ao.second) < 0) e.second = 'Delivery can’t be before the order date.';
+    if (ao.status === 'active' && this.diff(this.today(), this.addDays(ao.date, +ao.run)) < 0) e.run = 'This period already ended. Pick a longer period or a later order date.';
+    return e;
+  }
+  datePicker(key, cfg) {
+    var self = this, st = this.state, dp = st.dp && st.dp.key === key ? st.dp : null;
+    var value = cfg.value;
+    var view = dp ? dp.view : value.slice(0, 7);
+    var focus = dp ? dp.focus : value;
+    var y = +view.slice(0, 4), m = +view.slice(5, 7) - 1;
+    var first = new Date(Date.UTC(y, m, 1));
+    var startOffset = (first.getUTCDay() + 6) % 7;
+    var start = this.addDays(this.toIso(first), -startOffset);
+    var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    var inRange = function (iso) { return iso >= cfg.min && iso <= cfg.max; };
+    var pick = function (iso) { return function () { if (!inRange(iso)) return; cfg.set(iso); self.setState({ dp: null }, function () { var b = document.getElementById('dp-' + key); if (b) b.focus(); }); }; };
+    var weeks = [];
+    for (var w = 0; w < 6; w++) {
+      var days = [];
+      for (var d = 0; d < 7; d++) {
+        var iso = this.addDays(start, w * 7 + d);
+        var inMonth = +iso.slice(5, 7) - 1 === m;
+        var sel = iso === value, dis = !inRange(iso), isToday = iso === this.today(), isFocus = iso === focus;
+        days.push({ n: +iso.slice(8), id: 'dp-' + key + '-' + iso, pick: pick(iso), disabled: dis, tabindex: isFocus ? '0' : '-1', selStr: sel ? 'true' : 'false',
+          aria: this.fmt(iso) + (isToday ? ', today' : '') + (dis ? ', unavailable' : ''), current: isToday ? 'date' : 'false',
+          style: 'width: 100%; height: 34px; border-radius: 6px; font-size: 13px; font-family: \'IBM Plex Mono\', monospace; font-variant-numeric: tabular-nums; ' +
+            (sel ? 'border: 1px solid #1D2724; background: #1D2724; color: #FFFFFF; font-weight: 600' : isToday ? 'border: 1px solid #858F89; background: #FFFFFF; color: #151A18; font-weight: 600' : 'border: 1px solid transparent; background: transparent; color: ' + (dis ? '#8A938D' : inMonth ? '#151A18' : '#5F6963')) +
+            (dis ? '; text-decoration: line-through; cursor: not-allowed' : '') });
+      }
+      if (w < 5 || days.some(function (x) { return +x.id.slice(-5, -3) - 1 === m; })) weeks.push({ days: days });
+    }
+    var move = function (n) {
+      var nf = self.addDays(focus, n);
+      if (nf < cfg.min) nf = cfg.min; if (nf > cfg.max) nf = cfg.max;
+      self.setState({ dp: { key: key, view: nf.slice(0, 7), focus: nf } }, function () { var b = document.getElementById('dp-' + key + '-' + nf); if (b) b.focus(); });
+    };
+    var shiftMonth = function (n) { return function () { var d0 = new Date(Date.UTC(y, m + n, 1)); self.setState({ dp: { key: key, view: self.toIso(d0).slice(0, 7), focus: focus } }); }; };
+    var h = cfg.err ? 'font-size: 12px; line-height: 16px; color: #A1261B' : 'font-size: 12px; line-height: 16px; color: #5F6963';
+    return [{
+      id: 'dp-' + key, labelId: 'dp-' + key + '-label', helpId: 'dp-' + key + '-help', label: cfg.label, dialogLabel: 'Choose ' + cfg.label.toLowerCase(),
+      valueText: this.fmt(value), open: !!dp, openStr: dp ? 'true' : 'false',
+      toggle: function () { self.setState({ dp: dp ? null : { key: key, view: value.slice(0, 7), focus: value } }, function () { var b = document.getElementById('dp-' + key + '-' + value); if (b) b.focus(); }); },
+      close: function () { self.setState({ dp: null }, function () { var b = document.getElementById('dp-' + key); if (b) b.focus(); }); },
+      onKey: function (e) { if (e.key === 'Escape') { e.stopPropagation(); self.setState({ dp: null }, function () { var b = document.getElementById('dp-' + key); if (b) b.focus(); }); } },
+      onGridKey: function (e) {
+        var map = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
+        if (map[e.key]) { e.preventDefault(); move(map[e.key]); }
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(focus)(); }
+      },
+      monthLabel: MONTHS[m] + ' ' + y, prev: shiftMonth(-1), next: shiftMonth(1),
+      prevDisabled: this.toIso(new Date(Date.UTC(y, m, 0))) < cfg.min, nextDisabled: this.toIso(new Date(Date.UTC(y, m + 1, 1))) > cfg.max,
+      dow: [['Mo', 'Monday'], ['Tu', 'Tuesday'], ['We', 'Wednesday'], ['Th', 'Thursday'], ['Fr', 'Friday'], ['Sa', 'Saturday'], ['Su', 'Sunday']].map(function (x) { return { short: x[0], long: x[1] }; }),
+      weeks: weeks, pickToday: pick(this.today()), todayDisabled: !inRange(this.today()),
+      rangeText: this.fmt(cfg.min, true) + ' – ' + this.fmt(cfg.max, true),
+      help: cfg.err || cfg.help, helpStyle: h,
+      fieldStyle: 'height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 6px; background: #FFFFFF; color: #151A18; display: flex; align-items: center; gap: 8px; width: 100%; ' + (cfg.err ? 'border: 1.5px solid #B42318' : 'border: 1px solid #858F89')
+    }];
+  }
+  renderVals() {
+    var self = this;
+    var st = this.state;
+    var mobile = this.props.layout === 'mobile';
+    var ICON = {
+      box: 'M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5ZM3.5 7.5L12 12l8.5-4.5M12 12v9',
+      check: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M8.5 12.5l2.5 2.5 4.5-5',
+      cal: 'M4 6h16v14H4ZM4 10h16M8 3v4M16 3v4',
+      x: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M9 9l6 6M15 9l-6 6',
+      clock: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 7v5l3 2'
+    };
+    var openFor = function (id, view) {
+      return function () {
+        self.setState({ open: true, key: st.key + 1, preselect: id || '', startView: view || 'chat' });
+      };
+    };
+    var CAT = this.catalog(), C = {}; CAT.forEach(function (c) { C[c.id] = c; });
+    var base = [
+      { id: 'ORD-10437', date: 'Sep 22, 2026', items: 'Worknoon Desk Lamp, USB-C Hub', total: '$86.00', delivery: 'Delivered Sep 23', dIcon: ICON.box },
+      { id: 'ORD-10430', date: 'Sep 20, 2026', items: 'Meeting Room (4 hrs), Coffee add-on', total: '$104.00', delivery: 'Used Sep 20', dIcon: ICON.check },
+      { id: 'ORD-10426', date: 'Sep 18, 2026', items: 'Private Office, October deposit', total: '$950.00', delivery: 'Confirmed, starts Oct 1', dIcon: ICON.cal },
+      { id: 'ORD-10421', date: 'Sep 17, 2026', items: 'Flex Day Pass, 10-pack', total: '$180.00', delivery: 'Cancelled', dIcon: ICON.x, req: 'REQ-5817' },
+      { id: 'ORD-10416', date: 'Sep 17, 2026', items: 'Coffee Subscription (September), Worknoon Mug', total: '$42.00', delivery: 'Delivered Sep 18', dIcon: ICON.box },
+      { id: 'ORD-10411', date: 'Sep 15, 2026', items: 'Hot Desk, monthly', total: '$249.00', delivery: 'Active until Oct 15', dIcon: ICON.clock },
+      { id: 'ORD-10408', date: 'Sep 14, 2026', items: 'Noise-cancelling Headset', total: '$129.00', delivery: 'Delivered Sep 16', dIcon: ICON.box },
+      { id: 'ORD-10402', date: 'Sep 12, 2026', items: 'Day Pass \u00d7 2', total: '$50.00', delivery: 'Used Sep 12', dIcon: ICON.check },
+      { id: 'ORD-10399', date: 'Sep 11, 2026', items: 'Printing Credits, 500 pages', total: '$30.00', delivery: 'Active until Dec 11', dIcon: ICON.clock },
+      { id: 'ORD-10395', date: 'Sep 10, 2026', items: 'Event Space, half day', total: '$420.00', delivery: 'Confirmed, starts Oct 8', dIcon: ICON.cal },
+      { id: 'ORD-10385', date: 'Sep 5, 2026', items: 'Laptop Stand', total: '$48.00', delivery: 'Delivered Sep 7', dIcon: ICON.box },
+      { id: 'ORD-10372', date: 'Sep 1, 2026', items: 'Podcast Studio (2 hrs)', total: '$90.00', delivery: 'Used Sep 1', dIcon: ICON.check },
+      { id: 'ORD-10358', date: 'Aug 29, 2026', items: 'Hot Desk, monthly', total: '$249.00', delivery: 'Active until Sep 28', dIcon: ICON.clock },
+      { id: 'ORD-10331', date: 'Aug 26, 2026', items: 'Locker Rental, 1 month', total: '$20.00', delivery: 'Active until Sep 26', dIcon: ICON.clock, req: 'REQ-5862' },
+      { id: 'ORD-10312', date: 'Aug 18, 2026', items: 'Meeting Room (2 hrs)', total: '$48.00', delivery: 'Used Aug 18', dIcon: ICON.check },
+      { id: 'ORD-10287', date: 'Aug 8, 2026', items: 'Worknoon Notebook, A5 \u00d7 2', total: '$24.00', delivery: 'Delivered Aug 11', dIcon: ICON.box }
+    ];
+    var locked = {};
+    var sesOS = (st.session && st.session.orderState) || {};
+    Object.keys(sesOS).forEach(function (id) { locked[id] = sesOS[id].ref; });
+    var orders = st.added.map(function (o) { return o.row; }).concat(base).map(function (o) {
+      if (locked[o.id]) o = Object.assign({}, o, { req: locked[o.id] });
+      return Object.assign({}, o, {
+        isTest: !!o.isTest,
+        help: o.req ? openFor(o.req, 'requests') : openFor(o.id, 'chat'),
+        helpText: o.req ? 'View refund request' : 'Get help with this order',
+        aria: o.req ? 'View refund request for ' + o.id : 'Get help with order ' + o.id
+      });
+    });
+
+    var PER = 10;
+    var pages = Math.max(1, Math.ceil(orders.length / PER));
+    var page = Math.min(st.page, pages);
+    var from = (page - 1) * PER;
+    var pageOrders = orders.slice(from, from + PER);
+    var goPage = function (n) { return function () { self.setState({ page: n }, function () { var t = document.getElementById('wn-orders-top'); if (t && t.scrollIntoView) t.scrollIntoView({ block: 'start' }); }); }; };
+    var pgBtn = function (dis) { return 'height: 36px; padding: 0 10px; border-radius: 6px; border: 1px solid #C4CAC5; background: #FFFFFF; color: ' + (dis ? '#8A938D' : '#151A18') + '; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 4px'; };
+    var pageBtns = [];
+    for (var pn = 1; pn <= pages; pn++) (function (n) {
+      pageBtns.push({ n: n, go: goPage(n), current: n === page ? 'page' : 'false', aria: 'Page ' + n,
+        style: 'min-width: 36px; height: 36px; padding: 0 8px; border-radius: 6px; font-size: 13px; font-weight: ' + (n === page ? '600' : '500') + '; font-family: \'IBM Plex Mono\', monospace; ' + (n === page ? 'border: 1px solid #1D2724; background: #1D2724; color: #FFFFFF' : 'border: 1px solid transparent; background: transparent; color: #151A18') });
+    })(pn);
+
+    // ---------- Add order ----------
+    var ao = st.ao;
+    var setAo = function (patch, cb) { self.setState({ ao: Object.assign({}, self.state.ao, patch) }, cb); };
+    var errs = this.validate(ao);
+    var shown = st.aoSubmitted ? errs : {};
+    var lines = ao.lines.map(function (l, i) {
+      var c = C[l.id], max = c.hourly ? 12 : 20;
+      var upd = function (q) { return function () { var ls = self.state.ao.lines.slice(); if (q <= 0) ls.splice(i, 1); else ls[i] = { id: l.id, qty: Math.min(q, max) }; setAo({ lines: ls }); }; };
+      return { display: self.lineName(l, c), catLabel: { workspace: 'Workspace & bookings', services: 'Add-ons & services', products: 'Accessories & products' }[c.cat],
+        unitText: self.money(c.price) + ' ' + c.unit, qtyText: c.hourly ? l.qty + ' h' : '× ' + l.qty, qtyLabel: 'Quantity for ' + c.name,
+        dec: upd(l.qty - 1), inc: upd(l.qty + 1), decDisabled: l.qty <= 1, incDisabled: l.qty >= max,
+        decAria: 'Decrease ' + (c.hourly ? 'hours' : 'quantity') + ' for ' + c.name, incAria: 'Increase ' + (c.hourly ? 'hours' : 'quantity') + ' for ' + c.name,
+        lineText: self.money(c.price * l.qty), remove: upd(0), removeAria: 'Remove ' + c.name };
+    });
+    var total = ao.lines.reduce(function (a, l) { return a + C[l.id].price * l.qty; }, 0);
+    var q = ao.q.trim().toLowerCase();
+    var CATS = [['workspace', 'Workspace & bookings'], ['services', 'Add-ons & services'], ['products', 'Accessories & products']];
+    var visible = CAT.filter(function (c) { return q ? c.name.toLowerCase().indexOf(q) >= 0 : c.cat === ao.cat; });
+    var addItem = function (c) {
+      return function () {
+        var ls = self.state.ao.lines.slice(); var ix = -1;
+        ls.forEach(function (l, i) { if (l.id === c.id) ix = i; });
+        if (ix >= 0) ls[ix] = { id: c.id, qty: Math.min(ls[ix].qty + 1, c.hourly ? 12 : 20) }; else ls.push({ id: c.id, qty: c.hourly ? 2 : 1 });
+        var patch = { lines: ls };
+        if (!self.state.ao.status) { var sg = self.suggest(ls, C); if (sg) { patch.status = sg; patch.second = sg === 'delivered' ? self.minIso(self.addDays(self.state.ao.date, 1), self.today()) : sg === 'confirmed' ? self.addDays(self.state.ao.date, 7) : ''; } }
+        setAo(patch);
+      };
+    };
+    var kindNote = { booking: 'Booking · used on the day', plan: 'Plan · runs over time', deposit: 'Deposit · refundable within 30 days', service: 'Service', product: 'Physical item · shipped' };
+    var aoCatalog = visible.map(function (c) {
+      var inList = ao.lines.some(function (l) { return l.id === c.id; });
+      return { name: c.name, meta: (q ? { workspace: 'Workspace', services: 'Add-ons', products: 'Products' }[c.cat] + ' · ' : '') + kindNote[c.kind],
+        priceText: self.money(c.price) + (c.hourly ? '/h' : ''), add: addItem(c), addText: inList ? 'Add another' : 'Add', aria: (inList ? 'Add another ' : 'Add ') + c.name + ', ' + self.money(c.price) + ' ' + c.unit };
+    });
+    var catTab = function (on) { return 'height: 36px; padding: 0 10px; margin-bottom: -1px; border: 0; border-bottom: 2px solid ' + (on ? '#151A18' : 'transparent') + '; background: transparent; font-size: 13px; font-weight: ' + (on ? '600' : '500') + '; color: ' + (on ? '#151A18' : '#48524D') + '; white-space: nowrap'; };
+    var aoCats = CATS.map(function (c) {
+      var on = !q && ao.cat === c[0];
+      return { id: 'ao-tab-' + c[0], label: c[1], count: CAT.filter(function (x) { return x.cat === c[0]; }).length, sel: on ? 'true' : 'false', tabindex: on || (q && c[0] === 'workspace') ? '0' : '-1', pick: function () { setAo({ cat: c[0], q: '' }); }, style: catTab(on) };
+    });
+    var todayIso = this.today();
+    var minOrder = this.addDays(todayIso, -60);
+    var dpOrder = this.datePicker('order', { label: 'Order date', value: ao.date, min: minOrder, max: todayIso, help: 'Up to 60 days back',
+      set: function (iso) {
+        var p = { date: iso };
+        var cur = self.state.ao;
+        if (cur.status === 'delivered' && cur.second && cur.second < iso) p.second = iso;
+        if (cur.status === 'confirmed' && cur.second && cur.second < iso) p.second = self.addDays(iso, 7);
+        setAo(p);
+      } });
+    var status = ao.status;
+    var second = ao.second || (status === 'delivered' ? ao.date : this.addDays(ao.date, 7));
+    var dpSecond = status === 'delivered'
+      ? this.datePicker('second', { label: 'Delivered on', value: second, min: ao.date, max: todayIso, help: 'On or after the order date', err: shown.second, set: function (iso) { setAo({ second: iso }); } })
+      : this.datePicker('second', { label: 'Starts on', value: second, min: ao.date, max: this.addDays(todayIso, 120), help: 'Bookings and plans can start in the future', set: function (iso) { setAo({ second: iso }); } });
+    var runEnd = this.addDays(ao.date, +ao.run);
+    var sug = this.suggest(ao.lines, C);
+    var statusNames = { delivered: 'Delivered', used: 'Used', confirmed: 'Confirmed', active: 'Active' };
+    var statusHelp = shown.status || (sug && status !== sug ? 'Suggested for these items: ' + statusNames[sug] : status === 'delivered' ? 'Physical items that have arrived' : status === 'used' ? 'Bookings and passes already used' : status === 'confirmed' ? 'Booked, starts on a set date' : status === 'active' ? 'Ongoing plan or rental' : 'Pick how far along the order is');
+    var ev = this.evaluate(ao, C);
+    var aoErrList = Object.keys(shown).map(function (k) { return shown[k]; });
+    var closeAdd = function () { self.setState({ addOpen: false, dp: null }, function () { var b = document.getElementById('add-order-btn'); if (b) b.focus(); }); };
+    var submitAdd = function () {
+      var e = self.validate(self.state.ao);
+      if (Object.keys(e).length) { self.setState({ aoSubmitted: true }, function () { var el = document.getElementById('ao-errors'); if (el) el.focus(); }); return; }
+      var a = self.state.ao, id = self.nextNum();
+      var sec = a.second || (a.status === 'delivered' ? a.date : self.addDays(a.date, 7));
+      var deliveryText = a.status === 'delivered' ? 'Delivered ' + self.fmt(sec, true) : a.status === 'used' ? 'Used ' + self.fmt(a.date, true) : a.status === 'confirmed' ? 'Confirmed, starts ' + self.fmt(sec, true) : 'Active since ' + self.fmt(a.date, true) + ', until ' + self.fmt(self.addDays(a.date, +a.run), true);
+      var dIcon = { delivered: ICON.box, used: ICON.check, confirmed: ICON.cal, active: ICON.clock }[a.status];
+      var names = a.lines.map(function (l) { return self.lineName(l, C[l.id]); });
+      var tot = a.lines.reduce(function (s0, l) { return s0 + C[l.id].price * l.qty; }, 0);
+      var ev2 = self.evaluate(a, C);
+      var chat = { id: id, date: self.fmt(a.date), short: self.fmt(a.date, true), daysAgo: ev2.age, amount: self.money(tot), recent: ev2.outcome !== 'expired', outcome: ev2.outcome,
+        parts: a.lines.map(function (l) { return { name: self.lineName(l, C[l.id]), price: self.money(C[l.id].price * l.qty) }; }),
+        explain: a.lines.every(function (l) { return C[l.id].kind === 'product'; }) ? 'Your items qualify under the refund policy, so you’ll get a full refund.' : 'You asked within the refund window and nothing blocks it, so you’ll get a full refund.',
+        denyTitle: 'We can’t refund a used booking', denyRule: 'Room and desk bookings', problem: 'I\u2019d like a refund for this order.',
+        denyText: 'Bookings can be refunded up to 24 hours before they start. This one was used on ' + self.fmt(a.date, true) + ', so it can’t be refunded.' };
+      var row = { id: id, date: self.fmt(a.date), items: names.join(', '), total: self.money(tot), delivery: deliveryText, dIcon: dIcon, isTest: true };
+      self.setState({ added: [{ id: id, row: row, chat: chat }].concat(self.state.added), addOpen: false, dp: null, ao: self.blankOrder(), aoSubmitted: false, page: 1, notice: id + ' added. Use “Get help with this order” to try a refund request with it.' },
+        function () { var b = document.getElementById('add-order-btn'); if (b) b.focus(); });
+    };
+    var fieldStyle = function (bad) { return 'height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 6px; background: #FFFFFF; font-size: 14px; color: #151A18; ' + (bad ? 'border: 1.5px solid #B42318' : 'border: 1px solid #858F89'); };
+    var helpStyle = function (bad) { return 'font-size: 12px; line-height: 16px; color: ' + (bad ? '#A1261B' : '#5F6963'); };
+
+    var font = 'font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; color: #151A18; -webkit-font-smoothing: antialiased; ';
+    return {
+      desktop: !mobile,
+      mobile: mobile,
+      displayName: mobile ? 'Amara O.' : 'Amara Okafor',
+      rootStyle: (mobile ? 'width: 390px; height: 844px; ' : 'width: 1440px; height: 900px; ') + 'position: relative; overflow: hidden; box-sizing: border-box; background: #F6F7F5; display: flex; flex-direction: column; ' + font,
+      topbarStyle: 'flex-shrink: 0; height: ' + (mobile ? '56px; padding: 0 8px 0 16px' : '64px; padding: 0 64px') + '; display: flex; justify-content: space-between; align-items: center; background: #FFFFFF; border-bottom: 1px solid #DCE0DB',
+      mainStyle: 'flex-grow: 1; min-height: 0; overflow-y: auto; ' + (mobile ? 'padding: 20px 16px 104px' : 'padding: 40px 64px 120px'),
+      containerStyle: 'display: flex; flex-direction: column; gap: 20px; ' + (mobile ? '' : 'max-width: 1120px; margin: 0 auto'),
+      h1Style: 'margin: 0; font-weight: 600; letter-spacing: -0.01em; ' + (mobile ? 'font-size: 22px; line-height: 30px' : 'font-size: 24px; line-height: 32px'),
+      orders: pageOrders,
+      showPager: orders.length > PER, pagerText: 'Showing ' + (from + 1) + '\u2013' + Math.min(from + PER, orders.length) + ' of ' + orders.length + ' orders',
+      pageBtns: pageBtns, prevPage: goPage(Math.max(1, page - 1)), nextPage: goPage(Math.min(pages, page + 1)),
+      prevDisabled: page <= 1, nextDisabled: page >= pages, prevStyle: pgBtn(page <= 1), nextStyle: pgBtn(page >= pages),
+      pagerStyle: 'display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; ' + (mobile ? 'flex-direction: column; align-items: stretch' : ''),
+      openRequests: openFor('', 'requests'),
+      openChat: function () { self.setState({ open: true }); },
+      closeChat: function () {
+        self.setState({ open: false }, function () { var b = document.getElementById('wn-launcher'); if (b) b.focus(); });
+      },
+      showLauncher: !st.open,
+      launcherStyle: 'position: absolute; z-index: 10; right: ' + (mobile ? '16px' : '24px') + '; bottom: ' + (mobile ? 'calc(16px + env(safe-area-inset-bottom))' : '24px') + '; height: 48px; padding: 0 20px 0 16px; border-radius: 999px; border: 1px solid #1D2724; background: #1D2724; color: #FFFFFF; display: inline-flex; align-items: center; gap: 8px; font-size: 15px; line-height: 20px; font-weight: 500; cursor: pointer; box-shadow: 0 4px 12px -2px rgb(21 26 24 / 0.10), 0 2px 4px -2px rgb(21 26 24 / 0.06)',
+      panelWrapStyle: (st.open ? 'display: block; ' : 'display: none; ') + (mobile ? 'position: absolute; inset: 0; z-index: 20; background: #FFFFFF' : 'position: absolute; z-index: 20; right: 24px; bottom: 24px; width: 400px; height: 600px'),
+      panelLayout: mobile ? 'sheet' : 'panel',
+      panelHint: mobile ? '390px,844px' : '400px,600px',
+      chatScenario: this.props.chatScenario || 'live',
+      disputesEnabled: this.props.disputesEnabled !== false,
+      extraOrders: st.added.map(function (o) { return o.chat; }),
+      session: st.session,
+      onSession: function (x) { self.setState({ session: x }); },
+      preselect: st.preselect,
+      key: st.key,
+      startView: st.startView,
+
+      reqCount: st.session && st.session.reqs ? st.session.reqs.length : 5,
+      notice: st.notice, dismissNotice: function () { self.setState({ notice: '' }); },
+      openAdd: function () { self.setState({ addOpen: true, ao: self.blankOrder(), aoSubmitted: false, dp: null }, function () { var b = document.getElementById('dp-order'); if (b) b.focus(); }); },
+      addOpen: st.addOpen, closeAdd: closeAdd, submitAdd: submitAdd,
+      addKey: function (e) { if (e.key === 'Escape') { if (self.state.dp) return; closeAdd(); } },
+      addWrapStyle: 'position: absolute; inset: 0; z-index: 41; display: flex; align-items: ' + (mobile ? 'stretch' : 'center') + '; justify-content: center; ' + (mobile ? '' : 'padding: 24px'),
+      addDialogStyle: 'width: 100%; ' + (mobile ? 'height: 100%; padding-top: env(safe-area-inset-top); ' : 'max-width: 680px; max-height: 840px; border-radius: 14px; box-shadow: 0 16px 40px -8px rgb(21 26 24 / 0.18), 0 4px 12px -4px rgb(21 26 24 / 0.08); ') + 'box-sizing: border-box; background: #FFFFFF; display: flex; flex-direction: column; overflow: hidden',
+      addFooterStyle: 'flex-shrink: 0; padding: 12px 24px ' + (mobile ? 'calc(12px + env(safe-area-inset-bottom))' : '12px') + '; border-top: 1px solid #DCE0DB; display: flex; justify-content: flex-end; gap: 12px',
+      aoRowStyle: 'display: grid; gap: 16px; align-items: start; grid-template-columns: ' + (mobile ? 'minmax(0, 1fr)' : 'repeat(3, minmax(0, 1fr))'),
+      aoNum: this.nextNum(), dpOrder: dpOrder, dpSecond: dpSecond,
+      aoLines: lines, aoItemCount: ao.lines.length, aoNoItems: ao.lines.length === 0, aoItemErr: shown.items || '',
+      aoQ: ao.q, onAoQ: function (e) { setAo({ q: e.target.value }); },
+      aoCats: aoCats, aoCatTabId: 'ao-tab-' + ao.cat, aoCatalog: aoCatalog, aoNoMatch: aoCatalog.length === 0,
+      aoCatKey: function (e) {
+        var ids = CATS.map(function (c) { return c[0]; }); var i = ids.indexOf(self.state.ao.cat);
+        var n = e.key === 'ArrowRight' ? (i + 1) % 3 : e.key === 'ArrowLeft' ? (i + 2) % 3 : -1;
+        if (n < 0) return; e.preventDefault(); setAo({ cat: ids[n], q: '' }, function () { var b = document.getElementById('ao-tab-' + ids[n]); if (b) b.focus(); });
+      },
+      aoTotal: this.money(total),
+      aoStatus: status, aoStatusInvalid: shown.status ? 'true' : 'false', aoStatusStyle: fieldStyle(!!shown.status), aoStatusHelp: statusHelp, aoStatusHelpStyle: helpStyle(!!shown.status),
+      onAoStatus: function (e) { var v = e.target.value; setAo({ status: v, second: v === 'delivered' ? self.minIso(self.addDays(self.state.ao.date, 1), todayIso) : v === 'confirmed' ? self.addDays(self.state.ao.date, 7) : '' }); },
+      aoSecondDate: status === 'delivered' || status === 'confirmed', aoIsUsed: status === 'used', aoIsActive: status === 'active', aoDateText: this.fmt(ao.date),
+      aoRun: ao.run, onAoRun: function (e) { setAo({ run: e.target.value }); },
+      aoRunInvalid: shown.run ? 'true' : 'false', aoRunStyle: fieldStyle(!!shown.run), aoRunHelpStyle: helpStyle(!!shown.run),
+      aoRunHelp: shown.run || ('Active since ' + this.fmt(ao.date, true) + ' · until ' + this.fmt(runEnd, true) + (runEnd >= todayIso ? ' (still running)' : ' (ended)')),
+      aoShowSummary: st.aoSubmitted && aoErrList.length > 0, aoErrList: aoErrList,
+      aoPreview: ev.text
+    };
+  }
+  minIso(a, b) { return a < b ? a : b; }
+}
+</script>
+</body>
+</html>

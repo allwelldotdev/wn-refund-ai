@@ -189,13 +189,14 @@ mod tests {
     const DEFAULT: &str = include_str!("../../../../policy/default-policy.json");
 
     #[test]
-    fn default_policy_parses_with_all_six_rules() {
+    fn default_policy_parses_with_all_seven_rules() {
         let p = Policy::parse(DEFAULT).expect("default policy must be valid");
         let kinds: Vec<_> = p.rules.iter().map(Rule::kind).collect();
         assert_eq!(
             kinds,
             [
                 "final_sale_not_refundable",
+                "refund_window",
                 "refund_window",
                 "human_review_above",
                 "damaged_or_incorrect_eligible",
