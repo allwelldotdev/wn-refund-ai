@@ -64,9 +64,20 @@ pub struct Scenario {
     /// The customer's own order the request is about, if any.
     pub target_order_ref: Option<&'static str>,
     /// The outcome under the default policy when intake reads the messages
-    /// correctly, and the flags that must be raised on the way.
+    /// correctly, and the flags that must be raised on the way. When the chat
+    /// never reaches the engine (see `files_request`) this is the engine's
+    /// safety net only.
     pub expected_verdict: Verdict,
     pub expected_flags: &'static [Flag],
+}
+
+impl Scenario {
+    /// False when the target order already has a seeded request: the chat
+    /// then reports that request and files nothing.
+    pub fn files_request(&self) -> bool {
+        self.target_order_ref
+            .is_none_or(|target| !self.history.iter().any(|c| c.order_ref == target))
+    }
 }
 
 pub struct SeedAdmin {
@@ -386,7 +397,7 @@ pub const SCENARIOS: &[Scenario] = &[
     Scenario {
         key: "already_refunded",
         title: "Already refunded",
-        summary: "Claims again on a day-pass pack that was already refunded. Sent to an admin.",
+        summary: "Claims again on a day-pass pack that was already refunded. The assistant points to the earlier refund and files nothing new.",
         name: "Fatima Bello",
         email: "fatima.bello@example.com",
         orders: &[order(

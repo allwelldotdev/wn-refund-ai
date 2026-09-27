@@ -71,6 +71,7 @@ fn intake_input() -> IntakeInput {
                 category: "electronics".into(),
                 amount_cents: 8999,
                 final_sale: false,
+                existing_request: None,
             }],
         }],
         selected_order_id: None,
@@ -84,7 +85,8 @@ fn intake_input() -> IntakeInput {
 
 fn intake_json() -> Value {
     json!({
-        "status": "complete", "missing": [], "order_id": Uuid::from_u128(10),
+        "intent": "refund_request", "status": "complete", "missing": [],
+        "order_id": Uuid::from_u128(10),
         "order_item_id": Uuid::from_u128(11), "mentioned_order_refs": ["ORD-1001"],
         "reason_category": "damaged", "claimed_amount_cents": null,
         "contradictory_statements": false, "injection_signals": [], "confidence": 0.93

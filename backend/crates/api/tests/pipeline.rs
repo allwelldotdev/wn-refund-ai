@@ -8,7 +8,7 @@ use std::time::Duration;
 use ai::{AiError, Stage};
 use axum::http::StatusCode;
 use common::{TestApp, complete_intake, needs_info_intake, order_id};
-use domain::intake::{InjectionSignal, MissingField};
+use domain::intake::{InjectionSignal, Intent, MissingField};
 use domain::types::ReasonCategory;
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -458,6 +458,136 @@ async fn low_confidence_counts_once_the_questions_run_out(pool: PgPool) {
         flags(&app.audit(&conv).await),
         ["low_confidence", "clarification_limit"]
     );
+}
+
+fn with_intent(intent: Intent) -> domain::intake::IntakeOutput {
+    let mut intake = needs_info_intake(vec![
+        MissingField::Order,
+        MissingField::Item,
+        MissingField::Reason,
+    ]);
+    intake.intent = intent;
+    intake
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn an_off_topic_message_is_redirected_and_is_not_a_clarify_turn(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let priya = app.login("priya.raman@example.com").await;
+    let conv = app.new_conversation(&priya).await;
+    app.fake.push_intake(Ok(with_intent(Intent::OutOfScope)));
+    let res = app
+        .say(
+            &priya,
+            &conv,
+            "Can you look up tomorrow's weather in Lagos?",
+        )
+        .await;
+    assert_eq!(res.event("reply_start")["kind"], "redirect");
+    assert!(!res.event_names().contains(&"request_updated".to_owned()));
+
+    // Three questions are still allowed after the redirect.
+    for turn in 1..=3 {
+        app.fake
+            .push_intake(Ok(needs_info_intake(vec![MissingField::Reason])));
+        let res = app.say(&priya, &conv, "It's about my booking.").await;
+        assert_eq!(res.event("reply_start")["kind"], "clarify", "turn {turn}");
+    }
+    let got = app
+        .get(&format!("/api/conversations/{conv}"), &priya)
+        .await
+        .json();
+    assert_eq!(got["request"], Value::Null);
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn a_redirect_falls_back_to_the_template_when_the_model_fails(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let priya = app.login("priya.raman@example.com").await;
+    let conv = app.new_conversation(&priya).await;
+    app.fake.push_intake(Ok(with_intent(Intent::OutOfScope)));
+    app.fake
+        .push_respond(Ok("Your refund is approved, and it will be sunny.".into()));
+    app.fake.push_respond(Err(AiError::Timeout(20)));
+    let res = app.say(&priya, &conv, "What's the weather?").await;
+    assert_eq!(res.event("reply_start")["kind"], "redirect");
+    assert_eq!(
+        res.event("reply_done")["body"],
+        "I can only help with refund requests for your Worknoon orders, so I can't help with that here. Which order would you like help with?"
+    );
+    assert!(!res.event_names().contains(&"request_updated".to_owned()));
+}
+
+/// The already-refunded scenario: the item has RR-0903, so the assistant says
+/// so and files nothing; "that's all" then closes the chat.
+#[sqlx::test(migrations = "../../migrations")]
+async fn an_item_with_a_request_gets_its_status_and_nothing_is_filed(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let fatima = app.login("fatima.bello@example.com").await;
+    let conv = app.new_conversation(&fatima).await;
+    app.fake
+        .push_intake(Ok(complete_intake("ORD-10340", ReasonCategory::Other)));
+    let res = app
+        .say(
+            &fatima,
+            &conv,
+            "More passes from ORD-10340 failed to scan at the door again. I want a refund.",
+        )
+        .await;
+    assert_eq!(res.event("reply_start")["kind"], "existing_request");
+    let body = res.event("reply_done")["body"].as_str().unwrap().to_owned();
+    assert!(
+        body.contains("RR-0903") && body.contains("approved after review"),
+        "{body}"
+    );
+    assert!(!res.event_names().contains(&"request_updated".to_owned()));
+    let shown = app.fake.intake_inputs.lock().unwrap()[0].orders[0].items[0]
+        .existing_request
+        .clone()
+        .unwrap();
+    assert_eq!(shown.request_ref, "RR-0903");
+
+    app.fake.push_intake(Ok(with_intent(Intent::Finished)));
+    let res = app.say(&fatima, &conv, "No, that's all. Thanks.").await;
+    assert_eq!(res.event("reply_start")["kind"], "closing");
+    let got = app
+        .get(&format!("/api/conversations/{conv}"), &fatima)
+        .await
+        .json();
+    assert_eq!(got["request"], Value::Null);
+    assert_eq!(app.fake.calls_for(Stage::Review).len(), 0);
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn after_an_existing_request_another_order_is_decided_as_usual(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let amara = app.login("amara.okafor@example.com").await;
+    let conv = app.new_conversation(&amara).await;
+    app.fake
+        .push_intake(Ok(complete_intake("ORD-10416", ReasonCategory::Damaged)));
+    let res = app
+        .say(&amara, &conv, "The mug from ORD-10416 arrived chipped.")
+        .await;
+    assert_eq!(res.event("reply_start")["kind"], "existing_request");
+    assert!(
+        res.event("reply_done")["body"]
+            .as_str()
+            .unwrap()
+            .contains("RR-0904")
+    );
+
+    app.fake
+        .push_intake(Ok(complete_intake("ORD-10437", ReasonCategory::Damaged)));
+    let res = app
+        .say(
+            &amara,
+            &conv,
+            "Also, the desk lamp from ORD-10437 has a cracked base.",
+        )
+        .await;
+    let request = res.event("request_updated");
+    assert_eq!(request["state"], "approved");
+    assert_eq!(request["order_ref"], "ORD-10437");
 }
 
 #[sqlx::test(migrations = "../../migrations")]
