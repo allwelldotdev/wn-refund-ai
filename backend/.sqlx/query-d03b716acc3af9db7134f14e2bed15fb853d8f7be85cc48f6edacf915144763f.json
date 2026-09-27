@@ -1,11 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT r.id, r.ref, r.state, o.ref AS \"order_ref?\", i.name AS \"item_name?\",\n                  r.amount_cents, r.created_at, r.resolved_at\n           FROM refund_requests r\n           LEFT JOIN orders o ON o.id = r.order_id\n           LEFT JOIN order_items i ON i.id = r.order_item_id\n           WHERE r.conversation_id = $1",
+  "query": "SELECT r.id AS \"id!\", r.ref AS \"ref!\", r.state AS \"state!\",\n                  o.ref AS \"order_ref?\", i.name AS \"item_name?\",\n                  r.amount_cents, r.created_at AS \"created_at!\", r.resolved_at\n           FROM refund_requests r\n           LEFT JOIN orders o ON o.id = r.order_id\n           LEFT JOIN order_items i ON i.id = r.order_item_id\n           WHERE r.conversation_id = $1",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id",
+        "name": "id!",
         "type_info": "Uuid",
         "origin": {
           "Table": {
@@ -16,7 +16,7 @@
       },
       {
         "ordinal": 1,
-        "name": "ref",
+        "name": "ref!",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -27,7 +27,7 @@
       },
       {
         "ordinal": 2,
-        "name": "state",
+        "name": "state!",
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -71,7 +71,7 @@
       },
       {
         "ordinal": 6,
-        "name": "created_at",
+        "name": "created_at!",
         "type_info": "Timestamptz",
         "origin": {
           "Table": {
@@ -98,15 +98,15 @@
       ]
     },
     "nullable": [
-      false,
-      false,
-      false,
       true,
       true,
       true,
       false,
+      true,
+      true,
+      true,
       true
     ]
   },
-  "hash": "7efc090ab90d7c69e89a52696e6d51d42b39025f35fcfc58fa28518c4c53b62a"
+  "hash": "d03b716acc3af9db7134f14e2bed15fb853d8f7be85cc48f6edacf915144763f"
 }

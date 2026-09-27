@@ -154,8 +154,11 @@ pub async fn find_request_summary(
     conversation_id: Uuid,
 ) -> Result<Option<RequestSummary>, DbError> {
     let r = sqlx::query!(
-        r#"SELECT r.id, r.ref, r.state, o.ref AS "order_ref?", i.name AS "item_name?",
-                  r.amount_cents, r.created_at, r.resolved_at
+        // `!`: nullability is otherwise inferred from the live query plan,
+        // which can put `r` on the nullable side of the joins.
+        r#"SELECT r.id AS "id!", r.ref AS "ref!", r.state AS "state!",
+                  o.ref AS "order_ref?", i.name AS "item_name?",
+                  r.amount_cents, r.created_at AS "created_at!", r.resolved_at
            FROM refund_requests r
            LEFT JOIN orders o ON o.id = r.order_id
            LEFT JOIN order_items i ON i.id = r.order_item_id
