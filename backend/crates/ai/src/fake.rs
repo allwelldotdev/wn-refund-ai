@@ -6,6 +6,7 @@ use std::sync::Mutex;
 
 use async_trait::async_trait;
 use domain::intake::{IntakeInput, IntakeOutput};
+use domain::notice::{NoticeInput, NoticeOutput, Outcome};
 use domain::responder::{ResponderInput, fallback_reply};
 use domain::review::{ReviewInput, ReviewOutput, SuggestedResolution};
 
@@ -16,6 +17,7 @@ pub struct FakeAssistant {
     intake: Mutex<VecDeque<Result<IntakeOutput, AiError>>>,
     respond: Mutex<VecDeque<Result<String, AiError>>>,
     review: Mutex<VecDeque<Result<ReviewOutput, AiError>>>,
+    notice: Mutex<VecDeque<Result<NoticeOutput, AiError>>>,
     /// Every call in order, with the model slug it was made with.
     pub calls: Mutex<Vec<(Stage, String)>>,
     /// Every intake input, so tests can check what the model was shown.
@@ -40,6 +42,11 @@ impl FakeAssistant {
     /// Empty queue: a canned draft.
     pub fn push_review(&self, r: Result<ReviewOutput, AiError>) {
         self.review.lock().unwrap().push_back(r);
+    }
+
+    /// Empty queue: a notice built from the input that passes validation.
+    pub fn push_notice(&self, r: Result<NoticeOutput, AiError>) {
+        self.notice.lock().unwrap().push_back(r);
     }
 
     pub fn calls_for(&self, stage: Stage) -> Vec<String> {
@@ -103,6 +110,35 @@ impl RefundAssistant for FakeAssistant {
                 rationale: "Scripted by FakeAssistant.".into(),
                 risk_notes: vec![],
                 questions_for_customer: vec![],
+            })
+        });
+        complete(r, record)
+    }
+
+    async fn notice(
+        &self,
+        input: &NoticeInput,
+        model: &StageModel,
+    ) -> Result<Completed<NoticeOutput>, AiError> {
+        let record = self.record(Stage::Notice, model);
+        let next = self.notice.lock().unwrap().pop_front();
+        let r = next.unwrap_or_else(|| {
+            let (word, amount) = match input.outcome {
+                Outcome::Approved => (
+                    "approved",
+                    input
+                        .amount
+                        .as_deref()
+                        .map_or_else(String::new, |a| format!(" for {a}")),
+                ),
+                Outcome::Denied => ("denied", String::new()),
+            };
+            Ok(NoticeOutput {
+                message: format!(
+                    "Dear {}, a support specialist reviewed {} and your refund{amount} is {word}. {}",
+                    input.first_name, input.request_ref, input.note
+                ),
+                summary: format!("A support specialist {word} this refund after review."),
             })
         });
         complete(r, record)

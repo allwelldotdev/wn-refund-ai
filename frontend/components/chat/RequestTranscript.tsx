@@ -47,6 +47,14 @@ function Entry({ m, request }: { m: Message; request: RequestSummary }) {
       </li>
     );
   }
+  if (m.role === "admin") {
+    return (
+      <li className="flex max-w-[88%] flex-col gap-1 self-start rounded-[12px_12px_12px_4px] border border-border bg-surface px-3 py-2 text-meta whitespace-pre-wrap [overflow-wrap:anywhere]">
+        <span className="text-caption font-semibold text-ink-muted">Support team</span>
+        {m.body}
+      </li>
+    );
+  }
   if (m.role === "system") {
     return (
       <li className="rounded-md border border-dashed border-border-control px-3 py-2 text-center text-caption text-ink-muted [overflow-wrap:anywhere]">

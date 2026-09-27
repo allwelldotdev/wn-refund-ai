@@ -37,6 +37,11 @@ pub enum ApiError {
     RateLimited(Duration),
     /// Too many failed sign-ins for one email.
     SignInPaused(Duration),
+    /// A dependency (e.g. the model) failed; nothing was changed.
+    Unavailable {
+        code: &'static str,
+        message: &'static str,
+    },
     Internal(anyhow::Error),
 }
 
@@ -114,6 +119,12 @@ impl IntoResponse for ApiError {
                     format!("Too many sign-in attempts. Try again in {secs} seconds.")
                 });
             }
+            ApiError::Unavailable { code, message } => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                code,
+                message.to_owned(),
+                Map::new(),
+            ),
             ApiError::Internal(err) => {
                 tracing::error!(error = ?err, "internal error");
                 (

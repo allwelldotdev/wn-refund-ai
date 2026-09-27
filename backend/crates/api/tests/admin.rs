@@ -382,10 +382,11 @@ async fn admins_resolve_escalations_once(pool: PgPool) {
     }
 
     let res = app
-        .post(
-            &path,
+        .resolve(
             &admin,
-            json!({ "resolution": "approved", "note": "Office not started yet; deposit returned." }),
+            &grace_ref,
+            "approved",
+            "Office not started yet; deposit returned.",
         )
         .await;
     assert_eq!(res.status, StatusCode::OK);
@@ -415,31 +416,15 @@ async fn admins_resolve_escalations_once(pool: PgPool) {
     assert_eq!(c["request"]["state"], "resolved_approved");
 
     let again = app
-        .post(
-            &path,
-            &admin,
-            json!({ "resolution": "denied", "note": "Changed my mind." }),
-        )
+        .resolve(&admin, &grace_ref, "denied", "Changed my mind.")
         .await;
     assert_eq!(
         (again.status, again.error_code().as_str()),
         (StatusCode::CONFLICT, "not_escalated")
     );
-    let approved = app
-        .post(
-            &format!("/api/admin/requests/{amara_ref}/resolve"),
-            &admin,
-            json!({ "resolution": "denied", "note": "No." }),
-        )
-        .await;
+    let approved = app.resolve(&admin, &amara_ref, "denied", "No.").await;
     assert_eq!(approved.error_code(), "not_escalated");
-    let missing = app
-        .post(
-            "/api/admin/requests/RR-9999/resolve",
-            &admin,
-            json!({ "resolution": "denied", "note": "No." }),
-        )
-        .await;
+    let missing = app.resolve(&admin, "RR-9999", "denied", "No.").await;
     assert_eq!(missing.status, StatusCode::NOT_FOUND);
 }
 
@@ -471,24 +456,15 @@ async fn an_item_with_an_approved_refund_cannot_be_approved_again(pool: PgPool) 
     .unwrap();
     let admin = app.login("ngozi.adeyemi@worknoon.example").await;
 
-    let path = format!("/api/admin/requests/{grace_ref}/resolve");
     let res = app
-        .post(
-            &path,
-            &admin,
-            json!({ "resolution": "approved", "note": "Refund again." }),
-        )
+        .resolve(&admin, &grace_ref, "approved", "Refund again.")
         .await;
     assert_eq!(
         (res.status, res.error_code().as_str()),
         (StatusCode::CONFLICT, "duplicate_active_refund")
     );
     let res = app
-        .post(
-            &path,
-            &admin,
-            json!({ "resolution": "denied", "note": "Already refunded." }),
-        )
+        .resolve(&admin, &grace_ref, "denied", "Already refunded.")
         .await;
     assert_eq!(res.json()["state"], "resolved_denied");
 }

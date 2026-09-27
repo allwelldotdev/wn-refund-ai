@@ -6,6 +6,7 @@
 
 use async_trait::async_trait;
 use domain::intake::{IntakeInput, IntakeOutput};
+use domain::notice::{NoticeInput, NoticeOutput};
 use domain::responder::ResponderInput;
 use domain::review::{ReviewInput, ReviewOutput};
 use rig::client::CompletionClient;
@@ -23,6 +24,7 @@ pub const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
 const INTAKE_MAX_TOKENS: u64 = 4096;
 const RESPONDER_MAX_TOKENS: u64 = 1024;
 const REVIEW_MAX_TOKENS: u64 = 8192;
+const NOTICE_MAX_TOKENS: u64 = 2048;
 
 /// Provider error bodies are stored in the audit; keep them short.
 const MAX_ERROR_BODY_CHARS: usize = 500;
@@ -31,6 +33,7 @@ pub struct OpenRouterAssistant {
     client: openrouter::Client,
     intake_schema: Value,
     review_schema: Value,
+    notice_schema: Value,
 }
 
 /// One stage call before it is sent.
@@ -58,6 +61,7 @@ impl OpenRouterAssistant {
             client,
             intake_schema: prompts::intake_schema(),
             review_schema: prompts::review_schema(),
+            notice_schema: prompts::notice_schema(),
         })
     }
 
@@ -188,6 +192,24 @@ impl RefundAssistant for OpenRouterAssistant {
             user: prompts::review_user_content(input),
             max_tokens: REVIEW_MAX_TOKENS,
             schema: Some((prompts::REVIEW_SCHEMA_NAME, &self.review_schema)),
+        };
+        let (raw, record) = self.complete(model, call).await?;
+        Ok(Completed {
+            output: parse_json(raw)?,
+            record,
+        })
+    }
+
+    async fn notice(
+        &self,
+        input: &NoticeInput,
+        model: &StageModel,
+    ) -> Result<Completed<NoticeOutput>, AiError> {
+        let call = Call {
+            system: prompts::notice_system_prompt(),
+            user: prompts::notice_user_content(input),
+            max_tokens: NOTICE_MAX_TOKENS,
+            schema: Some((prompts::NOTICE_SCHEMA_NAME, &self.notice_schema)),
         };
         let (raw, record) = self.complete(model, call).await?;
         Ok(Completed {

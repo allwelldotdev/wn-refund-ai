@@ -130,6 +130,7 @@ function Section({ title, aside, children }: { title: ReactNode; aside?: ReactNo
 function DrawerBody({ d }: { d: RequestDetail }) {
   const verdictMessage = [...d.messages].reverse().find((m) => m.role === "assistant" && m.assistant_kind === "verdict");
   const resolvedEvent = d.timeline.find((e) => e.kind === "resolved");
+  const staffMessage = [...d.messages].reverse().find((m) => m.role === "admin");
   return (
     <>
       <Timeline d={d} />
@@ -153,11 +154,19 @@ function DrawerBody({ d }: { d: RequestDetail }) {
           </p>
         </Section>
       ) : null}
+      {staffMessage ? (
+        <Section title="Message sent after review">
+          <blockquote className="border-l-2 border-border-strong pl-3 text-body-sm whitespace-pre-wrap [overflow-wrap:anywhere]">
+            {staffMessage.body}
+          </blockquote>
+          <p className="font-mono text-caption text-ink-subtle">Sent in chat · {formatRelativeDayTime(staffMessage.created_at)}</p>
+        </Section>
+      ) : null}
       {resolvedEvent ? (
         <p className="rounded-md bg-muted px-3 py-2 text-body-sm">
           {resolvedEvent.payload.resolution === "approved" ? "Approved" : "Denied"} by{" "}
           <span className="font-semibold">{resolvedEvent.actor_name ?? "an admin"}</span> · {formatDateTime(resolvedEvent.created_at)}.{" "}
-          Note: {String(resolvedEvent.payload.note ?? "")}
+          Note for the audit log: {String(resolvedEvent.payload.note ?? "")}
         </p>
       ) : null}
       <RawAuditButton requestRef={d.request.ref} />

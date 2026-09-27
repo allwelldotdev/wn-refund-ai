@@ -5,6 +5,7 @@ use ai::openrouter::OpenRouterAssistant;
 use ai::{AiConfig, AiError, Effort, RefundAssistant, Stage, StageModel};
 use chrono::Utc;
 use domain::intake::{CustomerMessage, IntakeInput, IntakeStatus, ItemSummary, OrderSummary};
+use domain::notice::{NoticeInput, Outcome};
 use domain::responder::{ResponderInput, Target};
 use domain::review::{ReviewInput, SuggestedResolution};
 use domain::types::{OrderStatus, ReasonCategory, Verdict};
@@ -218,6 +219,45 @@ async fn review_uses_the_review_model_and_schema() {
     assert_eq!(
         done.output.suggested_resolution,
         SuggestedResolution::Approve
+    );
+}
+
+#[tokio::test]
+async fn notice_uses_the_notice_model_and_schema() {
+    let notice = json!({
+        "message": "Dear Tomás, a support specialist approved your refund of $45.00.",
+        "summary": "A support specialist approved this refund."
+    });
+    let server =
+        server_replying(ResponseTemplate::new(200).set_body_json(completion(&notice.to_string())))
+            .await;
+    let input = NoticeInput {
+        outcome: Outcome::Approved,
+        first_name: "Tomás".into(),
+        request_ref: "RR-1006".into(),
+        item_name: Some("Locker Rental".into()),
+        order_ref: Some("ORD-10397".into()),
+        amount: Some("$45.00".into()),
+        note: "Checkout never showed the final-sale notice.".into(),
+    };
+    let done = assistant(&server)
+        .notice(&input, &stage(Stage::Notice))
+        .await
+        .unwrap();
+
+    let body = sent_body(&server).await;
+    assert_eq!(body["model"], "openai/gpt-6-luna");
+    assert_eq!(body["reasoning"]["effort"], "low");
+    assert_eq!(
+        body["response_format"]["json_schema"]["name"],
+        "notice_output"
+    );
+    let user: Value = serde_json::from_str(&text(&body["messages"][1])).unwrap();
+    assert_eq!(user["outcome"], "approved");
+    assert_eq!(user["first_name"], "Tomás");
+    assert_eq!(
+        done.output.summary,
+        "A support specialist approved this refund."
     );
 }
 

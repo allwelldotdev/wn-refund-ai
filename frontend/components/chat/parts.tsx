@@ -326,3 +326,21 @@ export function NoteLine({ children }: { children: ReactNode }) {
     </p>
   );
 }
+
+/** A support specialist's message, sent when they decide a request that went to a person. */
+export function StaffBubble({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex animate-wn-in flex-col gap-1">
+      <span className="ml-8 text-caption font-semibold text-ink-muted">Support team</span>
+      <div className="flex items-end gap-2">
+        <span aria-hidden="true" className="inline-flex size-6 shrink-0 items-center justify-center rounded-full border border-border-strong bg-surface text-ink">
+          <Icon name="check-circle" size={12} strokeWidth={2.5} />
+        </span>
+        <p className="max-w-[85%] rounded-[12px_12px_12px_4px] border border-border bg-surface px-3 py-2 text-body-sm whitespace-pre-wrap text-ink [overflow-wrap:anywhere]">
+          <span className="sr-only">Support team: </span>
+          {children}
+        </p>
+      </div>
+    </div>
+  );
+}

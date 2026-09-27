@@ -16,3 +16,9 @@ timeout_secs = 30
 model = "openai/gpt-6-luna-pro"
 effort = "medium"
 timeout_secs = 90
+
+# Turns an admin's resolution note into the message sent to the customer.
+[notice]
+model = "openai/gpt-6-luna"
+effort = "low"
+timeout_secs = 30
