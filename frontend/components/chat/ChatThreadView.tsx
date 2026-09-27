@@ -18,6 +18,7 @@ import {
   RateLimitNotice,
   ReviewingCard,
   SignInAgainLink,
+  StaffBubble,
   StartNewFooter,
   UserBubble,
   VerdictCard,
@@ -171,6 +172,8 @@ export function ChatThreadView(props: ChatThreadViewProps) {
       );
     } else if (m.role === "system") {
       entries.push(<NoteLine key={m.id}>{m.body}</NoteLine>);
+    } else if (m.role === "admin") {
+      entries.push(<StaffBubble key={m.id}>{m.body}</StaffBubble>);
     } else {
       entries.push(<BotBubble key={m.id}>{m.body}</BotBubble>);
     }

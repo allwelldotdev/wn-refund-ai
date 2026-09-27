@@ -146,111 +146,221 @@ export type ResolveTarget = {
 
 const MIN_NOTE = 10;
 
-/** Confirms an admin decision on an escalation. The note is required and kept in the audit log. */
+type NoticeDraft = { message: string; summary: string };
+
+/** A note survives closing the dialog, e.g. while the assistant is unavailable. */
+const noteKey = (ref: string) => `resolve-note:${ref}`;
+
+function readNote(ref: string): string {
+  try {
+    return sessionStorage.getItem(noteKey(ref)) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function writeNote(ref: string, note: string) {
+  try {
+    if (note) sessionStorage.setItem(noteKey(ref), note);
+    else sessionStorage.removeItem(noteKey(ref));
+  } catch {
+    // Keeping the note is a convenience only.
+  }
+}
+
+/**
+ * Decides an escalation in two steps: the admin writes a note (kept in the
+ * audit log), previews the message the assistant drafts from it for the
+ * customer, then confirms. Without a draft the review can't be completed.
+ */
 export function ResolveDialog({ target, onClose }: { target: ResolveTarget | null; onClose: () => void }) {
-  const [note, setNote] = useState("");
+  const [note, setNoteState] = useState("");
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [draft, setDraft] = useState<NoticeDraft | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
   const noteRef = useRef<HTMLTextAreaElement>(null);
+  const sendRef = useRef<HTMLButtonElement>(null);
   const queryClient = useQueryClient();
   const toast = useToast();
 
-  const mutation = useMutation({
+  if (target && loadedFor !== target.ref) {
+    setLoadedFor(target.ref);
+    setNoteState(readNote(target.ref));
+  }
+
+  function setNote(text: string) {
+    setNoteState(text);
+    if (target) writeNote(target.ref, text);
+  }
+
+  function failed(e: unknown) {
+    if (isApiError(e, 409) || isApiError(e, 404)) {
+      toast({ tone: "error", title: `Couldn't decide ${target?.ref}`, body: e.message });
+      void queryClient.invalidateQueries({ queryKey: ["admin"] });
+      close();
+      return true;
+    }
+    return false;
+  }
+
+  const drafting = useMutation({
     mutationFn: (t: ResolveTarget) =>
-      api<ResolveResponse>(`admin/requests/${encodeURIComponent(t.ref)}/resolve`, {
+      api<NoticeDraft>(`admin/requests/${encodeURIComponent(t.ref)}/resolve/draft`, {
         method: "POST",
         json: { resolution: t.resolution, note: note.trim() },
       }),
-    onSuccess: (_, t) => {
+    onSuccess: (d) => {
+      setDraft(d);
+      window.setTimeout(() => sendRef.current?.focus(), 0);
+    },
+    onError: (e) => {
+      if (failed(e)) return;
+      if (isApiError(e, 503)) setUnavailable(true);
+      else setError(isApiError(e) ? (e.fields[0]?.message ?? e.message) : "The request didn't go through. Try again.");
+    },
+  });
+
+  const resolving = useMutation({
+    mutationFn: ({ t, d }: { t: ResolveTarget; d: NoticeDraft }) =>
+      api<ResolveResponse>(`admin/requests/${encodeURIComponent(t.ref)}/resolve`, {
+        method: "POST",
+        json: { resolution: t.resolution, note: note.trim(), message: d.message, summary: d.summary },
+      }),
+    onSuccess: (_, { t }) => {
       toast({
         tone: "success",
         title: `${t.resolution === "approved" ? "Approved" : "Denied"} ${t.ref}`,
-        body: "The customer sees the new status in their requests.",
+        body: "The message was sent to the customer's chat.",
       });
+      writeNote(t.ref, "");
       void queryClient.invalidateQueries({ queryKey: ["admin"] });
       close();
     },
     onError: (e) => {
-      if (isApiError(e, 409) || isApiError(e, 404)) {
-        toast({ tone: "error", title: `Couldn't decide ${target?.ref}`, body: e.message });
-        void queryClient.invalidateQueries({ queryKey: ["admin"] });
-        close();
-      } else {
-        setError(isApiError(e) ? (e.fields[0]?.message ?? e.message) : "The request didn't go through. Try again.");
-        noteRef.current?.focus();
-      }
+      if (failed(e)) return;
+      setDraft(null);
+      setError(isApiError(e) ? (e.fields[0]?.message ?? e.message) : "The request didn't go through. Try again.");
     },
   });
 
+  const busy = drafting.isPending || resolving.isPending;
+
   function close() {
-    setNote("");
     setError(null);
-    mutation.reset();
+    setDraft(null);
+    setUnavailable(false);
+    setLoadedFor(null);
+    drafting.reset();
+    resolving.reset();
     onClose();
   }
 
   function submit() {
-    if (!target || mutation.isPending) return;
+    if (!target || busy) return;
+    if (draft) {
+      resolving.mutate({ t: target, d: draft });
+      return;
+    }
     if (note.trim().length < MIN_NOTE) {
       setError("Write a short note (at least 10 characters) explaining the decision.");
       noteRef.current?.focus();
       return;
     }
-    mutation.mutate(target);
+    setUnavailable(false);
+    drafting.mutate(target);
   }
 
   if (!target) return null;
   const approve = target.resolution === "approved";
   const amount = formatCents(target.amountCents);
+  const first = target.customer.split(/\s+/)[0] ?? target.customer;
   const summary = [target.customer, target.orderRef, target.amountCents !== null ? amount : null].filter(Boolean).join(" · ");
   const id = "resolve-note";
   return (
     <Dialog
       open
       onClose={close}
-      busy={mutation.isPending}
+      busy={busy}
       onSubmit={submit}
       initialFocus={noteRef}
       icon={approve ? "check-circle" : "x-circle"}
       iconTone={approve ? "approved" : "danger"}
       title={`${approve ? "Approve" : "Deny"} refund for ${target.ref}?`}
-      description={`${summary}. The customer sees the decision in their requests; this note stays in the audit log.`}
+      description={
+        draft
+          ? `${summary}. Check the message ${first} will get in their chat, then send it.`
+          : `${summary}. Your note stays in the audit log; the assistant turns it into a message to ${first} for you to check first.`
+      }
       actions={
-        <>
-          <Button onClick={close} disabled={mutation.isPending}>
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant={approve ? "primary" : "danger"}
-            loading={mutation.isPending}
-            loadingText={approve ? "Approving…" : "Denying…"}
-          >
-            {approve ? `Approve ${target.amountCents !== null ? amount : "refund"}` : "Deny refund"}
-          </Button>
-        </>
+        draft ? (
+          <>
+            <Button onClick={() => setDraft(null)} disabled={busy}>
+              Edit note
+            </Button>
+            <Button ref={sendRef} type="submit" variant={approve ? "primary" : "danger"} loading={resolving.isPending}
+              loadingText={approve ? "Approving…" : "Denying…"}>
+              {approve ? `Approve ${target.amountCents !== null ? amount : "refund"} and send` : "Deny and send"}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button onClick={close} disabled={busy}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" loading={drafting.isPending} loadingText="Writing the message…">
+              Preview message
+            </Button>
+          </>
+        )
       }
     >
-      <Field
-        id={id}
-        label={approve ? "Note for the audit log" : "Reason for the audit log"}
-        required
-        help="Saved with your name and the time. At least 10 characters."
-        error={error}
-      >
-        <Textarea
-          ref={noteRef}
-          id={id}
-          value={note}
-          invalid={!!error}
-          readOnly={mutation.isPending}
-          aria-describedby={describedBy(id, { help: true, error: !!error })}
-          placeholder={approve ? "e.g. Photo of the damage checked; within the refund window." : "e.g. The booking was used in full, so the claim doesn't match our records."}
-          onChange={(e) => {
-            setNote(e.target.value);
-            setError(null);
-          }}
-        />
-      </Field>
+      {draft ? (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <p className="text-caption font-semibold tracking-[0.05em] text-ink-subtle uppercase">Message to {first}</p>
+            <p className="rounded-md border border-border bg-canvas px-3 py-2.5 text-body-sm whitespace-pre-wrap [overflow-wrap:anywhere]">
+              {draft.message}
+            </p>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <p className="text-caption font-semibold tracking-[0.05em] text-ink-subtle uppercase">Note shown in the chat</p>
+            <p className="rounded-md border border-dashed border-border-control px-3 py-2 text-center text-meta text-ink-muted">
+              {draft.summary}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {unavailable ? (
+            <p role="alert" className="flex items-start gap-2 rounded-md border border-denied-border bg-denied-bg px-3 py-2.5 text-body-sm text-denied-fg">
+              <Icon name="alert-circle" size={16} className="mt-0.5 shrink-0 text-denied-icon" />
+              The assistant is unavailable, so this review can&apos;t be completed right now. Your note is kept.
+            </p>
+          ) : null}
+          <Field
+            id={id}
+            label={approve ? "Your note: how and why you approved" : "Your note: how and why you denied"}
+            required
+            help="Saved in the audit log with your name and the time. At least 10 characters."
+            error={error}
+          >
+            <Textarea
+              ref={noteRef}
+              id={id}
+              value={note}
+              invalid={!!error}
+              readOnly={busy}
+              aria-describedby={describedBy(id, { help: true, error: !!error })}
+              placeholder={approve ? "e.g. Photo of the damage checked; within the refund window." : "e.g. The booking was used in full, so the claim doesn't match our records."}
+              onChange={(e) => {
+                setNote(e.target.value);
+                setError(null);
+              }}
+            />
+          </Field>
+        </div>
+      )}
     </Dialog>
   );
 }
