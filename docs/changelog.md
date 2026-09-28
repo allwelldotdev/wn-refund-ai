@@ -2,6 +2,33 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.12.0] — 2026-09-28
+### New
+- When you ask the assistant again about a request it just reported, it now points you to that request's conversation instead of repeating the status, with an "Open … in Your requests" button that takes you there. A request still with the support team gets a short note that you can follow and message the team in Your requests; a decided request gets its outcome and date, followed by a note that the full conversation is in Your requests. Asking about an order for the first time still gets the normal order status.
+
+## [0.11.0] — 2026-09-28
+### Fixed
+- The assistant now answers in light of what it just asked. After it reports an order and asks whether you'd like to request a refund on an item, replying "yes", "yes please" or "sure" starts that refund request instead of repeating the order status, and "no thanks" closes the chat politely. Saying "yes" to "Is there anything else I can help with?" brings up your order list.
+
+### Changed
+- The order buttons in the chat now appear only when you ask to see your orders, and at the start of a new chat; they no longer appear under the assistant's clarifying questions.
+
+## [0.10.4] — 2026-09-28
+### Changed
+- The message a customer gets after a specialist decides their escalated request now speaks in that specialist's own voice, for example "Dear Grace, I reviewed your request RR-1001 and denied it because you have not supplied evidence to support your refund claim."; before, it spoke of "a support specialist" in the third person. It still appears under the specialist's name with the Admin tag, with no sign-off. The short chat note that follows it is unchanged.
+
+## [0.10.3] — 2026-09-28
+### Fixed
+- The message a customer gets after a specialist decides their escalated request now reads as one sentence after the greeting, for example "Dear Amara, a support specialist reviewed request RR-1001 and denied it because …"; before, the word after the greeting was often capitalised as if it started a new sentence. Names, references and "Worknoon" keep their capitals. The admin's preview matches what the customer receives.
+
+## [0.10.2] — 2026-09-28
+### Fixed
+- On the admin Escalations page, "Message customer" now puts the cursor straight into the message box; before, it landed on the panel's close button. Closing the panel with Escape now returns focus to the "Message customer" button.
+
+## [0.10.1] — 2026-09-28
+### Improved
+- The automatic reply a customer gets after messaging a request that's already with the support team now says a support agent will respond, not just see the message.
+
 ## [0.10.0] — 2026-09-28
 ### New
 - While a request is escalated, admins can message the customer from the escalation card or the request details panel; the message appears in the customer's chat exactly as written, with the admin's name.

@@ -12,7 +12,7 @@ use db::admin::{ListFilter, RequestDetail, Resolution, Resolve, Resolved, Stats}
 use db::messages::Message;
 use db::settings::Settings;
 use domain::money::format_cents;
-use domain::notice::{NoticeInput, NoticeOutput, Outcome, validate_notice};
+use domain::notice::{NoticeInput, NoticeOutput, Outcome, continue_greeting, validate_notice};
 use domain::responder::clean_reply;
 use domain::types::{Flag, RequestState};
 use serde::Deserialize;
@@ -254,9 +254,9 @@ fn not_escalated() -> ApiError {
     ApiError::conflict("not_escalated", "Only escalated requests can be resolved.")
 }
 
-fn cleaned(n: NoticeOutput) -> NoticeOutput {
+fn cleaned(n: NoticeOutput, input: &NoticeInput) -> NoticeOutput {
     NoticeOutput {
-        message: clean_reply(&n.message),
+        message: continue_greeting(&clean_reply(&n.message), input),
         summary: clean_reply(&n.summary),
     }
 }
@@ -275,7 +275,7 @@ async fn draft_notice(
     let assistant = &state.assistant;
     let (notice, log) = pipeline::call_with_fallback(&state.ai, Stage::Notice, |m| async move {
         let mut done = assistant.notice(input, &m).await?;
-        done.output = cleaned(done.output);
+        done.output = cleaned(done.output, input);
         validate_notice(&done.output, input).map_err(|v| AiError::Rejected(v.0))?;
         Ok(done)
     })
@@ -297,10 +297,13 @@ async fn resolve(
 ) -> Result<Json<Resolved>, ApiError> {
     let note = checked_note(&body.note)?;
     let input = notice_input(&state, &request_ref, body.resolution, note).await?;
-    let notice = cleaned(NoticeOutput {
-        message: body.message,
-        summary: body.summary,
-    });
+    let notice = cleaned(
+        NoticeOutput {
+            message: body.message,
+            summary: body.summary,
+        },
+        &input,
+    );
     validate_notice(&notice, &input).map_err(|v| ApiError::field("message", v.0))?;
     let resolved = db::admin::resolve_request(
         &state.db,

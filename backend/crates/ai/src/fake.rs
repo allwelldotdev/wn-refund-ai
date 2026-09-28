@@ -135,7 +135,7 @@ impl RefundAssistant for FakeAssistant {
             };
             Ok(NoticeOutput {
                 message: format!(
-                    "Dear {}, a support specialist reviewed {} and your refund{amount} is {word}. {}",
+                    "Dear {}, I reviewed {} and your refund{amount} is {word}. {}",
                     input.first_name, input.request_ref, input.note
                 ),
                 summary: format!("A support specialist {word} this refund after review."),
@@ -157,6 +157,7 @@ mod tests {
             orders: vec![],
             selected_order_id: None,
             messages: vec![],
+            replies: vec![],
         }
     }
 

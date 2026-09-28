@@ -8,9 +8,9 @@ use std::time::Duration;
 use ai::{AiError, Stage};
 use axum::http::StatusCode;
 use common::{TestApp, complete_intake, needs_info_intake, order_id};
-use domain::intake::{InjectionSignal, Intent, MissingField};
+use domain::intake::{AssistantReply, InjectionSignal, Intent, MissingField};
 use domain::responder::{GREETING_REPLY, ORDER_LIST_REPLY};
-use domain::types::ReasonCategory;
+use domain::types::{AssistantKind, ReasonCategory};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -511,7 +511,7 @@ async fn details_added_to_an_escalated_request_get_a_holding_reply(pool: PgPool)
     assert_eq!(
         res.event("reply_done")["body"],
         format!(
-            "Thanks for the update. Your request {request_ref} has already been escalated to our support team; a support agent will see this message."
+            "Thanks for the update. Your request {request_ref} has already been escalated to our support team; a support agent will see this message and respond shortly."
         )
     );
     assert!(!res.event_names().contains(&"request_updated".to_owned()));
@@ -739,6 +739,167 @@ async fn a_question_about_an_order_reports_its_record_and_files_nothing(pool: Pg
         res.event("request_updated")["item_name"],
         "Coffee Subscription (September)"
     );
+}
+
+/// Seen live: "Yes, I would." to the offer got the same order status again,
+/// because intake never saw the question it answered.
+#[sqlx::test(migrations = "../../migrations")]
+async fn a_bare_yes_to_an_offered_refund_starts_that_request(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let amara = app.login("amara.okafor@example.com").await;
+    let conv = app.new_conversation(&amara).await;
+    let mut mug = asking_about(None);
+    mug.order_item_id = Some(db::seed::item_id("ORD-10416", 0));
+    app.fake.push_intake(Ok(mug));
+    let res = app
+        .say(&amara, &conv, "What happened to the Worknoon mug request?")
+        .await;
+    assert_eq!(res.event("reply_start")["kind"], "order_status");
+    let offer = res.event("reply_done")["body"].as_str().unwrap().to_owned();
+    assert!(
+        offer.ends_with("Would you like to request a refund for Coffee Subscription (September)?")
+    );
+
+    // Intake reads the "yes" against that offer: the coffee, no reason yet.
+    let coffee = db::seed::item_id("ORD-10416", 1);
+    let mut yes = needs_info_intake(vec![MissingField::Reason]);
+    yes.order_id = Some(order_id("ORD-10416"));
+    yes.order_item_id = Some(coffee);
+    app.fake.push_intake(Ok(yes));
+    let res = app.say(&amara, &conv, "Yes, I would.").await;
+    assert_eq!(res.event("reply_start")["kind"], "clarify");
+    let shown = app.fake.intake_inputs.lock().unwrap()[1].clone();
+    assert_eq!(
+        shown.replies,
+        [AssistantReply {
+            seq: 2,
+            kind: AssistantKind::OrderStatus,
+            body: offer,
+        }]
+    );
+    let seqs: Vec<i32> = shown.messages.iter().map(|m| m.seq).collect();
+    assert_eq!(seqs, [1, 3]);
+
+    // The reason, then the final question, then the decision.
+    let mut reason = complete_intake("ORD-10416", ReasonCategory::Damaged);
+    reason.order_item_id = Some(coffee);
+    let res = app
+        .decide(&amara, &conv, "The bag arrived torn open.", None, reason)
+        .await;
+    let request = res.event("request_updated");
+    assert_eq!(request["item_name"], "Coffee Subscription (September)");
+    assert_eq!(request["state"], "approved");
+    let kinds: Vec<AssistantKind> = app.fake.intake_inputs.lock().unwrap()[3]
+        .replies
+        .iter()
+        .map(|r| r.kind)
+        .collect();
+    assert_eq!(
+        kinds,
+        [
+            AssistantKind::OrderStatus,
+            AssistantKind::Clarify,
+            AssistantKind::FinalCheck
+        ]
+    );
+}
+
+/// Asking again about a request the assistant just reported points to its
+/// thread in Your requests instead of repeating the status.
+#[sqlx::test(migrations = "../../migrations")]
+async fn asking_again_about_a_reported_request_links_to_its_thread(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let grace = app.login("grace.liu@example.com").await;
+    let first = app.new_conversation(&grace).await;
+    let res = app
+        .decide(
+            &grace,
+            &first,
+            "Please cancel ORD-10388 and return the deposit.",
+            None,
+            complete_intake("ORD-10388", ReasonCategory::ChangedMind),
+        )
+        .await;
+    let request_ref = res.event("request_updated")["ref"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+
+    // The first question gets the order's status, naming the request.
+    let conv = app.new_conversation(&grace).await;
+    app.fake.push_intake(Ok(asking_about(Some("ORD-10388"))));
+    let res = app
+        .say(&grace, &conv, "What's happening with my deposit refund?")
+        .await;
+    assert_eq!(res.event("reply_start")["kind"], "order_status");
+    assert!(
+        res.event("reply_done")["body"]
+            .as_str()
+            .unwrap()
+            .contains(&request_ref)
+    );
+
+    // Asked again: a pointer to the thread, from a template.
+    let responder_calls = app.fake.calls_for(Stage::Responder).len();
+    let mut again = asking_about(Some("ORD-10388"));
+    again.order_item_id = Some(db::seed::item_id("ORD-10388", 0));
+    app.fake.push_intake(Ok(again));
+    let res = app
+        .say(&grace, &conv, "Yes, I'd like the update on it.")
+        .await;
+    assert_eq!(res.event("reply_start")["kind"], "request_link");
+    let link = format!(
+        "Request {request_ref} is still with our support team for review. You can follow it and message the team in Your requests."
+    );
+    assert_eq!(res.event("reply_done")["body"], link);
+    assert_eq!(app.fake.calls_for(Stage::Responder).len(), responder_calls);
+
+    // Still the same request, however it is asked: no new request is filed.
+    app.fake.push_intake(Ok(complete_intake(
+        "ORD-10388",
+        ReasonCategory::ChangedMind,
+    )));
+    let res = app.say(&grace, &conv, "I just want my deposit back.").await;
+    assert_eq!(res.event("reply_start")["kind"], "request_link");
+    assert_eq!(res.event("reply_done")["body"], link);
+    let got = app
+        .get(&format!("/api/conversations/{conv}"), &grace)
+        .await
+        .json();
+    assert_eq!(got["request"], Value::Null);
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn a_decided_request_asked_about_again_gets_its_status_and_the_link(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let amara = app.login("amara.okafor@example.com").await;
+    let conv = app.new_conversation(&amara).await;
+    app.fake.push_intake(Ok(asking_about(Some("ORD-10416"))));
+    let res = app
+        .say(&amara, &conv, "What happened to order 10416?")
+        .await;
+    assert_eq!(res.event("reply_start")["kind"], "order_status");
+
+    // Only the order named again: its request from that reply.
+    app.fake.push_intake(Ok(asking_about(Some("ORD-10416"))));
+    let res = app
+        .say(&amara, &conv, "And what happened with that request?")
+        .await;
+    assert_eq!(res.event("reply_start")["kind"], "request_link");
+    let body = res.event("reply_done")["body"].as_str().unwrap().to_owned();
+    assert!(
+        body.starts_with(
+            "Your refund request RR-0904 for Worknoon Mug (order ORD-10416) was approved after review on "
+        ) && body.ends_with(". The full conversation is in Your requests."),
+        "{body}"
+    );
+
+    // Another order was not reported yet: its status, as usual.
+    app.fake.push_intake(Ok(asking_about(Some("ORD-10437"))));
+    let res = app
+        .say(&amara, &conv, "What about my desk lamp order?")
+        .await;
+    assert_eq!(res.event("reply_start")["kind"], "order_status");
 }
 
 #[sqlx::test(migrations = "../../migrations")]

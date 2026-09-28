@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, Skeleton } from "@/components/ui/Surface";
 import type { ConversationSummary, Message, Order } from "@/lib/api-types";
-import { alreadyStored, customerRequests, decisionMessageId, isClosed, orderAvailability } from "@/lib/customer";
+import { alreadyStored, customerRequests, decisionMessageId, isClosed, orderAvailability, requestRefIn } from "@/lib/customer";
 import { firstName, formatCents } from "@/lib/format";
 import { useMarkRead } from "@/lib/use-mark-read";
 
@@ -17,6 +17,7 @@ import {
   NoticeCard,
   OrderBubble,
   RateLimitNotice,
+  RequestLinkBubble,
   ReviewingCard,
   SignInAgainLink,
   StaffBubble,
@@ -188,7 +189,16 @@ export function ChatThreadView(props: ChatThreadViewProps) {
         </StaffBubble>,
       );
     } else {
-      entries.push(<BotBubble key={m.id}>{m.body}</BotBubble>);
+      const linked = m.assistant_kind === "request_link" ? requestRefIn(m.body) : null;
+      entries.push(
+        linked ? (
+          <RequestLinkBubble key={m.id} requestRef={linked} onShowRequest={onShowRequest}>
+            {m.body}
+          </RequestLinkBubble>
+        ) : (
+          <BotBubble key={m.id}>{m.body}</BotBubble>
+        ),
+      );
     }
   });
 
@@ -206,10 +216,10 @@ export function ChatThreadView(props: ChatThreadViewProps) {
     entries.push(<ReviewingCard key="reviewing" startedAt={thread.startedAt} orderRef={ref} writing={phase === "replying"} />);
   }
 
-  // Still clarifying, or asked to see the orders: offer them, or confirm a mid-thread pick.
+  // Asked to see the orders: offer them, or confirm a mid-thread pick. A clarifying
+  // question gets no chips; the assistant already has the order in context or asks for it.
   const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
-  const offerOrders =
-    lastAssistant?.assistant_kind === "order_list" || (lastAssistant?.assistant_kind === "clarify" && !orderSent);
+  const offerOrders = lastAssistant?.assistant_kind === "order_list";
   if (started && !busy && !request && offerOrders && orders?.length) {
     if (pickedOrder && picked !== sentOrderId) {
       const s = orderSummary(pickedOrder);
@@ -218,7 +228,7 @@ export function ChatThreadView(props: ChatThreadViewProps) {
       entries.push(<BotBubble key="late-pick-prompt">Got it: {pickedOrder.ref}. Send a short message to continue.</BotBubble>);
     } else {
       entries.push(
-        <OrderChips key="clarify-chips" orders={orders} conversations={conversations} selectedId={picked}
+        <OrderChips key="order-list-chips" orders={orders} conversations={conversations} selectedId={picked}
           disabled={busy} onPick={pick} onShowRequest={onShowRequest} />,
       );
     }

@@ -91,6 +91,53 @@ async fn a_resolution_is_drafted_previewed_and_posted_to_the_chat(pool: PgPool) 
 }
 
 #[sqlx::test(migrations = "../../migrations")]
+async fn the_message_continues_the_greeting_in_lower_case(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let (conv, request_ref) = escalated(&app).await;
+    let admin = app.login("sam.whitfield@worknoon.example").await;
+    let note = "No evidence of relocation was supplied.";
+    let capital = format!("Dear Grace, A support specialist reviewed {request_ref} and denied it.");
+    let lower = format!("Dear Grace, a support specialist reviewed {request_ref} and denied it.");
+    app.fake.push_notice(Ok(NoticeOutput {
+        message: capital.clone(),
+        summary: "A support specialist denied this refund.".into(),
+    }));
+
+    let draft = app
+        .post(
+            &draft_path(&request_ref),
+            &admin,
+            json!({ "resolution": "denied", "note": note }),
+        )
+        .await;
+    assert_eq!(draft.status, StatusCode::OK);
+    assert_eq!(draft.json()["message"], lower);
+
+    // The resolve path applies the same rule to whatever the admin sends.
+    let res = app
+        .post(
+            &format!("/api/admin/requests/{request_ref}/resolve"),
+            &admin,
+            json!({ "resolution": "denied", "note": note, "message": capital,
+                    "summary": "A support specialist denied this refund." }),
+        )
+        .await;
+    assert_eq!(res.status, StatusCode::OK);
+    let grace = app.login("grace.liu@example.com").await;
+    let got = app
+        .get(&format!("/api/conversations/{conv}"), &grace)
+        .await
+        .json();
+    let decision = got["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .rfind(|m| m["role"] == "admin")
+        .unwrap();
+    assert_eq!(decision["body"], lower);
+}
+
+#[sqlx::test(migrations = "../../migrations")]
 async fn when_the_model_fails_the_review_is_not_completed(pool: PgPool) {
     let app = TestApp::new(pool).await;
     let (_, request_ref) = escalated(&app).await;
