@@ -252,7 +252,11 @@ export function SupportPage({ principal }: { principal: Principal }) {
               }
             }}
             onOpenThread={(t) => openThread(t)}
-            onConversationCreated={(id) => writeUrl({ open: true, view: "chat", conversationId: id, orderId: null })}
+            onConversationCreated={(id) => {
+              // Same key: the thread keeps running, but a remount or tab switch now finds it.
+              setTarget((prev) => ({ ...prev, conversationId: id, orderId: null }));
+              writeUrl({ open: true, view: "chat", conversationId: id, orderId: null });
+            }}
             onClose={close}
           />
         </div>

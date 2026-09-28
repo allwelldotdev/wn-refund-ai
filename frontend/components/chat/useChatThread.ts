@@ -21,6 +21,8 @@ export type Outgoing = {
   orderId: string | null;
   /** True once the API confirmed it stored the message (`message_saved`). */
   saved: boolean;
+  /** The stored message's id, so the thread can drop this copy once a re-read includes it. */
+  messageId?: string;
 };
 
 const draftKey = (conversationId: string | null) => `draft:${conversationId ?? "new"}`;
@@ -99,8 +101,14 @@ export function useChatThread(initialConversationId: string | null, onConversati
       abort.current = controller;
       try {
         if (!id) {
-          const created = await api<{ id: string }>("conversations", { method: "POST" });
+          const created = await api<{ id: string; created_at: string }>("conversations", { method: "POST" });
           id = created.id;
+          // Seed an empty thread so enabling the query doesn't fetch mid-send.
+          queryClient.setQueryData<ConversationDetail>(["conversation", id], {
+            conversation: { id, last_seq: 0, created_at: created.created_at, updated_at: created.created_at },
+            messages: [],
+            request: null,
+          });
           setConversationId(id);
           onConversationCreated(id);
         }
@@ -112,7 +120,7 @@ export function useChatThread(initialConversationId: string | null, onConversati
             switch (e.event) {
               case "message_saved":
                 saved = true;
-                setOutgoing((o) => (o ? { ...o, saved: true } : o));
+                setOutgoing((o) => (o ? { ...o, saved: true, messageId: e.data.message_id } : o));
                 setPhase("reviewing");
                 break;
               case "reply_start":
@@ -165,7 +173,7 @@ export function useChatThread(initialConversationId: string | null, onConversati
         setStartedAt(null);
       }
     },
-    [conversationId, onConversationCreated, refresh],
+    [conversationId, onConversationCreated, queryClient, refresh],
   );
 
   /** Resends after a failure: the same id if it never reached the API, else a new message. */

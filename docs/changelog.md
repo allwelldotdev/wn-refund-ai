@@ -2,6 +2,11 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.7.1] — 2026-09-28
+### Fixed
+- A new chat's first message no longer briefly appears twice while the assistant is working on it.
+- Switching from Chat to Your requests and back no longer loses a new conversation; the chat keeps its messages, a reply still arriving, the picked order and the scroll position. "Start new request" still starts an empty chat.
+
 ## [0.7.0] — 2026-09-27
 ### New
 - Customers can add a test order from My orders, picking a date, items from a catalogue, and a delivery status, to try the chat.
