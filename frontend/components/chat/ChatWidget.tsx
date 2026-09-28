@@ -103,7 +103,8 @@ export function ChatWidget(props: ChatWidgetProps) {
         </div>
       </div>
 
-      {view === "chat" ? (
+      {/* Hidden, not unmounted, on Your requests: an in-flight reply, a picked order and the scroll position survive. */}
+      <div className={cn("flex min-h-0 flex-grow flex-col", view !== "chat" && "hidden")}>
         <ChatThreadView
           key={target.key}
           customerName={props.customerName}
@@ -118,7 +119,8 @@ export function ChatWidget(props: ChatWidgetProps) {
           onShowRequest={props.onShowRequest}
           onShowPolicy={() => setPolicyOpen(true)}
         />
-      ) : (
+      </div>
+      {view === "requests" ? (
         <RequestsView
           conversations={conversations.data}
           orders={orders.data}
@@ -132,7 +134,7 @@ export function ChatWidget(props: ChatWidgetProps) {
           onOpenChat={(id) => onOpenThread({ conversationId: id, orderId: null })}
           onNewRequest={() => onOpenThread({ conversationId: null, orderId: null })}
         />
-      )}
+      ) : null}
 
       <Dialog
         open={policyOpen}

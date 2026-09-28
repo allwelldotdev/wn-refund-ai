@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, Skeleton } from "@/components/ui/Surface";
 import type { ConversationSummary, Message, Order } from "@/lib/api-types";
-import { customerRequests, isClosed, orderAvailability } from "@/lib/customer";
+import { alreadyStored, customerRequests, isClosed, orderAvailability } from "@/lib/customer";
 import { firstName, formatCents } from "@/lib/format";
 
 import { Composer } from "./Composer";
@@ -179,7 +179,7 @@ export function ChatThreadView(props: ChatThreadViewProps) {
     }
   });
 
-  if (outgoing) {
+  if (outgoing && !alreadyStored(outgoing.messageId, messages)) {
     orderLead(outgoing.orderId, "order-outgoing");
     entries.push(
       <UserBubble key="outgoing" pending={!outgoing.saved}>

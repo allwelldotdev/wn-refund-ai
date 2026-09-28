@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { customerRequests, fulfilment, isClosed, itemMarkers, orderAvailability } from "@/lib/customer";
+import { alreadyStored, customerRequests, fulfilment, isClosed, itemMarkers, orderAvailability } from "@/lib/customer";
 import { formatShortDate } from "@/lib/format";
 
 import { designConversations, designOrders } from "./fixtures/design";
@@ -53,5 +53,13 @@ describe("customer order markers", () => {
     expect(fulfilment(byRef("ORD-10430"), formatShortDate).label).toBe("Used Sep 20");
     expect(fulfilment(byRef("ORD-10426"), formatShortDate).label).toBe("Confirmed, not started");
     expect(fulfilment(byRef("ORD-10421"), formatShortDate).label).toBe("Active since Sep 17");
+  });
+
+  it("drops the in-flight copy only once the thread holds the stored message", () => {
+    const messages = [{ id: "m-1" }, { id: "m-2" }];
+    expect(alreadyStored(undefined, messages)).toBe(false);
+    expect(alreadyStored("m-3", messages)).toBe(false);
+    expect(alreadyStored("m-2", messages)).toBe(true);
+    expect(alreadyStored("m-2", [])).toBe(false);
   });
 });

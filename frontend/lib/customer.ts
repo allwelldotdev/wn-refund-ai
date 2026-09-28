@@ -1,4 +1,4 @@
-import type { ConversationSummary, Order, OrderItem, RequestSummary } from "./api-types";
+import type { ConversationSummary, Message, Order, OrderItem, RequestSummary } from "./api-types";
 
 export type ItemMarker = {
   item: OrderItem;
@@ -44,6 +44,11 @@ export function itemMarkers(order: Order, conversations: ConversationSummary[] |
     else if (item.active_refund) markers.push({ item, ...MARKERS.approved, request: null });
   }
   return markers;
+}
+
+/** Whether a re-read of the thread already holds the message being sent, so its in-flight copy isn't drawn twice. */
+export function alreadyStored(messageId: string | undefined, messages: Pick<Message, "id">[]): boolean {
+  return messageId !== undefined && messages.some((m) => m.id === messageId);
 }
 
 /** Answered requests are closed to new messages; an escalated one stays open. */
