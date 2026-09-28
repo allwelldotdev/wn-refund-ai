@@ -14,10 +14,14 @@ use sqlx::PgPool;
 async fn denied_locker(app: &TestApp) -> (String, String) {
     let tomas = app.login("tomas.herrera@example.com").await;
     let conv = app.new_conversation(&tomas).await;
-    app.fake
-        .push_intake(Ok(complete_intake("ORD-10397", ReasonCategory::Damaged)));
     let res = app
-        .say(&tomas, &conv, "The lock on my ORD-10397 locker is broken.")
+        .decide(
+            &tomas,
+            &conv,
+            "The lock on my ORD-10397 locker is broken.",
+            None,
+            complete_intake("ORD-10397", ReasonCategory::Damaged),
+        )
         .await;
     assert_eq!(res.event("request_updated")["state"], "denied");
     assert_eq!(res.event("request_updated")["can_dispute"], true);
@@ -70,7 +74,7 @@ async fn an_automatic_denial_can_be_disputed_once(pool: PgPool) {
         .get(&format!("/api/conversations/{conv}"), &tomas)
         .await
         .json();
-    let tail: Vec<(&str, &str)> = got["messages"].as_array().unwrap()[2..]
+    let tail: Vec<(&str, &str)> = got["messages"].as_array().unwrap()[4..]
         .iter()
         .map(|m| (m["role"].as_str().unwrap(), m["body"].as_str().unwrap()))
         .collect();
@@ -130,7 +134,10 @@ async fn a_dispute_without_a_reason_adds_only_the_note(pool: PgPool) {
         .iter()
         .map(|m| m["role"].as_str().unwrap())
         .collect();
-    assert_eq!(roles, ["customer", "assistant", "system"]);
+    assert_eq!(
+        roles,
+        ["customer", "assistant", "customer", "assistant", "system"]
+    );
 }
 
 #[sqlx::test(migrations = "../../migrations")]
@@ -190,10 +197,14 @@ async fn only_an_automatic_denial_can_be_disputed(pool: PgPool) {
     let app = TestApp::new(pool).await;
     let amara = app.login("amara.okafor@example.com").await;
     let approved = app.new_conversation(&amara).await;
-    app.fake
-        .push_intake(Ok(complete_intake("ORD-10437", ReasonCategory::Damaged)));
-    app.say(&amara, &approved, "My desk lamp arrived broken.")
-        .await;
+    app.decide(
+        &amara,
+        &approved,
+        "My desk lamp arrived broken.",
+        None,
+        complete_intake("ORD-10437", ReasonCategory::Damaged),
+    )
+    .await;
     let res = app.post(&dispute_path(&approved), &amara, json!({})).await;
     assert_eq!(res.error_code(), "not_disputable");
 
@@ -205,15 +216,13 @@ async fn only_an_automatic_denial_can_be_disputed(pool: PgPool) {
     // A denial made by an admin is final.
     let grace = app.login("grace.liu@example.com").await;
     let escalated = app.new_conversation(&grace).await;
-    app.fake.push_intake(Ok(complete_intake(
-        "ORD-10388",
-        ReasonCategory::ChangedMind,
-    )));
     let res = app
-        .say(
+        .decide(
             &grace,
             &escalated,
             "Please cancel ORD-10388 and refund the deposit.",
+            None,
+            complete_intake("ORD-10388", ReasonCategory::ChangedMind),
         )
         .await;
     let request_ref = res.event("request_updated")["ref"]

@@ -8,7 +8,9 @@
 //!    every id against the customer's own orders and raises flags.
 //! 4. A greeting, a question about an order, a customer who is done, an
 //!    off-topic message, or an item that already has a request gets a reply
-//!    that files nothing. Otherwise, missing order,
+//!    that files nothing. A complete request first gets one final question
+//!    ("anything else?"); the answer, even "no", leads to the decision.
+//!    Otherwise, missing order,
 //!    item or reason: ask a clarifying question, up to `MAX_CLARIFY_TURNS`,
 //!    then escalate. Low confidence waits for the same point: it only
 //!    escalates a complete request or one out of questions.
@@ -399,6 +401,14 @@ async fn process(
             .iter()
             .filter(|m| m.role == MessageRole::Customer)
             .collect();
+        let last_reply = all
+            .iter()
+            .rev()
+            .find(|m| m.role == MessageRole::Assistant)
+            .and_then(|m| m.assistant_kind);
+        let final_check_asked = all
+            .iter()
+            .any(|m| m.assistant_kind == Some(AssistantKind::FinalCheck));
         let signals = window_prescan(state, conversation_id, &customer).await?;
         let orders = db::orders::list_orders_for_customer(db, customer_id).await?;
         let item_requests = db::refunds::item_requests(db, customer_id).await?;
@@ -440,11 +450,18 @@ async fn process(
         if flags.is_empty()
             && let Some(extracted) = &intake
         {
+            // "No, that's all" answers the final question: go on to decide.
+            let answers_final_check = last_reply == Some(AssistantKind::FinalCheck)
+                && matches!(
+                    extracted.intent,
+                    Intent::Finished | Intent::OutOfScope | Intent::Greeting
+                );
             // Not a clarify turn: a model failure falls back to the template
             // rather than escalating, since nothing is being decided.
             let picked = customer.last().and_then(|m| m.order_id);
-            if let Some((kind, reply)) =
-                no_request_reply(&orders, &item_requests, extracted, picked)
+            if !answers_final_check
+                && let Some((kind, reply)) =
+                    no_request_reply(&orders, &item_requests, extracted, picked)
             {
                 let body = match reply {
                     NoRequestReply::Fixed(text) => text.to_owned(),
@@ -492,6 +509,27 @@ async fn process(
                         None => flags.push(Flag::LlmFailure),
                     }
                 }
+            } else if !final_check_asked {
+                // Asked once per conversation; a model failure uses the template,
+                // since nothing is being decided.
+                let input = ResponderInput::FinalCheck {
+                    target: resolve_target(&orders, extracted)
+                        .map(|(o, item)| Target::new(&o.order_ref, &item.name, item.amount_cents)),
+                };
+                let body = respond(state, &input)
+                    .await
+                    .0
+                    .unwrap_or_else(|| fallback_reply(&input.expectation(), None));
+                let mut conn = db.0.acquire().await?;
+                let reply = db::messages::insert_assistant_message(
+                    &mut conn,
+                    conversation_id,
+                    AssistantKind::FinalCheck,
+                    &body,
+                )
+                .await?;
+                out.reply(&reply).await;
+                return Ok(None);
             }
         }
 

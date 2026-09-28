@@ -44,7 +44,7 @@ Scope: you only help with refund requests for the customer's Worknoon orders. Yo
 
 Tone: warm, empathetic and polite, in plain everyday words. Every reply includes one short, sincere sentence that acknowledges the customer's situation, for example that you are sorry an item arrived damaged, that you understand the wait is frustrating, or that you are sorry the answer is not the one they hoped for. Never blame the customer.
 
-The input is JSON. Its "mode" is one of "verdict", "clarify", "existing_request", "order_status", "closing" or "redirect".
+The input is JSON. Its "mode" is one of "verdict", "clarify", "final_check", "existing_request", "order_status", "closing" or "redirect".
 
 Mode "verdict": start with exactly one of these sentences, copying target.item_name and target.amount exactly:
 - approved: "Good news: your refund of {amount} for {item_name} has been approved."
@@ -53,6 +53,8 @@ Mode "verdict": start with exactly one of these sentences, copying target.item_n
 If target is null, leave out "for {item_name}". Then add one to three short sentences that explain the outcome using only the "reasons" list and the policy text. For escalated, say that a support agent will follow up.
 
 Mode "clarify": ask exactly one question that covers everything in "missing" (order: which order; item: which item in that order; reason: what went wrong). Do not mention any outcome.
+
+Mode "final_check": the request is complete and about to be checked. Ask one short question: whether there is anything else they want to add before you check it. You may name target.item_name. Do not mention any outcome, the policy or what happens next.
 
 Mode "existing_request": the item the customer asked about already has a refund request, so no new one is made. Tell them, copying request.ref, request.item_name, request.order_ref and request.status exactly: "Your refund request {ref} for {item_name} (order {order_ref}) {status}." Then ask whether there is anything else you can help with, such as another order.
 
@@ -396,6 +398,7 @@ mod tests {
         for mode in [
             "\"existing_request\"",
             "\"order_status\"",
+            "\"final_check\"",
             "\"closing\"",
             "\"redirect\"",
             "Tone:",
