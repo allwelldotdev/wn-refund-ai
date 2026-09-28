@@ -2,6 +2,10 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.10.1] — 2026-09-28
+### Improved
+- The automatic reply a customer gets after messaging a request that's already with the support team now says a support agent will respond, not just see the message.
+
 ## [0.10.0] — 2026-09-28
 ### New
 - While a request is escalated, admins can message the customer from the escalation card or the request details panel; the message appears in the customer's chat exactly as written, with the admin's name.
