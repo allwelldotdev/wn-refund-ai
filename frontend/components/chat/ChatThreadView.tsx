@@ -57,7 +57,9 @@ export function ChatThreadView(props: ChatThreadViewProps) {
   const orderById = new Map((orders ?? []).map((o) => [o.id, o]));
   const customerMessages = messages.filter((m) => m.role === "customer");
   const started = customerMessages.length > 0 || outgoing !== null;
-  const orderSent = customerMessages.some((m) => m.order_id !== null) || (outgoing?.orderId ?? null) !== null;
+  // The order the thread is about so far: the latest one sent with a message.
+  const sentOrderId = outgoing?.orderId ?? customerMessages.findLast((m) => m.order_id !== null)?.order_id ?? null;
+  const orderSent = sentOrderId !== null;
   const pickedOrder = picked ? (orderById.get(picked) ?? null) : null;
   const busy = phase !== "idle";
   const closed = isClosed(request);
@@ -85,7 +87,7 @@ export function ChatThreadView(props: ChatThreadViewProps) {
   function send() {
     const text = draft.trim();
     if (!text) return;
-    const orderId = picked && !orderSent ? picked : null;
+    const orderId = picked && picked !== sentOrderId ? picked : null;
     void thread.send({ text, clientMsgId: crypto.randomUUID(), orderId, saved: false });
   }
 
@@ -193,10 +195,12 @@ export function ChatThreadView(props: ChatThreadViewProps) {
     entries.push(<ReviewingCard key="reviewing" startedAt={thread.startedAt} orderRef={ref} writing={phase === "replying"} />);
   }
 
-  // Still clarifying: offer the orders again, or confirm a mid-thread pick.
+  // Still clarifying, or asked to see the orders: offer them, or confirm a mid-thread pick.
   const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
-  if (started && !busy && !request && !orderSent && lastAssistant?.assistant_kind === "clarify" && orders?.length) {
-    if (pickedOrder) {
+  const offerOrders =
+    lastAssistant?.assistant_kind === "order_list" || (lastAssistant?.assistant_kind === "clarify" && !orderSent);
+  if (started && !busy && !request && offerOrders && orders?.length) {
+    if (pickedOrder && picked !== sentOrderId) {
       const s = orderSummary(pickedOrder);
       entries.push(<OrderBubble key="late-pick" orderRef={pickedOrder.ref} amount={s.amount} items={s.items} />);
       entries.push(...earlier(pickedOrder));
