@@ -511,7 +511,7 @@ async fn details_added_to_an_escalated_request_get_a_holding_reply(pool: PgPool)
     assert_eq!(
         res.event("reply_done")["body"],
         format!(
-            "Thanks for the update. Your request {request_ref} has already been escalated to our support team; a support agent will see this message."
+            "Thanks for the update. Your request {request_ref} has already been escalated to our support team; a support agent will see this message and respond shortly."
         )
     );
     assert!(!res.event_names().contains(&"request_updated".to_owned()));

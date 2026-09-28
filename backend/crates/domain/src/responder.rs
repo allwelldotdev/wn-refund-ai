@@ -434,7 +434,7 @@ pub fn holding_reply(request_ref: &str, state: RequestState) -> String {
         RequestState::ResolvedDenied => "denied after review",
     };
     format!(
-        "Thanks for the update. Your request {request_ref} has already been {outcome}; a support agent will see this message."
+        "Thanks for the update. Your request {request_ref} has already been {outcome}; a support agent will see this message and respond shortly."
     )
 }
 
@@ -723,7 +723,7 @@ mod tests {
     fn holding_reply_names_the_request_and_its_state() {
         assert_eq!(
             holding_reply("RR-1001", RequestState::ResolvedDenied),
-            "Thanks for the update. Your request RR-1001 has already been denied after review; a support agent will see this message."
+            "Thanks for the update. Your request RR-1001 has already been denied after review; a support agent will see this message and respond shortly."
         );
     }
 }
