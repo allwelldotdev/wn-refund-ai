@@ -2,7 +2,8 @@
 //! the customer message is stored:
 //!
 //! 1. Take the conversation lock. A conversation that already has its request
-//!    gets a holding reply; the verdict never changes (ADR-021).
+//!    gets one holding reply, and none once an admin has written; the verdict
+//!    never changes (ADR-021).
 //! 2. Window pre-scan. Any signal skips intake and fails closed.
 //! 3. Intake (LLM, with one fallback model) extracts claims. Rust then checks
 //!    every id against the customer's own orders and raises flags.
@@ -378,6 +379,17 @@ async fn process(
     if let Some(existing) = db::refunds::find_request_for_conversation(db, conversation_id).await? {
         // Folded into a decision made while this message waited for the lock.
         if message.seq <= existing.evaluated_through_seq.unwrap_or(0) {
+            return Ok(None);
+        }
+        // With a specialist: one holding reply at most, and none once an admin
+        // has written, so the chat reads as a conversation with them.
+        let quiet = db::messages::list_messages(db, conversation_id)
+            .await?
+            .iter()
+            .any(|m| {
+                m.role == MessageRole::Admin || m.assistant_kind == Some(AssistantKind::Holding)
+            });
+        if quiet {
             return Ok(None);
         }
         let body = holding_reply(&existing.request_ref, existing.state);

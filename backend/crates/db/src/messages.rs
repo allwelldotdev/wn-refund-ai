@@ -23,6 +23,8 @@ pub struct Message {
     pub client_msg_id: Option<Uuid>,
     pub order_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
+    /// The admin who wrote an admin message; `None` for every other role.
+    pub author_name: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -45,6 +47,7 @@ struct RawMessage {
     client_msg_id: Option<Uuid>,
     order_id: Option<Uuid>,
     created_at: DateTime<Utc>,
+    author_name: Option<String>,
 }
 
 impl TryFrom<RawMessage> for Message {
@@ -61,6 +64,7 @@ impl TryFrom<RawMessage> for Message {
             client_msg_id: r.client_msg_id,
             order_id: r.order_id,
             created_at: r.created_at,
+            author_name: r.author_name,
         })
     }
 }
@@ -91,9 +95,10 @@ pub async fn insert_customer_message(
     let seq = next_seq(conn, conversation_id).await?;
     let r = sqlx::query_as!(
         RawMessage,
-        "INSERT INTO messages (conversation_id, seq, role, body, client_msg_id, order_id)
-         VALUES ($1, $2, 'customer', $3, $4, $5)
-         RETURNING id, conversation_id, seq, role, assistant_kind, body, client_msg_id, order_id, created_at",
+        r#"INSERT INTO messages (conversation_id, seq, role, body, client_msg_id, order_id)
+           VALUES ($1, $2, 'customer', $3, $4, $5)
+           RETURNING id, conversation_id, seq, role, assistant_kind, body, client_msg_id, order_id, created_at,
+                     NULL::text AS "author_name?""#,
         conversation_id,
         seq,
         body,
@@ -121,9 +126,10 @@ pub async fn insert_assistant_message(
     let seq = next_seq(conn, conversation_id).await?;
     let r = sqlx::query_as!(
         RawMessage,
-        "INSERT INTO messages (conversation_id, seq, role, assistant_kind, body)
-         VALUES ($1, $2, 'assistant', $3, $4)
-         RETURNING id, conversation_id, seq, role, assistant_kind, body, client_msg_id, order_id, created_at",
+        r#"INSERT INTO messages (conversation_id, seq, role, assistant_kind, body)
+           VALUES ($1, $2, 'assistant', $3, $4)
+           RETURNING id, conversation_id, seq, role, assistant_kind, body, client_msg_id, order_id, created_at,
+                     NULL::text AS "author_name?""#,
         conversation_id,
         seq,
         kind.as_str(),
@@ -134,23 +140,27 @@ pub async fn insert_assistant_message(
     r.try_into()
 }
 
-/// A message from an admin, or a system note. Neither goes through the pipeline.
+/// A message from an admin (with its author), or a system note. Neither goes
+/// through the pipeline.
 pub async fn insert_note(
     conn: &mut PgConnection,
     conversation_id: Uuid,
     role: MessageRole,
     body: &str,
+    author_admin_id: Option<Uuid>,
 ) -> Result<Message, DbError> {
     let seq = next_seq(conn, conversation_id).await?;
     let r = sqlx::query_as!(
         RawMessage,
-        "INSERT INTO messages (conversation_id, seq, role, body)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id, conversation_id, seq, role, assistant_kind, body, client_msg_id, order_id, created_at",
+        r#"INSERT INTO messages (conversation_id, seq, role, body, author_admin_id)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING id, conversation_id, seq, role, assistant_kind, body, client_msg_id, order_id, created_at,
+                     (SELECT a.name FROM admins a WHERE a.id = author_admin_id) AS "author_name?""#,
         conversation_id,
         seq,
         role.as_str(),
         body,
+        author_admin_id,
     )
     .fetch_one(&mut *conn)
     .await?;
@@ -161,8 +171,10 @@ pub async fn insert_note(
 pub async fn list_messages(db: &Db, conversation_id: Uuid) -> Result<Vec<Message>, DbError> {
     sqlx::query_as!(
         RawMessage,
-        "SELECT id, conversation_id, seq, role, assistant_kind, body, client_msg_id, order_id, created_at
-         FROM messages WHERE conversation_id = $1 ORDER BY seq",
+        r#"SELECT m.id, m.conversation_id, m.seq, m.role, m.assistant_kind, m.body, m.client_msg_id,
+                  m.order_id, m.created_at,
+                  (SELECT a.name FROM admins a WHERE a.id = m.author_admin_id) AS "author_name?"
+           FROM messages m WHERE m.conversation_id = $1 ORDER BY m.seq"#,
         conversation_id,
     )
     .fetch_all(&db.0)
@@ -178,8 +190,10 @@ pub async fn find_message_by_client_id(
 ) -> Result<Option<Message>, DbError> {
     sqlx::query_as!(
         RawMessage,
-        "SELECT id, conversation_id, seq, role, assistant_kind, body, client_msg_id, order_id, created_at
-         FROM messages WHERE client_msg_id = $1",
+        r#"SELECT m.id, m.conversation_id, m.seq, m.role, m.assistant_kind, m.body, m.client_msg_id,
+                  m.order_id, m.created_at,
+                  (SELECT a.name FROM admins a WHERE a.id = m.author_admin_id) AS "author_name?"
+           FROM messages m WHERE m.client_msg_id = $1"#,
         client_msg_id,
     )
     .fetch_optional(&db.0)

@@ -45,6 +45,11 @@ pub struct ConversationSummary {
     pub last_seq: i32,
     pub preview: Option<String>,
     pub request: Option<RequestSummary>,
+    /// Admin messages the customer has not seen yet.
+    pub unread_count: i64,
+    /// The latest admin message: when, and who wrote it.
+    pub last_reply_at: Option<DateTime<Utc>>,
+    pub last_reply_by: Option<String>,
 }
 
 pub async fn create_conversation(db: &Db, customer_id: Uuid) -> Result<Conversation, DbError> {
@@ -114,7 +119,15 @@ pub async fn list_conversations(
                   r.created_at AS "request_created_at?", r.resolved_at AS "resolved_at?",
                   r.disputed_at AS "disputed_at?",
                   (r.state = 'denied' AND r.disputed_at IS NULL
-                   AND (SELECT allow_disputes FROM app_settings)) AS "can_dispute?"
+                   AND (SELECT allow_disputes FROM app_settings)) AS "can_dispute?",
+                  (SELECT count(*) FROM messages m
+                   WHERE m.conversation_id = c.id AND m.role = 'admin'
+                     AND m.seq > c.customer_read_seq) AS "unread_count!",
+                  (SELECT max(m.created_at) FROM messages m
+                   WHERE m.conversation_id = c.id AND m.role = 'admin') AS "last_reply_at?",
+                  (SELECT (SELECT a.name FROM admins a WHERE a.id = m.author_admin_id)
+                   FROM messages m WHERE m.conversation_id = c.id AND m.role = 'admin'
+                   ORDER BY m.seq DESC LIMIT 1) AS "last_reply_by?"
            FROM conversations c
            LEFT JOIN refund_requests r ON r.conversation_id = c.id
            LEFT JOIN orders o ON o.id = r.order_id
@@ -152,9 +165,36 @@ pub async fn list_conversations(
                 last_seq: r.last_seq,
                 preview: r.preview,
                 request,
+                unread_count: r.unread_count,
+                last_reply_at: r.last_reply_at,
+                last_reply_by: r.last_reply_by,
             })
         })
         .collect()
+}
+
+/// Moves the customer's read marker up to `seq` (never back, never past the
+/// last message). `NotFound` when the conversation is not theirs.
+pub async fn mark_customer_read(
+    db: &Db,
+    id: Uuid,
+    customer_id: Uuid,
+    seq: i32,
+) -> Result<(), DbError> {
+    let done = sqlx::query!(
+        "UPDATE conversations
+         SET customer_read_seq = GREATEST(customer_read_seq, LEAST($3, last_seq))
+         WHERE id = $1 AND customer_id = $2",
+        id,
+        customer_id,
+        seq,
+    )
+    .execute(&db.0)
+    .await?;
+    if done.rows_affected() == 0 {
+        return Err(DbError::NotFound);
+    }
+    Ok(())
 }
 
 pub async fn find_request_summary(

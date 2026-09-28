@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, conversation_id, seq, role, assistant_kind, body, client_msg_id, order_id, created_at\n         FROM messages WHERE conversation_id = $1 ORDER BY seq",
+  "query": "INSERT INTO messages (conversation_id, seq, role, assistant_kind, body)\n           VALUES ($1, $2, 'assistant', $3, $4)\n           RETURNING id, conversation_id, seq, role, assistant_kind, body, client_msg_id, order_id, created_at,\n                     NULL::text AS \"author_name?\"",
   "describe": {
     "columns": [
       {
@@ -101,11 +101,20 @@
             "name": "created_at"
           }
         }
+      },
+      {
+        "ordinal": 9,
+        "name": "author_name?",
+        "type_info": "Text",
+        "origin": "Expression"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Uuid",
+        "Int4",
+        "Text",
+        "Text"
       ]
     },
     "nullable": [
@@ -117,8 +126,9 @@
       false,
       true,
       true,
-      false
+      false,
+      null
     ]
   },
-  "hash": "c6755e4a705a82bd213a3e0fc1cbab8d968fa9ec0a931eaa9261804b28970a1a"
+  "hash": "98e4c132a326e5c64853f31c4f682ff12a8b2de63f3d6b3bb34e19b0d7b27637"
 }

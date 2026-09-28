@@ -34,6 +34,7 @@ pub fn routes() -> Router<AppState> {
         .route("/api/conversations/{id}", get(get_conversation))
         .route("/api/conversations/{id}/messages", post(post_message))
         .route("/api/conversations/{id}/dispute", post(dispute))
+        .route("/api/conversations/{id}/read", post(mark_read))
 }
 
 async fn list_orders(
@@ -258,6 +259,7 @@ async fn dispute(
         &format!(
             "You disputed this decision on {today}. A support specialist will review it and reply here."
         ),
+        None,
     )
     .await?;
     db::refunds::mark_disputed(&mut tx, target.id).await?;
@@ -291,4 +293,22 @@ fn duplicate(existing: Message, conversation_id: Uuid) -> Result<Response, ApiEr
             .expect("channel has room for both events");
     }
     Ok(sse::stream(rx).into_response())
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ReadBody {
+    /// The last message the customer has seen.
+    seq: i32,
+}
+
+/// Marks the conversation's messages up to `seq` as read by the customer.
+async fn mark_read(
+    State(state): State<AppState>,
+    s: CustomerSession,
+    Path(id): Path<Uuid>,
+    ApiJson(req): ApiJson<ReadBody>,
+) -> Result<StatusCode, ApiError> {
+    db::conversations::mark_customer_read(&state.db, id, s.customer_id, req.seq).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
