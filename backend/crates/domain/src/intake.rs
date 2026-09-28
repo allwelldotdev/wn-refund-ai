@@ -1,5 +1,6 @@
-//! Intake stage contract (ADR-002). The intake model reads the customer's
-//! messages and returns structured claims plus manipulation signals. Its output
+//! Intake stage contract (ADR-002). The intake model reads the conversation
+//! (the customer's messages and our replies) and returns structured claims
+//! plus manipulation signals about the customer's messages. Its output
 //! is untrusted: Rust checks every id against the customer's own orders before
 //! anything reaches the engine.
 
@@ -8,7 +9,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::types::{OrderStatus, ReasonCategory, RequestState};
+use crate::types::{AssistantKind, OrderStatus, ReasonCategory, RequestState};
 
 /// Below this, intake output raises `Flag::LowConfidence`, but only once the
 /// request is complete or the clarifying questions have run out.
@@ -56,12 +57,23 @@ pub struct CustomerMessage {
     pub body: String,
 }
 
+/// One of our replies in the conversation (trusted): worded from our records
+/// by a template or the responder, which never sees customer text.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct AssistantReply {
+    pub seq: i32,
+    pub kind: AssistantKind,
+    pub body: String,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct IntakeInput {
     pub orders: Vec<OrderSummary>,
     /// Order picked in the chat UI, if any.
     pub selected_order_id: Option<Uuid>,
     pub messages: Vec<CustomerMessage>,
+    /// Our replies so far, so the latest message is read as an answer to them.
+    pub replies: Vec<AssistantReply>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

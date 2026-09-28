@@ -81,6 +81,7 @@ fn intake_input() -> IntakeInput {
             seq: 1,
             body: "My headphones from ORD-1001 arrived cracked.".into(),
         }],
+        replies: vec![],
     }
 }
 

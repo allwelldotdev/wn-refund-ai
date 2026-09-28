@@ -8,9 +8,9 @@ use std::time::Duration;
 use ai::{AiError, Stage};
 use axum::http::StatusCode;
 use common::{TestApp, complete_intake, needs_info_intake, order_id};
-use domain::intake::{InjectionSignal, Intent, MissingField};
+use domain::intake::{AssistantReply, InjectionSignal, Intent, MissingField};
 use domain::responder::{GREETING_REPLY, ORDER_LIST_REPLY};
-use domain::types::ReasonCategory;
+use domain::types::{AssistantKind, ReasonCategory};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -738,6 +738,69 @@ async fn a_question_about_an_order_reports_its_record_and_files_nothing(pool: Pg
     assert_eq!(
         res.event("request_updated")["item_name"],
         "Coffee Subscription (September)"
+    );
+}
+
+/// Seen live: "Yes, I would." to the offer got the same order status again,
+/// because intake never saw the question it answered.
+#[sqlx::test(migrations = "../../migrations")]
+async fn a_bare_yes_to_an_offered_refund_starts_that_request(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let amara = app.login("amara.okafor@example.com").await;
+    let conv = app.new_conversation(&amara).await;
+    let mut mug = asking_about(None);
+    mug.order_item_id = Some(db::seed::item_id("ORD-10416", 0));
+    app.fake.push_intake(Ok(mug));
+    let res = app
+        .say(&amara, &conv, "What happened to the Worknoon mug request?")
+        .await;
+    assert_eq!(res.event("reply_start")["kind"], "order_status");
+    let offer = res.event("reply_done")["body"].as_str().unwrap().to_owned();
+    assert!(
+        offer.ends_with("Would you like to request a refund for Coffee Subscription (September)?")
+    );
+
+    // Intake reads the "yes" against that offer: the coffee, no reason yet.
+    let coffee = db::seed::item_id("ORD-10416", 1);
+    let mut yes = needs_info_intake(vec![MissingField::Reason]);
+    yes.order_id = Some(order_id("ORD-10416"));
+    yes.order_item_id = Some(coffee);
+    app.fake.push_intake(Ok(yes));
+    let res = app.say(&amara, &conv, "Yes, I would.").await;
+    assert_eq!(res.event("reply_start")["kind"], "clarify");
+    let shown = app.fake.intake_inputs.lock().unwrap()[1].clone();
+    assert_eq!(
+        shown.replies,
+        [AssistantReply {
+            seq: 2,
+            kind: AssistantKind::OrderStatus,
+            body: offer,
+        }]
+    );
+    let seqs: Vec<i32> = shown.messages.iter().map(|m| m.seq).collect();
+    assert_eq!(seqs, [1, 3]);
+
+    // The reason, then the final question, then the decision.
+    let mut reason = complete_intake("ORD-10416", ReasonCategory::Damaged);
+    reason.order_item_id = Some(coffee);
+    let res = app
+        .decide(&amara, &conv, "The bag arrived torn open.", None, reason)
+        .await;
+    let request = res.event("request_updated");
+    assert_eq!(request["item_name"], "Coffee Subscription (September)");
+    assert_eq!(request["state"], "approved");
+    let kinds: Vec<AssistantKind> = app.fake.intake_inputs.lock().unwrap()[3]
+        .replies
+        .iter()
+        .map(|r| r.kind)
+        .collect();
+    assert_eq!(
+        kinds,
+        [
+            AssistantKind::OrderStatus,
+            AssistantKind::Clarify,
+            AssistantKind::FinalCheck
+        ]
     );
 }
 

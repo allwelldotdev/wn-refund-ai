@@ -5,8 +5,9 @@
 //!    gets one holding reply, and none once an admin has written; the verdict
 //!    never changes (ADR-021).
 //! 2. Window pre-scan. Any signal skips intake and fails closed.
-//! 3. Intake (LLM, with one fallback model) extracts claims. Rust then checks
-//!    every id against the customer's own orders and raises flags.
+//! 3. Intake (LLM, with one fallback model) extracts claims, reading the
+//!    latest message as an answer to our last reply. Rust then checks every
+//!    id against the customer's own orders and raises flags.
 //! 4. A greeting, a question about an order, a customer who is done, an
 //!    off-topic message, or an item that already has a request gets a reply
 //!    that files nothing. A complete request first gets one final question
@@ -31,8 +32,8 @@ use db::orders::{Order, OrderItem};
 use db::refunds::{NewAudit, NewRefundRequest};
 use domain::engine::{Claims, Facts, ItemFacts, OrderFacts, PriorClaim, decide};
 use domain::intake::{
-    CustomerMessage, ExistingRequest, IntakeInput, IntakeOutput, IntakeStatus, Intent, ItemSummary,
-    MAX_CLARIFY_TURNS, MissingField, OrderSummary,
+    AssistantReply, CustomerMessage, ExistingRequest, IntakeInput, IntakeOutput, IntakeStatus,
+    Intent, ItemSummary, MAX_CLARIFY_TURNS, MissingField, OrderSummary,
 };
 use domain::prescan::{WindowMessage, prescan_window};
 use domain::prose::render_policy;
@@ -440,6 +441,17 @@ async fn process(
                         id: m.id,
                         seq: m.seq,
                         body: m.body.clone(),
+                    })
+                    .collect(),
+                replies: all
+                    .iter()
+                    .filter(|m| m.role == MessageRole::Assistant)
+                    .filter_map(|m| {
+                        Some(AssistantReply {
+                            seq: m.seq,
+                            kind: m.assistant_kind?,
+                            body: m.body.clone(),
+                        })
                     })
                     .collect(),
             };

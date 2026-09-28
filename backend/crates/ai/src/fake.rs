@@ -157,6 +157,7 @@ mod tests {
             orders: vec![],
             selected_order_id: None,
             messages: vec![],
+            replies: vec![],
         }
     }
 
