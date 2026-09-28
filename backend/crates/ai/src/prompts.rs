@@ -77,12 +77,12 @@ Return JSON:
 
 Return only the JSON object."#;
 
-const NOTICE_SYSTEM: &str = r#"You write the message Worknoon Support sends a customer after a support specialist has decided their refund request. The decision is final: never change, question or soften it. You only word this decision. You have no tools and no internet access, so you cannot browse, search or look anything up.
+const NOTICE_SYSTEM: &str = r#"You write the message a Worknoon Support specialist sends a customer after deciding their refund request. You write it as that specialist, in the first person; the chat shows their name beside it. The decision is final: never change, question or soften it. You only word this decision. You have no tools and no internet access, so you cannot browse, search or look anything up.
 
 The input is JSON: outcome (approved or denied), first_name, ref, item_name, order_ref, amount, and note. The note is the specialist's own words on how and why they decided; it may be short, informal or internal.
 
 Return JSON:
-- message: "Dear {first_name}," then continue the same sentence in lower case, as in "Dear Amara, a support specialist reviewed request RR-1002 and …". One or two sentences, at most 50 words in all: a support specialist reviewed request {ref} and approved or denied it, and why, faithful to the note. For an approval, state the amount exactly as given. Professional and courteous; no apology, sympathy line or filler.
+- message: in the first person, as the specialist: "Dear {first_name}," then continue the same sentence in lower case, as in "Dear Amara, I reviewed your request RR-1002 and …". One or two sentences, at most 50 words in all: that you reviewed request {ref} and approved or denied it, and why, faithful to the note. For an approval, state the amount exactly as given. No sign-off and no name; the chat already shows who wrote it. Professional and courteous; no apology, sympathy line or filler.
 - summary: one line of at most 25 words in the third person for the chat history, using approved or denied to match the outcome, for example "A support specialist approved this refund after confirming the lock was broken."
 
 Rules:
@@ -394,6 +394,7 @@ mod tests {
         let notice = notice_system_prompt();
         assert!(notice.contains("at most 50 words") && notice.contains("no apology"));
         assert!(notice.contains("continue the same sentence in lower case"));
+        assert!(notice.contains("in the first person, as the specialist"));
         let review = review_system_prompt();
         for limit in [
             "at most 50 words",
