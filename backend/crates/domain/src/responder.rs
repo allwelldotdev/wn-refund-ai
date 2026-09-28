@@ -424,6 +424,21 @@ fn order_status_reply(order: &OrderRecord) -> String {
     out
 }
 
+/// Reply when the customer asks again about a request we just reported: its
+/// thread in Your requests is where it continues. Not model-generated.
+pub fn request_link_reply(request: &PriorRequest) -> String {
+    match request.state {
+        RequestState::Escalated => format!(
+            "Request {} is still with our support team for review. You can follow it and message the team in Your requests.",
+            request.request_ref
+        ),
+        _ => format!(
+            "Your refund request {} for {} (order {}) {}. The full conversation is in Your requests.",
+            request.request_ref, request.item_name, request.order_ref, request.status
+        ),
+    }
+}
+
 /// Reply to a message sent after the request was decided. Not model-generated.
 pub fn holding_reply(request_ref: &str, state: RequestState) -> String {
     let outcome = match state {
@@ -717,6 +732,18 @@ mod tests {
             let err = check("Your refund was approved, goodbye.", e).unwrap_err();
             assert!(err.contains("\"approved\""), "{err}");
         }
+    }
+
+    #[test]
+    fn a_request_link_reply_points_to_the_thread() {
+        assert_eq!(
+            request_link_reply(&prior(RequestState::Escalated)),
+            "Request RR-0903 is still with our support team for review. You can follow it and message the team in Your requests."
+        );
+        assert_eq!(
+            request_link_reply(&prior(RequestState::ResolvedApproved)),
+            "Your refund request RR-0903 for Day Pass, 5-pack (order ORD-10340) was approved after review on Sep 18, 2026. The full conversation is in Your requests."
+        );
     }
 
     #[test]

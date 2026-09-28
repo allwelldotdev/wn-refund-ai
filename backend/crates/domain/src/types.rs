@@ -121,6 +121,7 @@ string_enum! {
         OrderStatus = "order_status",
         OrderList = "order_list",
         FinalCheck = "final_check",
+        RequestLink = "request_link",
     }
 }
 
@@ -173,6 +174,7 @@ mod tests {
         include_str!("../../../migrations/0004_test_orders.sql"),
         include_str!("../../../migrations/0005_order_questions.sql"),
         include_str!("../../../migrations/0006_final_check.sql"),
+        include_str!("../../../migrations/0008_request_link.sql"),
     ];
 
     /// The quoted values of the first `CHECK (<column> IN (...))` in the newest
