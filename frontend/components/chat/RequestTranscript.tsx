@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/Surface";
 import type { ConversationDetail, ConversationSummary, Message, Order, RequestSummary } from "@/lib/api-types";
 import { api, isApiError } from "@/lib/bff";
 import { cn } from "@/lib/cn";
-import { orderAvailability } from "@/lib/customer";
+import { REVIEW_POLL_MS, orderAvailability } from "@/lib/customer";
 import { formatCents, formatDate } from "@/lib/format";
 
 /** Same cache entry as the live thread, so opening either reuses the other. */
@@ -19,6 +19,7 @@ function useConversation(id: string) {
   return useQuery({
     queryKey: ["conversation", id],
     queryFn: () => api<ConversationDetail>(`conversations/${id}`),
+    refetchInterval: (q) => (q.state.data?.request?.state === "escalated" ? REVIEW_POLL_MS : false),
   });
 }
 
@@ -106,8 +107,10 @@ type RequestDetailViewProps = {
 };
 
 /** One request and its chat, read-only. Only an escalated request can still take details, in the chat. */
-export function RequestDetailView({ conversationId, request: r, orders, conversations, onBack, onOpenChat }: RequestDetailViewProps) {
+export function RequestDetailView({ conversationId, request, orders, conversations, onBack, onOpenChat }: RequestDetailViewProps) {
   const detail = useConversation(conversationId);
+  // The polled thread carries the newest state; the list's copy can lag behind it.
+  const r = detail.data?.request ?? request;
   const order = orders?.find((o) => o.ref === r.order_ref);
   const rest = order ? orderAvailability(order, conversations).free : [];
   const byPerson = r.state === "resolved_approved" || r.state === "resolved_denied";

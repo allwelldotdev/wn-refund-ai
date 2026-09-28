@@ -2,6 +2,10 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.7.2] — 2026-09-28
+### Fixed
+- Once an admin decides an escalated request, the customer now sees it within a few seconds without reloading: the status tag in Your requests and the request details changes to "Approved after review" or "Denied after review", the admin's message appears in the chat, and the message box is replaced by the "Start new request" button. Before, the tag stayed "Escalated" until the page was reloaded.
+
 ## [0.7.1] — 2026-09-28
 ### Fixed
 - A new chat's first message no longer briefly appears twice while the assistant is working on it.

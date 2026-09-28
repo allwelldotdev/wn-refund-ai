@@ -46,6 +46,9 @@ export function itemMarkers(order: Order, conversations: ConversationSummary[] |
   return markers;
 }
 
+/** While a person reviews a request, customer views re-read it this often, so a decision shows without a reload. */
+export const REVIEW_POLL_MS = 3000;
+
 /** Whether a re-read of the thread already holds the message being sent, so its in-flight copy isn't drawn twice. */
 export function alreadyStored(messageId: string | undefined, messages: Pick<Message, "id">[]): boolean {
   return messageId !== undefined && messages.some((m) => m.id === messageId);

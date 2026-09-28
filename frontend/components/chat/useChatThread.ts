@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ConversationDetail } from "@/lib/api-types";
 import { api, isApiError } from "@/lib/bff";
+import { REVIEW_POLL_MS } from "@/lib/customer";
 import { postMessage } from "@/lib/sse";
 
 /** What the thread is doing between a send and the stored reply. */
@@ -67,6 +68,8 @@ export function useChatThread(initialConversationId: string | null, onConversati
     queryKey: ["conversation", conversationId],
     queryFn: () => api<ConversationDetail>(`conversations/${conversationId}`),
     enabled: conversationId !== null,
+    // Paused during a send: the send re-reads the thread once its reply is stored.
+    refetchInterval: (q) => (phase === "idle" && q.state.data?.request?.state === "escalated" ? REVIEW_POLL_MS : false),
   });
 
   const setDraft = useCallback(

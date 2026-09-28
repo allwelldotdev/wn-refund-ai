@@ -13,7 +13,7 @@ import { Alert, Avatar, EmptyState, Skeleton } from "@/components/ui/Surface";
 import { Pagination, TD, TH, THead, TR, Table } from "@/components/ui/Table";
 import type { ConversationSummary, Order, Principal } from "@/lib/api-types";
 import { api } from "@/lib/bff";
-import { customerRequests, fulfilment, orderAvailability } from "@/lib/customer";
+import { REVIEW_POLL_MS, customerRequests, fulfilment, orderAvailability } from "@/lib/customer";
 import { formatCents, formatDate, formatShortDate } from "@/lib/format";
 
 const noSubscription = () => () => {};
@@ -36,6 +36,7 @@ export function SupportPage({ principal }: { principal: Principal }) {
   const conversations = useQuery({
     queryKey: ["conversations"],
     queryFn: () => api<ConversationSummary[]>("conversations"),
+    refetchInterval: (q) => (q.state.data?.some((c) => c.request?.state === "escalated") ? REVIEW_POLL_MS : false),
   });
 
   const initialChat = params.get("chat");
