@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, Skeleton } from "@/components/ui/Surface";
 import type { ConversationSummary, Message, Order } from "@/lib/api-types";
-import { alreadyStored, customerRequests, decisionMessageId, isClosed, orderAvailability } from "@/lib/customer";
+import { alreadyStored, customerRequests, decisionMessageId, isClosed, orderAvailability, requestRefIn } from "@/lib/customer";
 import { firstName, formatCents } from "@/lib/format";
 import { useMarkRead } from "@/lib/use-mark-read";
 
@@ -17,6 +17,7 @@ import {
   NoticeCard,
   OrderBubble,
   RateLimitNotice,
+  RequestLinkBubble,
   ReviewingCard,
   SignInAgainLink,
   StaffBubble,
@@ -188,7 +189,16 @@ export function ChatThreadView(props: ChatThreadViewProps) {
         </StaffBubble>,
       );
     } else {
-      entries.push(<BotBubble key={m.id}>{m.body}</BotBubble>);
+      const linked = m.assistant_kind === "request_link" ? requestRefIn(m.body) : null;
+      entries.push(
+        linked ? (
+          <RequestLinkBubble key={m.id} requestRef={linked} onShowRequest={onShowRequest}>
+            {m.body}
+          </RequestLinkBubble>
+        ) : (
+          <BotBubble key={m.id}>{m.body}</BotBubble>
+        ),
+      );
     }
   });
 

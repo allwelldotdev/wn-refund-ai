@@ -81,6 +81,11 @@ export function alreadyStored(messageId: string | undefined, messages: Pick<Mess
   return messageId !== undefined && messages.some((m) => m.id === messageId);
 }
 
+/** The request a `request_link` reply points to: the first ref in its text. */
+export function requestRefIn(body: string): string | null {
+  return /RR-\d+/.exec(body)?.[0] ?? null;
+}
+
 /** Answered requests are closed to new messages; an escalated one stays open. */
 export function isClosed(request: RequestSummary | null): boolean {
   return request !== null && request.state !== "escalated";

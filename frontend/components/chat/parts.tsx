@@ -24,6 +24,26 @@ export function BotBubble({ children, className }: { children: ReactNode; classN
   );
 }
 
+/** A reply pointing to a request's thread, with a button that opens it in Your requests. */
+export function RequestLinkBubble({
+  requestRef,
+  onShowRequest,
+  children,
+}: {
+  requestRef: string;
+  onShowRequest: (ref: string) => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <BotBubble>{children}</BotBubble>
+      <button type="button" onClick={() => onShowRequest(requestRef)} className={cn(buttonClasses("secondary", "md"), "ml-8 self-start")}>
+        Open {requestRef} in Your requests
+      </button>
+    </div>
+  );
+}
+
 export function UserBubble({ children, pending }: { children: ReactNode; pending?: boolean }) {
   return (
     <div className="flex animate-wn-in justify-end">
