@@ -42,6 +42,11 @@ pub struct ListItem {
     pub created_at: DateTime<Utc>,
     pub resolved_at: Option<DateTime<Utc>>,
     pub disputed_at: Option<DateTime<Utc>>,
+    /// Customer messages after the decision that no admin has read.
+    pub unread_from_customer: i64,
+    /// When the customer last wrote after the decision, while no admin has
+    /// replied since.
+    pub customer_replied_at: Option<DateTime<Utc>>,
 }
 
 /// Counts for the admin overview. `created` covers requests created at or
@@ -148,9 +153,21 @@ pub async fn list_requests(db: &Db, f: &ListFilter) -> Result<(Vec<ListItem>, i6
     let rows = sqlx::query!(
         r#"SELECT r.ref, r.state, c.name, c.email, o.ref AS "order_ref?", i.name AS "item_name?",
                   r.amount_cents, r.reason_category, a.flags AS "flags?", v.status AS "review_status?",
-                  r.created_at, r.resolved_at, r.disputed_at
+                  r.created_at, r.resolved_at, r.disputed_at,
+                  (SELECT count(*) FROM messages m
+                   WHERE m.conversation_id = r.conversation_id AND m.role = 'customer'
+                     AND m.seq > GREATEST(cv.admin_read_seq, coalesce(a.evaluated_through_seq, 0)))
+                    AS "unread_from_customer!",
+                  (SELECT max(m.created_at) FROM messages m
+                   WHERE m.conversation_id = r.conversation_id AND m.role = 'customer'
+                     AND m.seq > coalesce(a.evaluated_through_seq, 0)
+                     AND m.seq > coalesce((SELECT max(x.seq) FROM messages x
+                                           WHERE x.conversation_id = r.conversation_id
+                                             AND x.role = 'admin'), 0))
+                    AS "customer_replied_at?"
            FROM refund_requests r
            JOIN customers c ON c.id = r.customer_id
+           JOIN conversations cv ON cv.id = r.conversation_id
            LEFT JOIN orders o ON o.id = r.order_id
            LEFT JOIN order_items i ON i.id = r.order_item_id
            LEFT JOIN decision_audit a ON a.refund_request_id = r.id
@@ -192,6 +209,8 @@ pub async fn list_requests(db: &Db, f: &ListFilter) -> Result<(Vec<ListItem>, i6
                 created_at: r.created_at,
                 resolved_at: r.resolved_at,
                 disputed_at: r.disputed_at,
+                unread_from_customer: r.unread_from_customer,
+                customer_replied_at: r.customer_replied_at,
             })
         })
         .collect::<Result<_, DbError>>()?;
@@ -271,6 +290,8 @@ pub struct DetailMessage {
     pub assistant_kind: Option<AssistantKind>,
     pub body: String,
     pub created_at: DateTime<Utc>,
+    /// The admin who wrote an admin message.
+    pub author_name: Option<String>,
     pub tag: Option<MessageTag>,
     pub signals: Vec<SignalView>,
 }
@@ -455,6 +476,7 @@ pub async fn get_request_detail(
                 assistant_kind: m.assistant_kind,
                 body: m.body,
                 created_at: m.created_at,
+                author_name: m.author_name,
                 tag,
             }
         })
@@ -659,12 +681,64 @@ pub async fn resolve_request(
     .execute(&mut *tx)
     .await?;
     let chat = updated.conversation_id;
-    crate::messages::insert_note(&mut tx, chat, MessageRole::Admin, r.message).await?;
-    crate::messages::insert_note(&mut tx, chat, MessageRole::System, r.summary).await?;
+    crate::messages::insert_note(&mut tx, chat, MessageRole::Admin, r.message, Some(admin_id))
+        .await?;
+    crate::messages::insert_note(&mut tx, chat, MessageRole::System, r.summary, None).await?;
     tx.commit().await?;
     Ok(Resolved {
         request_ref: request_ref.to_owned(),
         state,
         resolved_at: updated.resolved_at,
     })
+}
+
+/// An admin's message to the customer on an escalated request, stored exactly
+/// as written. `NotFound`, or `Conflict("not_escalated")` once decided.
+pub async fn post_admin_message(
+    db: &Db,
+    request_ref: &str,
+    admin_id: Uuid,
+    body: &str,
+) -> Result<crate::messages::Message, DbError> {
+    let mut tx = db.0.begin().await?;
+    // The row lock keeps a resolve from landing between the check and the insert.
+    let r = sqlx::query!(
+        "SELECT conversation_id, state FROM refund_requests WHERE ref = $1 FOR UPDATE",
+        request_ref,
+    )
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or(DbError::NotFound)?;
+    if r.state != RequestState::Escalated.as_str() {
+        return Err(DbError::Conflict("not_escalated"));
+    }
+    let message = crate::messages::insert_note(
+        &mut tx,
+        r.conversation_id,
+        MessageRole::Admin,
+        body,
+        Some(admin_id),
+    )
+    .await?;
+    tx.commit().await?;
+    Ok(message)
+}
+
+/// Moves the admins' shared read marker on the request's conversation up to
+/// `seq` (never back, never past the last message).
+pub async fn mark_admin_read(db: &Db, request_ref: &str, seq: i32) -> Result<(), DbError> {
+    let done = sqlx::query!(
+        "UPDATE conversations c
+         SET admin_read_seq = GREATEST(c.admin_read_seq, LEAST($2, c.last_seq))
+         FROM refund_requests r
+         WHERE r.conversation_id = c.id AND r.ref = $1",
+        request_ref,
+        seq,
+    )
+    .execute(&db.0)
+    .await?;
+    if done.rows_affected() == 0 {
+        return Err(DbError::NotFound);
+    }
+    Ok(())
 }

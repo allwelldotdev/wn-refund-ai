@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { alreadyStored, customerRequests, fulfilment, isClosed, itemMarkers, orderAvailability } from "@/lib/customer";
+import {
+  alreadyStored,
+  customerRequests,
+  decisionMessageId,
+  fulfilment,
+  initials,
+  isClosed,
+  itemMarkers,
+  orderAvailability,
+  requestsByActivity,
+} from "@/lib/customer";
 import { formatShortDate } from "@/lib/format";
 
 import { designConversations, designOrders } from "./fixtures/design";
@@ -61,5 +71,32 @@ describe("customer order markers", () => {
     expect(alreadyStored("m-3", messages)).toBe(false);
     expect(alreadyStored("m-2", messages)).toBe(true);
     expect(alreadyStored("m-2", [])).toBe(false);
+  });
+
+  it("lists requests with a specialist's reply first, latest reply first", () => {
+    const [first, second, third] = designConversations;
+    const replied = [
+      first,
+      { ...second, last_reply_at: "2026-09-22T09:00:00Z", last_reply_by: "Ngozi Adeyemi" },
+      { ...third, last_reply_at: "2026-09-23T09:00:00Z", last_reply_by: "Sam Whitfield" },
+    ];
+    const refs = (cs: typeof replied) => requestsByActivity(cs).map((r) => r.request.ref);
+    expect(refs(designConversations)).toEqual(customerRequests(designConversations).map((r) => r.request.ref));
+    const withReplies = refs(replied);
+    expect(withReplies.slice(0, 2)).toEqual([third, second].map((c) => c.request!.ref));
+  });
+
+  it("marks the last admin message of a resolved request as its decision", () => {
+    const messages = [
+      { id: "m1", role: "customer" as const },
+      { id: "m2", role: "admin" as const },
+      { id: "m3", role: "admin" as const },
+      { id: "m4", role: "system" as const },
+    ];
+    const request = customerRequests(designConversations)[0].request;
+    expect(decisionMessageId(messages, { ...request, state: "escalated" })).toBeNull();
+    expect(decisionMessageId(messages, { ...request, state: "resolved_denied" })).toBe("m3");
+    expect(decisionMessageId(messages, null)).toBeNull();
+    expect(initials("Ngozi Adeyemi")).toBe("NA");
   });
 });

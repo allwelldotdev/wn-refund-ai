@@ -2,6 +2,22 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.10.0] — 2026-09-28
+### New
+- While a request is escalated, admins can message the customer from the escalation card or the request details panel; the message appears in the customer's chat exactly as written, with the admin's name.
+- Escalation cards show when the customer has replied and is waiting, with a count of new messages, and move those cards to the top; admins get a notification for a new customer message or a new escalation.
+- Customers see a specialist's message in the chat tagged with the admin's name and an Admin tag.
+- The decision message in the chat now carries an "Approved after review" or "Denied after review" tag.
+- When a specialist replies about a request the customer isn't looking at, a banner with View and Dismiss appears in the chat, and "N new" shows on the Your requests tab and on the closed help button.
+- An escalated request's details now include a box for customers to reply to the specialist.
+
+### Improved
+- The request details panel now shows the whole conversation, including admin messages, with a Collapse / Show all button.
+- Your requests now lists requests with a reply first and marks new ones.
+
+### Changed
+- Once a specialist has written on a request, the assistant no longer answers the customer's messages on it; before that, it answered only once.
+
 ## [0.9.1] — 2026-09-28
 ### Improved
 - The assistant's chat replies are now shorter and more to the point, professional and courteous, without apologies or filler.
@@ -108,6 +124,7 @@ This file records what changed in Worknoon Support for the customers who request
 - Admins can see the policy's full version history and revert to an earlier version.
 
 ## Planned
+- The assistant will remember a customer's orders and past conversations so it asks fewer repeat questions, conversations are shorter and replies are more personal.
 - Approved requests will show Processing and Processed labels once a payment processor is connected; the demo has none today, so labels stay limited to what the system can verify.
 - A rule will refuse refunds for items that have already been used, based on evidence the customer uploads, once file storage for photos or documents is added.
 - Orders past their refund window will be hidden from the chat's order picker; they stay visible today so the policy is applied in one place only.

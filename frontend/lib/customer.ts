@@ -46,6 +46,33 @@ export function itemMarkers(order: Order, conversations: ConversationSummary[] |
   return markers;
 }
 
+/**
+ * Requests for Your requests: those with a reply from a specialist first,
+ * latest reply first, then the rest newest first.
+ */
+export function requestsByActivity(conversations: ConversationSummary[] | undefined) {
+  const byId = new Map((conversations ?? []).map((c) => [c.id, c]));
+  return customerRequests(conversations)
+    .map((r) => ({ ...r, conversation: byId.get(r.conversationId)! }))
+    .sort((a, b) => (b.conversation.last_reply_at ?? "").localeCompare(a.conversation.last_reply_at ?? ""));
+}
+
+/** The admin message that decided a request: the last one, once it is resolved (the chat closes then). */
+export function decisionMessageId(messages: Pick<Message, "id" | "role">[], request: RequestSummary | null): string | null {
+  if (request?.state !== "resolved_approved" && request?.state !== "resolved_denied") return null;
+  return messages.findLast((m) => m.role === "admin")?.id ?? null;
+}
+
+/** Initials for a person's avatar, e.g. "NA" for Ngozi Adeyemi. */
+export function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]!.toUpperCase())
+    .join("");
+}
+
 /** While a person reviews a request, customer views re-read it this often, so a decision shows without a reload. */
 export const REVIEW_POLL_MS = 3000;
 

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE conversations c\n         SET admin_read_seq = GREATEST(c.admin_read_seq, LEAST($2, c.last_seq))\n         FROM refund_requests r\n         WHERE r.conversation_id = c.id AND r.ref = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b8d30f49a83564a410862a38ab8e0b7b7ef73a123b30d0625b3cfdd0f74ea612"
+}

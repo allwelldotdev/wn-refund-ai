@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT c.id, c.created_at, c.updated_at, c.last_seq,\n                  (SELECT left(m.body, $2) FROM messages m\n                   WHERE m.conversation_id = c.id AND m.role = 'customer'\n                   ORDER BY m.seq LIMIT 1) AS preview,\n                  r.id AS \"request_id?\", r.ref AS \"request_ref?\", r.state AS \"state?\",\n                  o.ref AS \"order_ref?\", i.name AS \"item_name?\", r.amount_cents AS \"amount_cents?\",\n                  r.created_at AS \"request_created_at?\", r.resolved_at AS \"resolved_at?\",\n                  r.disputed_at AS \"disputed_at?\",\n                  (r.state = 'denied' AND r.disputed_at IS NULL\n                   AND (SELECT allow_disputes FROM app_settings)) AS \"can_dispute?\"\n           FROM conversations c\n           LEFT JOIN refund_requests r ON r.conversation_id = c.id\n           LEFT JOIN orders o ON o.id = r.order_id\n           LEFT JOIN order_items i ON i.id = r.order_item_id\n           WHERE c.customer_id = $1\n           ORDER BY c.updated_at DESC, c.id",
+  "query": "SELECT c.id, c.created_at, c.updated_at, c.last_seq,\n                  (SELECT left(m.body, $2) FROM messages m\n                   WHERE m.conversation_id = c.id AND m.role = 'customer'\n                   ORDER BY m.seq LIMIT 1) AS preview,\n                  r.id AS \"request_id?\", r.ref AS \"request_ref?\", r.state AS \"state?\",\n                  o.ref AS \"order_ref?\", i.name AS \"item_name?\", r.amount_cents AS \"amount_cents?\",\n                  r.created_at AS \"request_created_at?\", r.resolved_at AS \"resolved_at?\",\n                  r.disputed_at AS \"disputed_at?\",\n                  (r.state = 'denied' AND r.disputed_at IS NULL\n                   AND (SELECT allow_disputes FROM app_settings)) AS \"can_dispute?\",\n                  (SELECT count(*) FROM messages m\n                   WHERE m.conversation_id = c.id AND m.role = 'admin'\n                     AND m.seq > c.customer_read_seq) AS \"unread_count!\",\n                  (SELECT max(m.created_at) FROM messages m\n                   WHERE m.conversation_id = c.id AND m.role = 'admin') AS \"last_reply_at?\",\n                  (SELECT (SELECT a.name FROM admins a WHERE a.id = m.author_admin_id)\n                   FROM messages m WHERE m.conversation_id = c.id AND m.role = 'admin'\n                   ORDER BY m.seq DESC LIMIT 1) AS \"last_reply_by?\"\n           FROM conversations c\n           LEFT JOIN refund_requests r ON r.conversation_id = c.id\n           LEFT JOIN orders o ON o.id = r.order_id\n           LEFT JOIN order_items i ON i.id = r.order_item_id\n           WHERE c.customer_id = $1\n           ORDER BY c.updated_at DESC, c.id",
   "describe": {
     "columns": [
       {
@@ -157,6 +157,24 @@
         "name": "can_dispute?",
         "type_info": "Bool",
         "origin": "Expression"
+      },
+      {
+        "ordinal": 15,
+        "name": "unread_count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 16,
+        "name": "last_reply_at?",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 17,
+        "name": "last_reply_by?",
+        "type_info": "Text",
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -180,8 +198,11 @@
       false,
       true,
       true,
+      null,
+      null,
+      null,
       null
     ]
   },
-  "hash": "99bd8a31ce40db9a2c44f86daa836061480b07548a666ee06547bb2cdb711862"
+  "hash": "faa3cc61696c4a82a63772a1d1c50febcd82235dc75ac11cc36b80cee5f7a6ea"
 }

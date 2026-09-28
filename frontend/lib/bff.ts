@@ -48,11 +48,12 @@ export async function toApiError(res: Response): Promise<ApiError> {
   );
 }
 
-/** JSON request through the BFF. Throws `ApiError` on any non-2xx status. */
+/** JSON request through the BFF. Throws `ApiError` on any non-2xx status; a 204 resolves to `undefined`. */
 export async function api<T>(path: string, init: RequestInit & { json?: unknown } = {}): Promise<T> {
   const { json, ...rest } = init;
   const res = await bffFetch(path, json === undefined ? rest : { ...rest, body: JSON.stringify(json) });
   if (!res.ok) throw await toApiError(res);
+  if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
 
