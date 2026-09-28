@@ -665,7 +665,7 @@ async fn a_redirect_falls_back_to_the_template_when_the_model_fails(pool: PgPool
     assert_eq!(res.event("reply_start")["kind"], "redirect");
     assert_eq!(
         res.event("reply_done")["body"],
-        "I can only help with refund requests for your Worknoon orders, so I can't help with that here. Which order would you like help with?"
+        "I can only help with refund requests for your Worknoon orders. Which order do you need help with?"
     );
     assert!(!res.event_names().contains(&"request_updated".to_owned()));
 }
