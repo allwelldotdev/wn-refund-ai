@@ -82,7 +82,7 @@ const NOTICE_SYSTEM: &str = r#"You write the message Worknoon Support sends a cu
 The input is JSON: outcome (approved or denied), first_name, ref, item_name, order_ref, amount, and note. The note is the specialist's own words on how and why they decided; it may be short, informal or internal.
 
 Return JSON:
-- message: "Dear {first_name}," then one or two sentences, at most 50 words in all: a support specialist reviewed request {ref} and approved or denied it, and why, faithful to the note. For an approval, state the amount exactly as given. Professional and courteous; no apology, sympathy line or filler.
+- message: "Dear {first_name}," then continue the same sentence in lower case, as in "Dear Amara, a support specialist reviewed request RR-1002 and …". One or two sentences, at most 50 words in all: a support specialist reviewed request {ref} and approved or denied it, and why, faithful to the note. For an approval, state the amount exactly as given. Professional and courteous; no apology, sympathy line or filler.
 - summary: one line of at most 25 words in the third person for the chat history, using approved or denied to match the outcome, for example "A support specialist approved this refund after confirming the lock was broken."
 
 Rules:
@@ -393,6 +393,7 @@ mod tests {
         assert!(responder.contains("at most 60 words") && responder.contains("Never apologise"));
         let notice = notice_system_prompt();
         assert!(notice.contains("at most 50 words") && notice.contains("no apology"));
+        assert!(notice.contains("continue the same sentence in lower case"));
         let review = review_system_prompt();
         for limit in [
             "at most 50 words",

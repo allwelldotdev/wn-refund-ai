@@ -101,6 +101,42 @@ pub fn validate_notice(out: &NoticeOutput, input: &NoticeInput) -> Result<(), Re
     Ok(())
 }
 
+/// Continues the greeting's sentence in lower case: "Dear Amara, A support
+/// specialist …" becomes "Dear Amara, a support specialist …". Only the letter
+/// right after "Dear {first_name}, " on the same line changes, and only when it
+/// starts an ordinary capitalised word, so ids and acronyms ("RR-1002", "OK")
+/// keep their case, as do "I", "Worknoon", the name and the item's first word.
+pub fn continue_greeting(message: &str, input: &NoticeInput) -> String {
+    let greeting = format!("Dear {},", input.first_name);
+    let Some(rest) = message
+        .get(..greeting.len())
+        .filter(|head| head.eq_ignore_ascii_case(&greeting))
+        .and_then(|_| message[greeting.len()..].strip_prefix(' '))
+    else {
+        return message.to_owned();
+    };
+    fn first_word(s: &str) -> &str {
+        s.split(|c: char| !c.is_alphanumeric()).next().unwrap_or("")
+    }
+    let word = first_word(rest);
+    let item = input.item_name.as_deref().map_or("", first_word);
+    if ["I", "Worknoon", input.first_name.as_str(), item].contains(&word) {
+        return message.to_owned();
+    }
+    let mut chars = rest.chars();
+    let (Some(first), Some(next)) = (chars.next(), chars.next()) else {
+        return message.to_owned();
+    };
+    if !first.is_uppercase() || !(next.is_lowercase() || next.is_whitespace()) {
+        return message.to_owned();
+    }
+    let mut out = String::with_capacity(message.len());
+    out.push_str(&message[..=greeting.len()]);
+    out.extend(first.to_lowercase());
+    out.push_str(&rest[first.len_utf8()..]);
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -186,6 +222,40 @@ mod tests {
             let err = check(&o, outcome).expect_err(&o.message);
             assert!(err.contains(why), "{}: {err}", o.message);
         }
+    }
+
+    #[test]
+    fn the_greeting_continues_in_lower_case() {
+        let input = input(Outcome::Denied);
+        let fix = |m: &str| continue_greeting(m, &input);
+        assert_eq!(
+            fix("Dear Tomás, A support specialist reviewed RR-1006 and denied it."),
+            "Dear Tomás, a support specialist reviewed RR-1006 and denied it."
+        );
+        assert_eq!(
+            fix("dear tomás, We checked the lock."),
+            "dear tomás, we checked the lock."
+        );
+        assert_eq!(fix("Dear Tomás, Élan."), "Dear Tomás, élan.");
+        let unchanged = [
+            "Dear Tomás, I checked the lock.",
+            "Dear Tomás, I'm afraid the refund is denied.",
+            "Dear Tomás, Worknoon reviewed request RR-1006.",
+            "Dear Tomás, Tomás, the refund is denied.",
+            "Dear Tomás, Locker Rental refunds are final.",
+            "Dear Tomás, RR-1006 was denied.",
+            "Dear Tomás, OK, the refund is denied.",
+            "Dear Tomás,\nA support specialist denied it.",
+            "Dear Tomás,  A support specialist denied it.",
+            "Hi Tomás, A support specialist denied it.",
+            "Dear Tomás, a support specialist denied it.",
+            "Dear Tomás,",
+        ];
+        for m in unchanged {
+            assert_eq!(fix(m), m);
+        }
+        let once = fix("Dear Tomás, The lock was fine.");
+        assert_eq!(fix(&once), once);
     }
 
     #[test]

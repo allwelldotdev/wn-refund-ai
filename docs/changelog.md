@@ -2,6 +2,10 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.10.3] — 2026-09-28
+### Fixed
+- The message a customer gets after a specialist decides their escalated request now reads as one sentence after the greeting, for example "Dear Amara, a support specialist reviewed request RR-1001 and denied it because …"; before, the word after the greeting was often capitalised as if it started a new sentence. Names, references and "Worknoon" keep their capitals. The admin's preview matches what the customer receives.
+
 ## [0.10.2] — 2026-09-28
 ### Fixed
 - On the admin Escalations page, "Message customer" now puts the cursor straight into the message box; before, it landed on the panel's close button. Closing the panel with Escape now returns focus to the "Message customer" button.
