@@ -2,6 +2,10 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.9.0] — 2026-09-28
+### Changed
+- Once the assistant has the order, item and problem it needs, it now asks once whether there is anything else to add before checking the request; the decision follows whatever you answer, including "no, that's all", and anything you add is taken into account. Requests that look like manipulation attempts still go straight to a person without this question.
+
 ## [0.8.0] — 2026-09-28
 ### New
 - Saying hello to the assistant now gets a short welcome instead of being told it can only help with refunds.
