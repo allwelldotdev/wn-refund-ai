@@ -2,6 +2,10 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.12.0] — 2026-09-28
+### New
+- When you ask the assistant again about a request it just reported, it now points you to that request's conversation instead of repeating the status, with an "Open … in Your requests" button that takes you there. A request still with the support team gets a short note that you can follow and message the team in Your requests; a decided request gets its outcome and date, followed by a note that the full conversation is in Your requests. Asking about an order for the first time still gets the normal order status.
+
 ## [0.11.0] — 2026-09-28
 ### Fixed
 - The assistant now answers in light of what it just asked. After it reports an order and asks whether you'd like to request a refund on an item, replying "yes", "yes please" or "sure" starts that refund request instead of repeating the order status, and "no thanks" closes the chat politely. Saying "yes" to "Is there anything else I can help with?" brings up your order list.
