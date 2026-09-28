@@ -396,8 +396,12 @@ function AdminReply({ d, autoFocus }: { d: RequestDetail; autoFocus: boolean }) 
   const [error, setError] = useState<string | null>(null);
   const box = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
+  // A frame later, so the drawer's own open focus (a parent effect, which runs
+  // after this one) has already recorded the opener and focused the close button.
   useEffect(() => {
-    if (autoFocus) box.current?.focus();
+    if (!autoFocus) return;
+    const frame = requestAnimationFrame(() => box.current?.focus());
+    return () => cancelAnimationFrame(frame);
   }, [autoFocus]);
   const send = useMutation({
     mutationFn: (body: string) =>
