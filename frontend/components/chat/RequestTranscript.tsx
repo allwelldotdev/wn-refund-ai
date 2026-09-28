@@ -11,11 +11,16 @@ import { Skeleton } from "@/components/ui/Surface";
 import type { ConversationDetail, ConversationSummary, Message, Order, RequestSummary } from "@/lib/api-types";
 import { api, isApiError } from "@/lib/bff";
 import { cn } from "@/lib/cn";
-import { REVIEW_POLL_MS, orderAvailability } from "@/lib/customer";
+import { REVIEW_POLL_MS, decisionMessageId, orderAvailability } from "@/lib/customer";
 import { formatCents, formatDate } from "@/lib/format";
+import { postMessage } from "@/lib/sse";
+import { useMarkRead } from "@/lib/use-mark-read";
+
+import { Composer } from "./Composer";
+import { StartNewFooter, StaffBubble } from "./parts";
 
 /** Same cache entry as the live thread, so opening either reuses the other. */
-function useConversation(id: string) {
+export function useConversation(id: string) {
   return useQuery({
     queryKey: ["conversation", id],
     queryFn: () => api<ConversationDetail>(`conversations/${id}`),
@@ -39,7 +44,7 @@ const VERDICT_BOX: Record<"approved" | "denied" | "escalated", string> = {
   escalated: "border-escalated-border [&>div]:bg-escalated-bg [&>div]:text-escalated-fg",
 };
 
-function Entry({ m, request }: { m: Message; request: RequestSummary }) {
+function Entry({ m, request, decisionId }: { m: Message; request: RequestSummary; decisionId: string | null }) {
   if (m.role === "customer") {
     return (
       <li className="max-w-[85%] self-end rounded-[12px_12px_4px_12px] bg-primary px-3 py-2 text-meta whitespace-pre-wrap text-white [overflow-wrap:anywhere]">
@@ -50,9 +55,11 @@ function Entry({ m, request }: { m: Message; request: RequestSummary }) {
   }
   if (m.role === "admin") {
     return (
-      <li className="flex max-w-[88%] flex-col gap-1 self-start rounded-[12px_12px_12px_4px] border border-border bg-surface px-3 py-2 text-meta whitespace-pre-wrap [overflow-wrap:anywhere]">
-        <span className="text-caption font-semibold text-ink-muted">Support team</span>
-        {m.body}
+      <li className="flex self-start">
+        <StaffBubble by={m.author_name} at={m.created_at} compact
+          decision={m.id === decisionId ? (request.state as "resolved_approved" | "resolved_denied") : null}>
+          {m.body}
+        </StaffBubble>
       </li>
     );
   }
@@ -102,76 +109,123 @@ type RequestDetailViewProps = {
   request: RequestSummary;
   orders: Order[] | undefined;
   conversations: ConversationSummary[] | undefined;
+  large: boolean;
   onBack: () => void;
-  onOpenChat: (conversationId: string) => void;
+  onNewRequest: () => void;
 };
 
-/** One request and its chat, read-only. Only an escalated request can still take details, in the chat. */
-export function RequestDetailView({ conversationId, request, orders, conversations, onBack, onOpenChat }: RequestDetailViewProps) {
+/**
+ * One request and its chat. A decided request is read-only; one with a
+ * specialist takes replies that go straight to them.
+ */
+export function RequestDetailView({ conversationId, request, orders, conversations, large, onBack, onNewRequest }: RequestDetailViewProps) {
   const detail = useConversation(conversationId);
   // The polled thread carries the newest state; the list's copy can lag behind it.
   const r = detail.data?.request ?? request;
   const order = orders?.find((o) => o.ref === r.order_ref);
   const rest = order ? orderAvailability(order, conversations).free : [];
   const byPerson = r.state === "resolved_approved" || r.state === "resolved_denied";
+  const messages = detail.data?.messages ?? [];
+  const decisionId = decisionMessageId(messages, r);
+  const unread = (conversations?.find((c) => c.id === conversationId)?.unread_count ?? 0) > 0;
+  useMarkRead(conversationId, messages.at(-1)?.seq, unread);
+  const logRef = useRef<HTMLDivElement>(null);
+  // Keep the newest reply in view as the thread grows.
+  useEffect(() => {
+    const el = logRef.current;
+    if (el && messages.length) el.scrollTop = el.scrollHeight;
+  }, [messages.length]);
   return (
-    <div className="flex min-h-0 flex-grow flex-col gap-3 overflow-y-auto px-4 pt-3 pb-4 [&>*]:shrink-0">
-      <button type="button" onClick={onBack}
-        className="-ml-1 inline-flex min-h-9 items-center gap-1 self-start rounded-md pr-2 pl-1 text-meta font-medium text-ink">
-        <Icon name="chevron-left" size={16} />
-        All requests
-      </button>
-      <div className="flex flex-col gap-1">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="text-lead font-semibold">{r.item_name ?? "Refund request"}</h3>
-          <StatusBadge state={r.state} size="sm" />
+    <>
+      <div ref={logRef} className="flex min-h-0 flex-grow flex-col gap-3 overflow-y-auto px-4 pt-3 pb-4 [&>*]:shrink-0">
+        <button type="button" onClick={onBack}
+          className="-ml-1 inline-flex min-h-9 items-center gap-1 self-start rounded-md pr-2 pl-1 text-meta font-medium text-ink">
+          <Icon name="chevron-left" size={16} />
+          All requests
+        </button>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="text-lead font-semibold">{r.item_name ?? "Refund request"}</h3>
+            <StatusBadge state={r.state} size="sm" />
+          </div>
+          <span className="font-mono text-caption text-ink-muted tabular">
+            {[r.ref, r.order_ref, r.amount_cents !== null ? formatCents(r.amount_cents) : null, `Requested ${formatDate(r.created_at)}`]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
         </div>
-        <span className="font-mono text-caption text-ink-muted tabular">
-          {[r.ref, r.order_ref, r.amount_cents !== null ? formatCents(r.amount_cents) : null, `Requested ${formatDate(r.created_at)}`]
-            .filter(Boolean)
-            .join(" · ")}
-        </span>
+        <h4 className="mt-1 text-caption font-semibold tracking-[0.06em] text-ink-muted uppercase">
+          {r.state === "escalated" ? "Conversation" : "Conversation · read-only"}
+        </h4>
+        {detail.isPending ? (
+          <div aria-busy="true" className="flex flex-col gap-2">
+            <span className="sr-only">Loading the conversation</span>
+            <Skeleton className="ml-auto h-10 w-[62%]" />
+            <Skeleton className="h-16" />
+          </div>
+        ) : detail.isError ? (
+          <div role="alert" className="flex flex-col items-start gap-2 text-meta text-denied-fg">
+            Couldn&apos;t load this conversation.
+            <Button size="sm" onClick={() => detail.refetch()}>
+              Try again
+            </Button>
+          </div>
+        ) : (
+          <ol role="log" aria-label={`Conversation for ${r.ref}`} className="flex flex-col gap-2.5">
+            {detail.data.messages.map((m) => (
+              <Entry key={m.id} m={m} request={r} decisionId={decisionId} />
+            ))}
+          </ol>
+        )}
+        {order && rest.length ? (
+          <InfoLine icon="info-circle">
+            The rest of {order.ref} ({rest.map((i) => i.name).join(", ")}) can still get its own refund request from the chat.
+          </InfoLine>
+        ) : null}
+        {byPerson ? (
+          <InfoLine icon="lock">A support specialist reviewed this request. This decision is final.</InfoLine>
+        ) : r.can_dispute ? (
+          <DisputeCard conversationId={conversationId} request={r} />
+        ) : r.state === "denied" ? (
+          <InfoLine icon="lock">This decision is final.</InfoLine>
+        ) : null}
       </div>
-      <h4 className="mt-1 text-caption font-semibold tracking-[0.06em] text-ink-muted uppercase">Conversation · read-only</h4>
-      {detail.isPending ? (
-        <div aria-busy="true" className="flex flex-col gap-2">
-          <span className="sr-only">Loading the conversation</span>
-          <Skeleton className="ml-auto h-10 w-[62%]" />
-          <Skeleton className="h-16" />
-        </div>
-      ) : detail.isError ? (
-        <div role="alert" className="flex flex-col items-start gap-2 text-meta text-denied-fg">
-          Couldn&apos;t load this conversation.
-          <Button size="sm" onClick={() => detail.refetch()}>
-            Try again
-          </Button>
-        </div>
-      ) : (
-        <ol role="log" aria-label={`Conversation for ${r.ref}`} className="flex flex-col gap-2.5">
-          {detail.data.messages.map((m) => (
-            <Entry key={m.id} m={m} request={r} />
-          ))}
-        </ol>
-      )}
-      {order && rest.length ? (
-        <InfoLine icon="info-circle">
-          The rest of {order.ref} ({rest.map((i) => i.name).join(", ")}) can still get its own refund request from the chat.
-        </InfoLine>
-      ) : null}
       {r.state === "escalated" ? (
-        <div className="flex flex-col items-start gap-2 rounded-lg border border-border bg-canvas px-3.5 py-3">
-          <p className="text-meta text-ink-muted">A support specialist is reviewing this request. You can add details for them in the chat.</p>
-          <Button size="sm" onClick={() => onOpenChat(conversationId)}>
-            Add details in chat
-          </Button>
-        </div>
-      ) : byPerson ? (
-        <InfoLine icon="lock">A support specialist reviewed this request. This decision is final.</InfoLine>
-      ) : r.can_dispute ? (
-        <DisputeCard conversationId={conversationId} request={r} />
-      ) : r.state === "denied" ? (
-        <InfoLine icon="lock">This decision is final.</InfoLine>
+        <ReplyComposer conversationId={conversationId} requestRef={r.ref} large={large} />
+      ) : (
+        <StartNewFooter onStart={onNewRequest} />
+      )}
+    </>
+  );
+}
+
+/** Replies to the specialist from the request detail; stored like any chat message. */
+function ReplyComposer({ conversationId, requestRef, large }: { conversationId: string; requestRef: string; large: boolean }) {
+  const [draft, setDraft] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const reply = useMutation({
+    mutationFn: (text: string) =>
+      postMessage(conversationId, { client_msg_id: crypto.randomUUID(), body: text }, () => {}),
+    onMutate: () => setError(null),
+    onSuccess: () => setDraft(""),
+    onError: (e) => setError(isApiError(e) ? e.message : "Your reply didn't reach us. Please try again."),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["conversation", conversationId] }),
+        queryClient.invalidateQueries({ queryKey: ["conversations"] }),
+      ]),
+  });
+  return (
+    <div className="flex shrink-0 flex-col">
+      {error ? (
+        <p role="alert" className="border-t border-border px-4 pt-2 text-meta text-denied-fg">
+          {error}
+        </p>
       ) : null}
+      <Composer value={draft} onChange={setDraft} onSend={() => reply.mutate(draft.trim())}
+        label={`Reply to support about ${requestRef}`} placeholder="Reply to the specialist" blocked={reply.isPending}
+        hint="This request is with a specialist. Replies go straight to them." large={large} />
     </div>
   );
 }

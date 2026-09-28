@@ -5,8 +5,9 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, Skeleton } from "@/components/ui/Surface";
 import type { ConversationSummary, Message, Order } from "@/lib/api-types";
-import { alreadyStored, customerRequests, isClosed, orderAvailability } from "@/lib/customer";
+import { alreadyStored, customerRequests, decisionMessageId, isClosed, orderAvailability } from "@/lib/customer";
 import { firstName, formatCents } from "@/lib/format";
+import { useMarkRead } from "@/lib/use-mark-read";
 
 import { Composer } from "./Composer";
 import { OrderChips } from "./OrderChips";
@@ -34,6 +35,8 @@ type ChatThreadViewProps = {
   conversationId: string | null;
   preselectOrderId: string | null;
   large: boolean;
+  /** On screen (not hidden behind Your requests). */
+  visible: boolean;
   onConversationCreated: (id: string) => void;
   onNewThread: (orderId: string | null) => void;
   onShowRequest: (ref: string) => void;
@@ -64,6 +67,9 @@ export function ChatThreadView(props: ChatThreadViewProps) {
   const busy = phase !== "idle";
   const closed = isClosed(request);
   const paused = notice?.kind === "rate" || notice?.kind === "expired";
+  const decisionId = decisionMessageId(messages, request);
+  const unread = (conversations?.find((c) => c.id === thread.conversationId)?.unread_count ?? 0) > 0;
+  useMarkRead(thread.conversationId, messages.at(-1)?.seq, props.visible && unread);
 
   // Lift the rate-limit pause when its countdown ends.
   useEffect(() => {
@@ -175,7 +181,12 @@ export function ChatThreadView(props: ChatThreadViewProps) {
     } else if (m.role === "system") {
       entries.push(<NoteLine key={m.id}>{m.body}</NoteLine>);
     } else if (m.role === "admin") {
-      entries.push(<StaffBubble key={m.id}>{m.body}</StaffBubble>);
+      entries.push(
+        <StaffBubble key={m.id} by={m.author_name} at={m.created_at}
+          decision={m.id === decisionId && request ? (request.state as "resolved_approved" | "resolved_denied") : null}>
+          {m.body}
+        </StaffBubble>,
+      );
     } else {
       entries.push(<BotBubble key={m.id}>{m.body}</BotBubble>);
     }

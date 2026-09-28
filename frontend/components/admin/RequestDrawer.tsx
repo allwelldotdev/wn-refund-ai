@@ -1,10 +1,12 @@
 "use client";
 
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import { Chip, StatusBadge, stateLabel } from "@/components/ui/Badge";
+import { AdminTag, Chip, StatusBadge, stateLabel } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Textarea } from "@/components/ui/Field";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { Dialog, Drawer } from "@/components/ui/Overlay";
 import { Alert, DefinitionList, Skeleton } from "@/components/ui/Surface";
@@ -27,11 +29,13 @@ import type {
   Rule,
   SignalView,
 } from "@/lib/api-types";
-import { api } from "@/lib/bff";
+import { api, isApiError } from "@/lib/bff";
 import { cn } from "@/lib/cn";
+import { useSession } from "@/lib/session";
 import { splitSignals } from "@/lib/signals";
 import {
   REASON_LABELS,
+  firstName,
   formatCents,
   formatDate,
   formatDateTime,
@@ -43,12 +47,29 @@ import {
 
 import { ResolveDialog, ReviewDraft, type ResolveTarget } from "./common";
 
+type RequestDrawerProps = {
+  requestRef: string | null;
+  /** Opened from "Message customer": focus the message box. */
+  focusReply: boolean;
+  onClose: () => void;
+};
+
 /** The request case file, opened from any admin section with `?ref=`. */
-export function RequestDrawer({ requestRef, onClose }: { requestRef: string | null; onClose: () => void }) {
+export function RequestDrawer({ requestRef, focusReply, onClose }: RequestDrawerProps) {
   const detail = useRequestDetail(requestRef);
   const [resolve, setResolve] = useState<ResolveTarget | null>(null);
   const d = detail.data;
   const escalated = d?.request.state === "escalated";
+  const queryClient = useQueryClient();
+
+  // Everything shown here counts as read by the admins; the queue's badges follow.
+  const lastSeq = d?.messages.at(-1)?.seq;
+  useEffect(() => {
+    if (!requestRef || lastSeq === undefined) return;
+    api<void>(`admin/requests/${encodeURIComponent(requestRef)}/read`, { method: "POST", json: { seq: lastSeq } })
+      .then(() => queryClient.invalidateQueries({ queryKey: ["admin", "requests"] }))
+      .catch(() => {});
+  }, [requestRef, lastSeq, queryClient]);
 
   const header = (
     <div className="flex flex-col gap-1.5">
@@ -105,7 +126,7 @@ export function RequestDrawer({ requestRef, onClose }: { requestRef: string | nu
             {detail.error.message}
           </Alert>
         ) : (
-          <DrawerBody d={detail.data} />
+          <DrawerBody d={detail.data} focusReply={focusReply} />
         )}
       </Drawer>
       <ResolveDialog target={resolve} onClose={() => setResolve(null)} />
@@ -125,14 +146,16 @@ function Section({ title, aside, children }: { title: ReactNode; aside?: ReactNo
   );
 }
 
-function DrawerBody({ d }: { d: RequestDetail }) {
+function DrawerBody({ d, focusReply }: { d: RequestDetail; focusReply: boolean }) {
   const verdictMessage = [...d.messages].reverse().find((m) => m.role === "assistant" && m.assistant_kind === "verdict");
   const resolvedEvent = d.timeline.find((e) => e.kind === "resolved");
-  const staffMessage = [...d.messages].reverse().find((m) => m.role === "admin");
+  // Once resolved, the last admin message is the decision (the chat closes then).
+  const resolved = d.request.state === "resolved_approved" || d.request.state === "resolved_denied";
+  const staffMessage = resolved ? d.messages.findLast((m) => m.role === "admin") : undefined;
   return (
     <>
       <Timeline d={d} />
-      <MessageThread messages={d.messages} />
+      <MessageThread d={d} focusReply={focusReply} />
       <Extracted audit={d.audit} />
       <RuleTrace audit={d.audit} />
       <Flags audit={d.audit} messages={d.messages} disputedAt={d.request.disputed_at} />
@@ -267,24 +290,38 @@ const SENDER: Record<DetailMessage["role"], string> = {
   system: "Note",
 };
 
-function MessageThread({ messages }: { messages: DetailMessage[] }) {
+function MessageThread({ d, focusReply }: { d: RequestDetail; focusReply: boolean }) {
+  const messages = d.messages;
   const [expanded, setExpanded] = useState(false);
   const customer = messages.filter((m) => m.role === "customer");
-  const collapse = messages.length > 4 && !expanded;
+  const canCollapse = messages.length > 4;
+  const collapse = canCollapse && !expanded;
   const hidden = messages.length - 3;
   const shown = collapse ? [messages[0], null, ...messages.slice(-2)] : messages;
   const markedIndex = customer.findIndex((m) => m.signals.length > 0);
+  const escalated = d.request.state === "escalated";
   return (
     <Section
-      title={`Customer messages (${customer.length})`}
+      title={
+        <>
+          Conversation <span className="font-normal text-ink-subtle">· {customer.length} from the customer</span>
+        </>
+      }
       aside={
-        <span className="inline-flex items-center gap-1.5 text-caption text-ink-subtle">
-          <Icon name="shield" size={14} />
-          Untrusted · shown as plain text
+        <span className="inline-flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 text-caption text-ink-subtle">
+            <Icon name="shield" size={14} />
+            Untrusted · shown as plain text
+          </span>
+          {canCollapse ? (
+            <Button size="sm" aria-expanded={expanded} aria-controls="dr-thread" onClick={() => setExpanded((x) => !x)}>
+              {expanded ? "Collapse" : `Show all ${messages.length}`}
+            </Button>
+          ) : null}
         </span>
       }
     >
-      <ol className="flex flex-col gap-2">
+      <ol id="dr-thread" className="flex flex-col gap-2">
         {shown.map((m) =>
           m === null ? (
             <li key="collapsed">
@@ -315,6 +352,18 @@ function MessageThread({ messages }: { messages: DetailMessage[] }) {
                 <SignalText text={m.body} signals={m.signals} />
               </p>
             </li>
+          ) : m.role === "admin" ? (
+            <li key={m.id} className="ml-7 flex flex-col gap-1.5 rounded-md border border-info-border bg-info-bg px-3 pt-2.5 pb-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1.5 text-caption font-semibold">
+                  {m.author_name ?? "Support team"}
+                  <AdminTag onTint />
+                  <span className="font-mono font-normal text-ink-muted">{formatRelativeDayTime(m.created_at)}</span>
+                </span>
+                <span className="text-[11px] leading-4 font-medium text-info-fg">Sent to customer</span>
+              </div>
+              <p className="text-body-sm whitespace-pre-wrap [overflow-wrap:anywhere]">{m.body}</p>
+            </li>
           ) : (
             <li key={m.id} className={cn("ml-4 flex flex-col gap-0.5 px-3 py-1.5 text-body-sm text-ink-muted", m.role === "system" && "rounded-md border border-dashed border-border-control")}>
               <span className="text-caption font-semibold tracking-[0.05em] uppercase">
@@ -325,6 +374,11 @@ function MessageThread({ messages }: { messages: DetailMessage[] }) {
           ),
         )}
       </ol>
+      {escalated ? (
+        <AdminReply d={d} autoFocus={focusReply} />
+      ) : messages.some((m) => m.role === "admin") ? (
+        <p className="text-caption text-ink-muted">Chat closed when the request was decided.</p>
+      ) : null}
       {markedIndex >= 0 ? (
         <p className="text-meta text-ink-muted">
           Underlined: text the injection screen matched (message {markedIndex + 1} of {customer.length}). The request
@@ -332,6 +386,82 @@ function MessageThread({ messages }: { messages: DetailMessage[] }) {
         </p>
       ) : null}
     </Section>
+  );
+}
+
+/** A message to the customer's chat, sent exactly as written. */
+function AdminReply({ d, autoFocus }: { d: RequestDetail; autoFocus: boolean }) {
+  const session = useSession();
+  const [text, setText] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const box = useRef<HTMLTextAreaElement>(null);
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (autoFocus) box.current?.focus();
+  }, [autoFocus]);
+  const send = useMutation({
+    mutationFn: (body: string) =>
+      api<DetailMessage>(`admin/requests/${encodeURIComponent(d.request.ref)}/messages`, { method: "POST", json: { body } }),
+    onSuccess: () => {
+      setText("");
+      void queryClient.invalidateQueries({ queryKey: ["admin"] });
+    },
+    onError: (e) => {
+      setError(isApiError(e) ? (e.fields[0]?.message ?? e.message) : "The message didn't go through. Try again.");
+      if (isApiError(e, 409)) void queryClient.invalidateQueries({ queryKey: ["admin"] });
+    },
+  });
+
+  function submit() {
+    const body = text.trim();
+    if (!body) {
+      setError("Write a message first.");
+      box.current?.focus();
+      return;
+    }
+    setError(null);
+    send.mutate(body);
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5 rounded-md border border-border bg-surface p-3">
+      <label htmlFor="dr-reply" className="text-[13px] leading-[18px] font-semibold">
+        Message {d.customer.name}
+      </label>
+      <Textarea
+        ref={box}
+        id="dr-reply"
+        rows={3}
+        value={text}
+        invalid={error !== null}
+        aria-describedby="dr-reply-help"
+        placeholder="Ask for details or explain what happens next"
+        onChange={(e) => {
+          setText(e.target.value);
+          setError(null);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            submit();
+          }
+        }}
+      />
+      <div className="flex items-start justify-between gap-3">
+        <span id="dr-reply-help" className="text-caption text-ink-subtle">
+          Sent to {firstName(d.customer.name)}&apos;s chat as {session.data?.name ?? "you"} (Admin). You can approve or deny at
+          any time. Ctrl + Enter sends.
+        </span>
+        <Button size="sm" variant="primary" loading={send.isPending} onClick={submit} className="shrink-0">
+          Send
+        </Button>
+      </div>
+      {error ? (
+        <span role="alert" className="text-caption text-denied-fg">
+          {error}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
