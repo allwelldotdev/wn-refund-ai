@@ -92,14 +92,13 @@ async fn an_added_order_goes_through_the_refund_chat(pool: PgPool) {
     intake.order_id = Some(order_id);
     intake.order_item_id = Some(room["id"].as_str().unwrap().parse().unwrap());
     intake.mentioned_order_refs = vec!["ORD-10438".into()];
-    app.fake.push_intake(Ok(intake));
     let res = app
-        .say_with(
+        .decide(
             &amara,
             &conv,
             "The meeting room projector was broken the whole time.",
             Some(order_id),
-            Uuid::new_v4(),
+            intake,
         )
         .await;
     let request = res.event("request_updated");

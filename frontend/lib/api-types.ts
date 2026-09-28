@@ -37,7 +37,8 @@ export type AssistantKind =
   | "redirect"
   | "greeting"
   | "order_status"
-  | "order_list";
+  | "order_list"
+  | "final_check";
 export type OrderStatus = "processing" | "shipped" | "delivered";
 export type Fulfilment = "delivered" | "used" | "confirmed" | "active";
 

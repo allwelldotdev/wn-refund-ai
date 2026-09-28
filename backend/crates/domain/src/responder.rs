@@ -174,6 +174,9 @@ pub enum ResponderInput {
     /// The item already has a request: say where it stands and ask whether
     /// there is anything else. Nothing is filed.
     ExistingRequest { request: PriorRequest },
+    /// The request is complete: ask once whether there is anything else to
+    /// add before it is checked. Nothing is decided yet.
+    FinalCheck { target: Option<Target> },
     /// The customer asked about an order: say what is on record and offer a
     /// request for items without one. Nothing is filed.
     OrderStatus { order: OrderRecord },
@@ -208,6 +211,7 @@ impl ResponderInput {
             ResponderInput::ExistingRequest { request } => {
                 ReplyExpectation::ExistingRequest(request.clone())
             }
+            ResponderInput::FinalCheck { .. } => ReplyExpectation::FinalCheck,
             ResponderInput::OrderStatus { order } => ReplyExpectation::OrderStatus(order.clone()),
             ResponderInput::Closing => ReplyExpectation::Closing,
             ResponderInput::Redirect => ReplyExpectation::Redirect,
@@ -223,6 +227,7 @@ pub enum ReplyExpectation {
         amount_cents: Option<i64>,
     },
     ExistingRequest(PriorRequest),
+    FinalCheck,
     OrderStatus(OrderRecord),
     Closing,
     Redirect,
@@ -278,7 +283,7 @@ pub fn validate_reply(reply: &str, expectation: &ReplyExpectation) -> Result<(),
     let lower = reply.to_lowercase();
     const OUTCOMES: &[&str] = &["approved", "denied", "escalated"];
     let (required, forbidden): (Vec<&str>, Vec<&str>) = match expectation {
-        ReplyExpectation::Clarify => (vec!["?"], OUTCOMES.to_vec()),
+        ReplyExpectation::Clarify | ReplyExpectation::FinalCheck => (vec!["?"], OUTCOMES.to_vec()),
         ReplyExpectation::Verdict { verdict, .. } => match verdict {
             Verdict::Approved => (
                 vec!["approved"],
@@ -352,6 +357,9 @@ pub fn fallback_reply(expectation: &ReplyExpectation, target: Option<&Target>) -
             r.request_ref, r.item_name, r.order_ref, r.status
         ),
         ReplyExpectation::OrderStatus(order) => order_status_reply(order),
+        ReplyExpectation::FinalCheck => {
+            "Got it. Anything else I should know before I check this?".to_owned()
+        }
         ReplyExpectation::Closing => "Thanks for getting in touch. If anything else comes up with one of your orders, just send a message here.".to_owned(),
         ReplyExpectation::Redirect => "I can only help with refund requests for your Worknoon orders, so I can't help with that here. Which order would you like help with?".to_owned(),
         ReplyExpectation::Clarify => {
@@ -530,7 +538,7 @@ mod tests {
     #[test]
     fn fallback_always_passes_its_own_validation() {
         let target = Target::new("ORD-1006", "4K OLED TV", 129_900);
-        let mut expectations = vec![E::Clarify, E::Closing, E::Redirect];
+        let mut expectations = vec![E::Clarify, E::FinalCheck, E::Closing, E::Redirect];
         for v in Verdict::ALL {
             expectations.push(verdict(*v, None));
             expectations.push(verdict(*v, Some(129_900)));
@@ -676,6 +684,22 @@ mod tests {
             .contains("\"approved\"")
         );
         assert!(fallback_reply(&fresh, None).ends_with("for Day Pass, 5-pack or Locker Rental?"));
+    }
+
+    #[test]
+    fn the_final_question_asks_and_names_no_outcome() {
+        let target = Some(Target::new("ORD-10437", "Worknoon Desk Lamp", 6200));
+        let input = ResponderInput::FinalCheck { target };
+        assert_eq!(input.expectation(), E::FinalCheck);
+        assert_eq!(
+            check(
+                "Got it: the desk lamp from ORD-10437. Anything else before I check this?",
+                E::FinalCheck
+            ),
+            Ok(())
+        );
+        assert!(check("Got it, I'll check this now.", E::FinalCheck).is_err());
+        assert!(check("This will be approved, anything else?", E::FinalCheck).is_err());
     }
 
     #[test]

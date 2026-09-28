@@ -15,15 +15,13 @@ use sqlx::PgPool;
 async fn escalated(app: &TestApp) -> (String, String) {
     let grace = app.login("grace.liu@example.com").await;
     let conv = app.new_conversation(&grace).await;
-    app.fake.push_intake(Ok(complete_intake(
-        "ORD-10388",
-        ReasonCategory::ChangedMind,
-    )));
     let res = app
-        .say(
+        .decide(
             &grace,
             &conv,
             "I'm relocating, so please cancel ORD-10388 and return the deposit.",
+            None,
+            complete_intake("ORD-10388", ReasonCategory::ChangedMind),
         )
         .await;
     let request_ref = res.event("request_updated")["ref"]
