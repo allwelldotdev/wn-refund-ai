@@ -2,6 +2,10 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.10.2] — 2026-09-28
+### Fixed
+- On the admin Escalations page, "Message customer" now puts the cursor straight into the message box; before, it landed on the panel's close button. Closing the panel with Escape now returns focus to the "Message customer" button.
+
 ## [0.10.1] — 2026-09-28
 ### Improved
 - The automatic reply a customer gets after messaging a request that's already with the support team now says a support agent will respond, not just see the message.
