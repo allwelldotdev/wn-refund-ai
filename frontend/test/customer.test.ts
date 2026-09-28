@@ -9,6 +9,7 @@ import {
   isClosed,
   itemMarkers,
   orderAvailability,
+  requestRefIn,
   requestsByActivity,
 } from "@/lib/customer";
 import { formatShortDate } from "@/lib/format";
@@ -71,6 +72,14 @@ describe("customer order markers", () => {
     expect(alreadyStored("m-3", messages)).toBe(false);
     expect(alreadyStored("m-2", messages)).toBe(true);
     expect(alreadyStored("m-2", [])).toBe(false);
+  });
+
+  it("finds the request a link reply points to", () => {
+    expect(
+      requestRefIn("Request RR-1002 is still with our support team for review. You can follow it and message the team in Your requests."),
+    ).toBe("RR-1002");
+    expect(requestRefIn("Your refund request RR-0904 for Worknoon Mug (order ORD-10416) was approved.")).toBe("RR-0904");
+    expect(requestRefIn("Order ORD-10416 has no requests.")).toBeNull();
   });
 
   it("lists requests with a specialist's reply first, latest reply first", () => {

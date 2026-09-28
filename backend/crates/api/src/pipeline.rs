@@ -10,7 +10,8 @@
 //!    id against the customer's own orders and raises flags.
 //! 4. A greeting, a question about an order, a customer who is done, an
 //!    off-topic message, or an item that already has a request gets a reply
-//!    that files nothing. A complete request first gets one final question
+//!    that files nothing; asking again about a request we just reported gets
+//!    a pointer to its thread. A complete request first gets one final question
 //!    ("anything else?"); the answer, even "no", leads to the decision.
 //!    Otherwise, missing order,
 //!    item or reason: ask a clarifying question, up to `MAX_CLARIFY_TURNS`,
@@ -39,7 +40,7 @@ use domain::prescan::{WindowMessage, prescan_window};
 use domain::prose::render_policy;
 use domain::responder::{
     GREETING_REPLY, ItemRecord, ORDER_LIST_REPLY, OrderRecord, PriorRequest, ResponderInput,
-    Target, clean_reply, fallback_reply, holding_reply, validate_reply,
+    Target, clean_reply, fallback_reply, holding_reply, request_link_reply, validate_reply,
 };
 use domain::types::{AssistantKind, Flag, MessageRole, RequestState, SignalScope, Verdict};
 use serde::Serialize;
@@ -233,8 +234,32 @@ pub fn missing_fields(orders: &[Order], intake: &IntakeOutput) -> Vec<MissingFie
 enum NoRequestReply {
     /// A fixed sentence; no model call.
     Fixed(&'static str),
+    /// A Rust template filled from our records; no model call.
+    Template(String),
     /// Worded by the responder, falling back to its template.
     Worded(ResponderInput),
+}
+
+/// Our last reply's text, when it reported requests by ref.
+fn reported_in(last_reply: Option<&Message>) -> Option<&str> {
+    let reply = last_reply?;
+    matches!(
+        reply.assistant_kind,
+        Some(
+            AssistantKind::OrderStatus
+                | AssistantKind::ExistingRequest
+                | AssistantKind::RequestLink
+        )
+    )
+    .then_some(reply.body.as_str())
+}
+
+/// Whether `text` names `request_ref` as a whole ref (RR-100 is not in RR-1002),
+/// in any case, as `validate_reply` accepts it.
+fn names_ref(text: &str, request_ref: &str) -> bool {
+    let text = text.to_ascii_uppercase();
+    text.match_indices(request_ref)
+        .any(|(at, _)| !text[at + request_ref.len()..].starts_with(|c: char| c.is_ascii_digit()))
 }
 
 fn prior_request(order: &Order, item: &OrderItem, existing: &ExistingRequest) -> PriorRequest {
@@ -250,14 +275,24 @@ fn prior_request(order: &Order, item: &OrderItem, existing: &ExistingRequest) ->
 /// The reply for a message that files no request, if it is one: a greeting,
 /// a question about an order, the customer is done, the message is
 /// off-topic, or the item it is about already has a request in any state.
-/// `picked` is the order sent with the latest message, if any.
+/// Asking again about a request `last_reply` reported gets a pointer to its
+/// thread instead of the same status. `picked` is the order sent with the
+/// latest message, if any.
 fn no_request_reply(
     orders: &[Order],
     item_requests: &HashMap<Uuid, ExistingRequest>,
     intake: &IntakeOutput,
     picked: Option<Uuid>,
+    last_reply: Option<&Message>,
 ) -> Option<(AssistantKind, NoRequestReply)> {
-    use NoRequestReply::{Fixed, Worded};
+    use NoRequestReply::{Fixed, Template, Worded};
+    let link = |request: &PriorRequest| {
+        Some((
+            AssistantKind::RequestLink,
+            Template(request_link_reply(request)),
+        ))
+    };
+    let reported = reported_in(last_reply);
     match intake.intent {
         Intent::Finished => return Some((AssistantKind::Closing, Worded(ResponderInput::Closing))),
         Intent::OutOfScope => {
@@ -278,6 +313,32 @@ fn no_request_reply(
             let Some(order) = order else {
                 return Some((AssistantKind::OrderList, Fixed(ORDER_LIST_REPLY)));
             };
+            if let Some(reported) = reported {
+                let named = |item: &OrderItem| {
+                    item_requests
+                        .get(&item.id)
+                        .filter(|r| names_ref(reported, &r.request_ref))
+                        .map(|r| prior_request(order, item, r))
+                };
+                let item = intake.order_item_id.and_then(|id| order.item(id)).or(
+                    match order.items.as_slice() {
+                        [only] => Some(only),
+                        _ => None,
+                    },
+                );
+                let again = match item {
+                    Some(item) => named(item),
+                    // Only the order: its request named there, escalated first.
+                    None => order
+                        .items
+                        .iter()
+                        .filter_map(named)
+                        .min_by_key(|r| r.state != RequestState::Escalated),
+                };
+                if let Some(request) = again {
+                    return link(&request);
+                }
+            }
             let items = order
                 .items
                 .iter()
@@ -298,12 +359,13 @@ fn no_request_reply(
         Intent::RefundRequest => {}
     }
     let (order, item) = resolve_target(orders, intake)?;
-    let existing = item_requests.get(&item.id)?;
+    let request = prior_request(order, item, item_requests.get(&item.id)?);
+    if reported.is_some_and(|text| names_ref(text, &request.request_ref)) {
+        return link(&request);
+    }
     Some((
         AssistantKind::ExistingRequest,
-        Worded(ResponderInput::ExistingRequest {
-            request: prior_request(order, item, existing),
-        }),
+        Worded(ResponderInput::ExistingRequest { request }),
     ))
 }
 
@@ -414,11 +476,7 @@ async fn process(
             .iter()
             .filter(|m| m.role == MessageRole::Customer)
             .collect();
-        let last_reply = all
-            .iter()
-            .rev()
-            .find(|m| m.role == MessageRole::Assistant)
-            .and_then(|m| m.assistant_kind);
+        let last_reply = all.iter().rev().find(|m| m.role == MessageRole::Assistant);
         let final_check_asked = all
             .iter()
             .any(|m| m.assistant_kind == Some(AssistantKind::FinalCheck));
@@ -475,7 +533,8 @@ async fn process(
             && let Some(extracted) = &intake
         {
             // "No, that's all" answers the final question: go on to decide.
-            let answers_final_check = last_reply == Some(AssistantKind::FinalCheck)
+            let answers_final_check = last_reply.and_then(|m| m.assistant_kind)
+                == Some(AssistantKind::FinalCheck)
                 && matches!(
                     extracted.intent,
                     Intent::Finished | Intent::OutOfScope | Intent::Greeting
@@ -485,10 +544,11 @@ async fn process(
             let picked = customer.last().and_then(|m| m.order_id);
             if !answers_final_check
                 && let Some((kind, reply)) =
-                    no_request_reply(&orders, &item_requests, extracted, picked)
+                    no_request_reply(&orders, &item_requests, extracted, picked, last_reply)
             {
                 let body = match reply {
                     NoRequestReply::Fixed(text) => text.to_owned(),
+                    NoRequestReply::Template(text) => text,
                     NoRequestReply::Worded(input) => respond(state, &input)
                         .await
                         .0
