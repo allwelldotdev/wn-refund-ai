@@ -2,6 +2,10 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.10.4] — 2026-09-28
+### Changed
+- The message a customer gets after a specialist decides their escalated request now speaks in that specialist's own voice, for example "Dear Grace, I reviewed your request RR-1001 and denied it because you have not supplied evidence to support your refund claim."; before, it spoke of "a support specialist" in the third person. It still appears under the specialist's name with the Admin tag, with no sign-off. The short chat note that follows it is unchanged.
+
 ## [0.10.3] — 2026-09-28
 ### Fixed
 - The message a customer gets after a specialist decides their escalated request now reads as one sentence after the greeting, for example "Dear Amara, a support specialist reviewed request RR-1001 and denied it because …"; before, the word after the greeting was often capitalised as if it started a new sentence. Names, references and "Worknoon" keep their capitals. The admin's preview matches what the customer receives.
