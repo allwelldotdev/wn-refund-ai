@@ -2,6 +2,12 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.8.0] — 2026-09-28
+### New
+- Saying hello to the assistant now gets a short welcome instead of being told it can only help with refunds.
+- Customers can ask the assistant what happened to an order or an earlier request, by order number or by item name; it reports when the order was placed and delivered, each item's amount, and any refund request and its status, and offers to file one for items that don't have one yet.
+- Asking to see your orders brings up the order list in the chat so you can pick one to ask about.
+
 ## [0.7.2] — 2026-09-28
 ### Fixed
 - Once an admin decides an escalated request, the customer now sees it within a few seconds without reloading: the status tag in Your requests and the request details changes to "Approved after review" or "Denied after review", the admin's message appears in the chat, and the message box is replaced by the "Start new request" button. Before, the tag stayed "Escalated" until the page was reloaded.

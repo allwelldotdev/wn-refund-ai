@@ -28,7 +28,16 @@ export type Flag =
   | "clarification_limit"
   | "no_rule_fired";
 export type ReviewStatus = "pending" | "drafted" | "failed";
-export type AssistantKind = "clarify" | "verdict" | "holding" | "existing_request" | "closing" | "redirect";
+export type AssistantKind =
+  | "clarify"
+  | "verdict"
+  | "holding"
+  | "existing_request"
+  | "closing"
+  | "redirect"
+  | "greeting"
+  | "order_status"
+  | "order_list";
 export type OrderStatus = "processing" | "shipped" | "delivered";
 export type Fulfilment = "delivered" | "used" | "confirmed" | "active";
 

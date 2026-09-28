@@ -72,11 +72,16 @@ pub enum IntakeStatus {
 }
 
 /// What the customer's latest message is for. Only `RefundRequest` can lead
-/// to a decision; the other two get a reply that files nothing.
+/// to a decision; the others get a reply that files nothing. `OrderInquiry`
+/// asks what happened to an order or an earlier request, to see their orders,
+/// or whether something can be refunded, without a problem to report.
+// No doc comments on variants: schemars would turn the plain enum into `oneOf`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Intent {
     RefundRequest,
+    OrderInquiry,
+    Greeting,
     OutOfScope,
     Finished,
 }
