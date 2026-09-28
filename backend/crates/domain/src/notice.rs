@@ -1,9 +1,9 @@
 //! Resolution notice contract. When an admin resolves an escalation, a model
-//! turns the admin's note into a message to the customer ("Dear …", how and
-//! why) and a one-line summary shown as a note in the chat. The admin previews
-//! both before sending; `validate_notice` rejects text that contradicts the
-//! resolution. There is no template fallback: without a valid notice the
-//! resolution is not sent.
+//! turns the admin's note into the admin's own first-person message to the
+//! customer ("Dear …", how and why) and a one-line summary shown as a note in
+//! the chat. The admin previews both before sending; `validate_notice`
+//! rejects text that contradicts the resolution. There is no template
+//! fallback: without a valid notice the resolution is not sent.
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -48,7 +48,7 @@ pub struct NoticeInput {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct NoticeOutput {
-    /// To the customer, starting "Dear {first name},".
+    /// From the admin to the customer, in the first person, starting "Dear {first name},".
     pub message: String,
     /// One line in the third person, shown as a note in the chat.
     pub summary: String,

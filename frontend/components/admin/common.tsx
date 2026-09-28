@@ -288,7 +288,7 @@ export function ResolveDialog({ target, onClose }: { target: ResolveTarget | nul
       description={
         draft
           ? `${summary}. Check the message ${first} will get in their chat, then send it.`
-          : `${summary}. Your note stays in the audit log; the assistant turns it into a message to ${first} for you to check first.`
+          : `${summary}. Your note stays in the audit log; the assistant words it as a message from you to ${first}, for you to check first.`
       }
       actions={
         draft ? (
