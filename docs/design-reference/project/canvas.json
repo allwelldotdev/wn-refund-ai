@@ -295,6 +295,15 @@
       "w": 1440,
       "x": 0,
       "y": 0
+    },
+    "LiveDemo.dc.html": {
+      "h": 1040,
+      "is_interactive": true,
+      "page": "live-demo",
+      "title": "Admin ↔ customer chat on REQ-5905 (both sides live)",
+      "w": 2928,
+      "x": 0,
+      "y": 0
     }
   },
   "createdOnFiles": {
@@ -311,7 +320,7 @@
       "fill": "gray",
       "maxH": 1200,
       "page": "admin",
-      "text": "Build notes — admin\n\n• Shell: CSS grid [nav | main], h-dvh. ≥1280 full nav (248px); 768–1279 icon rail (84px); <768 bottom tab bar + safe-area padding.\n• Tables: <table> with caption; tablet drops Order + Reason columns; mobile switches to card lists. Rows are clickable, but the reference is the real <button> for keyboard users.\n• Drawer: role=dialog aria-modal, focus trap, Esc closes, focus returns to the row. 600px desktop, 560px tablet, full-screen sheet on mobile.\n• Customer messages: every message renders as a text node only (never innerHTML/markdown), oldest first, with assistant replies muted in between. Tags: 'Used in decision' / 'After decision' / 'Not yet reviewed'. Threads over 4 entries show first + last 2 with 'Show N earlier'. Attachments are file chips, never previews. Injection matches are underlined + tinted AND explained in words, with the message number.\n• Escalation decisions: note ≥10 chars, confirm dialog, then log {by, at, note}. Cancel is the default focus.\n• Policy = typed rules (5 fixed kinds, scoped Refund window). Prose is generated from rules, never edited. Hash = digest of the normalized rules.\n• Validation runs client + server; field errors inline, summary on submit. Duplicate kind+scope is invalid on the later card.\n• Saves use optimistic concurrency (If-Match: base version) → 409 shows the conflict banner and keeps the draft.\n• Revert = new version copying the old rules, marked 'Reverted from vX'; history is append-only.\n• AI review drafts are advisory, generated in the background after the customer is answered; failures never block a decision.\n• Model name on the drawer is a placeholder — show whatever the backend logs.\n• Settings → Customer disputes: role=switch with aria-checked, label + description linked. Server-side flag, read at dispute time; turning it off doesn't cancel disputes already sent.\n• Disputed requests: Escalated with a 'Disputed' flag and 'Customer dispute' escalation reason; the timeline adds a Disputed step. Admin-decided requests show 'Approved/Denied after review'.",
+      "text": "Build notes — admin\n\n• Shell: CSS grid [nav | main], h-dvh. ≥1280 full nav (248px); 768–1279 icon rail (84px); <768 bottom tab bar + safe-area padding.\n• Tables: <table> with caption; tablet drops Order + Reason columns; mobile switches to card lists. Rows are clickable, but the reference is the real <button> for keyboard users.\n• Drawer: role=dialog aria-modal, focus trap, Esc closes, focus returns to the row. 600px desktop, 560px tablet, full-screen sheet on mobile.\n• Customer messages: every message renders as a text node only (never innerHTML/markdown), oldest first, with assistant replies muted in between. Tags: 'Used in decision' / 'After decision' / 'Not yet reviewed'. Threads over 4 entries show first + last 2 with 'Show N earlier'. Attachments are file chips, never previews. Injection matches are underlined + tinted AND explained in words, with the message number.\n• Escalation decisions: note ≥10 chars, confirm dialog, then log {by, at, note}. Cancel is the default focus.\n• Policy = typed rules (5 fixed kinds, scoped Refund window). Prose is generated from rules, never edited. Hash = digest of the normalized rules.\n• Validation runs client + server; field errors inline, summary on submit. Duplicate kind+scope is invalid on the later card.\n• Saves use optimistic concurrency (If-Match: base version) → 409 shows the conflict banner and keeps the draft.\n• Revert = new version copying the old rules, marked 'Reverted from vX'; history is append-only.\n• AI review drafts are advisory, generated in the background after the customer is answered; failures never block a decision.\n• Model name on the drawer is a placeholder — show whatever the backend logs.\n• Settings → Customer disputes: role=switch with aria-checked, label + description linked. Server-side flag, read at dispute time; turning it off doesn't cancel disputes already sent.\n• Disputed requests: Escalated with a 'Disputed' flag and 'Customer dispute' escalation reason; the timeline adds a Disputed step. Admin-decided requests show 'Approved/Denied after review'.\n• Escalation chat: admin replies from the drawer are stored on the request with author {role: admin, name}; the customer sees them tagged Admin. Customer replies arrive tagged 'Not yet reviewed'. Chat locks once decided.",
       "w": 420,
       "x": 6080,
       "y": 0
@@ -405,6 +414,15 @@
       "w": 240,
       "x": 0,
       "y": -300
+    },
+    "liveNotes": {
+      "fill": "gray",
+      "maxH": 900,
+      "page": "live-demo",
+      "w": 420,
+      "x": 3008,
+      "y": 80,
+      "text": "How the live chat works\n\n• Escalated requests have a 'Message customer' box in the admin drawer (and a button on each Escalations card). Messages show in the customer's chat as the admin's name with an Admin tag.\n• Customer side: a banner and a 'N new' badge on Your requests (and on the launcher when the chat is closed). Replies go back from the request view, or inline if the escalated chat is still open.\n• Approve / Deny stay available the whole time. The decision is posted to the customer's chat, the request becomes 'Approved/Denied after review', the chat closes and the order locks.\n• New escalations and disputes from the customer appear in the admin queue straight away.\n• Demo transport: BroadcastChannel between artboards. Production: one conversation per request over WebSocket/SSE, messages stored server-side, author {role, name}, delivered + read receipts, rendered as text only."
     }
   },
   "order": [
@@ -440,7 +458,8 @@
     "AdminMobileDrawer.dc.html",
     "AdminMobileEsc.dc.html",
     "AdminMobilePolicy.dc.html",
-    "AdminStates.dc.html"
+    "AdminStates.dc.html",
+    "LiveDemo.dc.html"
   ],
   "pages": [
     {
@@ -458,6 +477,10 @@
     {
       "id": "admin",
       "name": "Admin"
+    },
+    {
+      "id": "live-demo",
+      "name": "Live demo"
     }
   ],
   "title": "Worknoon Support — Design System"
