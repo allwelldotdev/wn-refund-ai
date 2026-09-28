@@ -330,6 +330,13 @@
 **Rationale:** Prices and categories drive refund decisions, so they must not come from the browser. A dry run of the real engine keeps the policy in one place, since the original design's own preview rules differed from the engine.
 **Consequence:** Test orders live in the same tables as seeded ones and are only told apart by `is_test`; `make db-reset` removes them.
 
+## ADR-048: Customer views poll while a request is with a specialist
+**Status:** Accepted
+**Context:** ADR-024 gave customer replies SSE and admin views polling; nothing on the customer side re-read after the reply stream ended. ADR-046 added an in-chat notice when an admin resolves an escalation, but the customer's status tag still showed Escalated until a page reload.
+**Options:** (a) keep as is, requiring a reload; (b) a server push channel to the customer (SSE subscription or WebSocket) for request updates; (c) polling on the customer side, only while something is under review.
+**Decision:** (c). The customer's conversation list re-reads every 3 seconds while any of their requests is escalated; a thread (live chat or request detail) re-reads every 3 seconds while its own request is escalated; both stop once nothing is under review. The live chat pauses its poll while a send is in flight, since the send itself re-reads the thread after the stored reply. The request detail's status comes from its polled thread. No backend change.
+**Rationale:** Reuses the existing BFF and query setup, with no new streaming endpoint or long-lived connection. Load stays bounded because polling only runs while a request is under review, which is rare and short. A 3-second interval is close enough to live for a human decision. This extends ADR-024 rather than replacing it: customer views now also poll, but only in this one state; ADR-024 stays Accepted.
+
 ## Future work
 - LLM-assisted policy authoring with dry-run impact preview (ADR-019).
 - Fraud-scoring stage added to the pipeline (ADR-002).
