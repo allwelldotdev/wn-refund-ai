@@ -360,11 +360,16 @@ pub fn fallback_reply(expectation: &ReplyExpectation, target: Option<&Target>) -
         ReplyExpectation::FinalCheck => {
             "Got it. Anything else I should know before I check this?".to_owned()
         }
-        ReplyExpectation::Closing => "Thanks for getting in touch. If anything else comes up with one of your orders, just send a message here.".to_owned(),
-        ReplyExpectation::Redirect => "I can only help with refund requests for your Worknoon orders, so I can't help with that here. Which order would you like help with?".to_owned(),
-        ReplyExpectation::Clarify => {
-            "Could you tell me which order and item this is about, and what went wrong with it?"
+        ReplyExpectation::Closing => {
+            "Thanks for getting in touch. Message here any time if something else comes up with an order."
                 .to_owned()
+        }
+        ReplyExpectation::Redirect => {
+            "I can only help with refund requests for your Worknoon orders. Which order do you need help with?"
+                .to_owned()
+        }
+        ReplyExpectation::Clarify => {
+            "Which order and item is this about, and what went wrong?".to_owned()
         }
         ReplyExpectation::Verdict {
             verdict,
@@ -376,9 +381,9 @@ pub fn fallback_reply(expectation: &ReplyExpectation, target: Option<&Target>) -
                     .map_or_else(String::new, |c| format!(" of {}", format_cents(c)));
                 format!("Good news: your refund{amount}{about} has been approved.")
             }
-            Verdict::Denied => format!(
-                "Unfortunately, your refund request{about} has been denied under our refund policy."
-            ),
+            Verdict::Denied => {
+                format!("Your refund request{about} has been denied under our refund policy.")
+            }
             Verdict::Escalated => format!(
                 "Your refund request{about} has been escalated to our support team for review. A support agent will follow up with you."
             ),

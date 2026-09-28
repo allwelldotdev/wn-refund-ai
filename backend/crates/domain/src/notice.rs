@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::responder::ReplyViolation;
 
-pub const MAX_MESSAGE_CHARS: usize = 1200;
+pub const MAX_MESSAGE_CHARS: usize = 600;
 pub const MAX_SUMMARY_CHARS: usize = 200;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
