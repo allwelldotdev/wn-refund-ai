@@ -2,6 +2,13 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.11.0] — 2026-09-28
+### Fixed
+- The assistant now answers in light of what it just asked. After it reports an order and asks whether you'd like to request a refund on an item, replying "yes", "yes please" or "sure" starts that refund request instead of repeating the order status, and "no thanks" closes the chat politely. Saying "yes" to "Is there anything else I can help with?" brings up your order list.
+
+### Changed
+- The order buttons in the chat now appear only when you ask to see your orders, and at the start of a new chat; they no longer appear under the assistant's clarifying questions.
+
 ## [0.10.4] — 2026-09-28
 ### Changed
 - The message a customer gets after a specialist decides their escalated request now speaks in that specialist's own voice, for example "Dear Grace, I reviewed your request RR-1001 and denied it because you have not supplied evidence to support your refund claim."; before, it spoke of "a support specialist" in the third person. It still appears under the specialist's name with the Admin tag, with no sign-off. The short chat note that follows it is unchanged.
