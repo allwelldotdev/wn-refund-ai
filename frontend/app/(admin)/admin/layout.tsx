@@ -16,9 +16,11 @@ function DrawerFromUrl() {
   return (
     <RequestDrawer
       requestRef={ref}
+      focusReply={params.get("reply") === "1"}
       onClose={() => {
         const next = new URLSearchParams(params);
         next.delete("ref");
+        next.delete("reply");
         router.replace(next.size ? `${pathname}?${next}` : pathname, { scroll: false });
       }}
     />

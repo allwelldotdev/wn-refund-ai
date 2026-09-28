@@ -1,12 +1,15 @@
-//! Admin request routes: the queue, the case file, the raw audit rows, and
-//! resolving escalations. The admin makes the final call on every escalation.
+//! Admin request routes: the queue, the case file, the raw audit rows, messages
+//! to the customer, and resolving escalations. The admin makes the final call
+//! on every escalation.
 
 use ai::{AiError, Stage};
 use axum::extract::{Path, RawQuery, State};
+use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use chrono::{DateTime, Utc};
 use db::admin::{ListFilter, RequestDetail, Resolution, Resolve, Resolved, Stats};
+use db::messages::Message;
 use db::settings::Settings;
 use domain::money::format_cents;
 use domain::notice::{NoticeInput, NoticeOutput, Outcome, validate_notice};
@@ -21,6 +24,8 @@ use crate::{AppState, pipeline};
 
 pub const MAX_PAGE: i64 = 200;
 pub const MAX_NOTE_CHARS: usize = 2000;
+/// The messages table's own limit.
+pub const MAX_ADMIN_MESSAGE_CHARS: usize = 4000;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -33,6 +38,8 @@ pub fn routes() -> Router<AppState> {
             "/api/admin/requests/{ref}/resolve/draft",
             post(draft_notice),
         )
+        .route("/api/admin/requests/{ref}/messages", post(post_message))
+        .route("/api/admin/requests/{ref}/read", post(mark_read))
         .route("/api/admin/settings", get(get_settings).put(put_settings))
 }
 
@@ -322,6 +329,59 @@ async fn resolve(
         "escalation resolved"
     );
     Ok(Json(resolved))
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct MessageBody {
+    body: String,
+}
+
+/// Posts the admin's message to the customer's chat exactly as written (no
+/// model involved). Only while the request is escalated; Approve and Deny stay
+/// available throughout.
+async fn post_message(
+    State(state): State<AppState>,
+    admin: AdminSession,
+    Path(request_ref): Path<String>,
+    ApiJson(req): ApiJson<MessageBody>,
+) -> Result<(StatusCode, Json<Message>), ApiError> {
+    let body = req.body.trim();
+    if body.is_empty() || body.chars().count() > MAX_ADMIN_MESSAGE_CHARS {
+        return Err(ApiError::field(
+            "body",
+            format!("must be between 1 and {MAX_ADMIN_MESSAGE_CHARS} characters"),
+        ));
+    }
+    let message = db::admin::post_admin_message(&state.db, &request_ref, admin.admin_id, body)
+        .await
+        .map_err(|e| match e {
+            db::DbError::Conflict("not_escalated") => ApiError::conflict(
+                "not_escalated",
+                "This request has been decided, so its chat is closed.",
+            ),
+            other => other.into(),
+        })?;
+    tracing::info!(request = %request_ref, admin = %admin.name, "admin message sent");
+    Ok((StatusCode::CREATED, Json(message)))
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ReadBody {
+    /// The last message the admin has seen.
+    seq: i32,
+}
+
+/// Marks the request's customer messages up to `seq` as read by the admins.
+async fn mark_read(
+    State(state): State<AppState>,
+    _: AdminSession,
+    Path(request_ref): Path<String>,
+    ApiJson(req): ApiJson<ReadBody>,
+) -> Result<StatusCode, ApiError> {
+    db::admin::mark_admin_read(&state.db, &request_ref, req.seq).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 async fn get_settings(

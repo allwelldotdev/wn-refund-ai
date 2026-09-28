@@ -369,7 +369,10 @@ Flagged for injection
 </sc-if>
 <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px">
 <sc-for list="{{openEsc}}" as="e" hint-placeholder-count="4">
-<li style="background: #FFFFFF; border: 1px solid #DCE0DB; border-radius: 10px; box-shadow: 0 1px 2px rgb(21 26 24 / 0.06); padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+<li style="{{e.liStyle}}">
+<sc-if value="{{e.replied}}" hint-placeholder-val="{{ false }}">
+<span style="align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px 0 8px; border-radius: 999px; background: #EAF0FA; border: 1px solid #C3D2EC; color: #2F4F86; font-size: 12px; line-height: 16px; font-weight: 600"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4Z"></path></svg>{{e.repliedText}}</span>
+</sc-if>
 <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap">
 <div style="display: flex; flex-direction: column; gap: 2px">
 <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600">{{e.customer}} · <span style="font-family: 'IBM Plex Mono', monospace; font-weight: 500">{{e.amount}}</span></h2>
@@ -405,7 +408,9 @@ Waiting {{e.age}}
 <span style="display: flex; gap: 6px; flex-wrap: wrap"><sc-for list="{{e.flags}}" as="f" hint-placeholder-count="1"><span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px 0 6px; border-radius: 4px; font-size: 12px; line-height: 16px; font-weight: 500; color: {{f.fg}}; background: {{f.bg}}; border: 1px solid {{f.bd}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{f.icon}}"></path></svg>{{f.label}}</span></sc-for></span>
 <div role="group" aria-label="Your decision" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center">
 <span style="font-size: 12px; line-height: 16px; font-weight: 600; color: #151A18; text-transform: uppercase; letter-spacing: 0.06em; margin-right: 4px">Your decision</span>
+<sc-if value="{{e.newMsgs}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px; line-height: 16px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: #EAF0FA; border: 1px solid #C3D2EC; color: #2F4F86">{{e.newText}}</span></sc-if>
 <button type="button" onClick="{{e.open}}" style="height: 40px; padding: 0 14px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: #151A18; font-size: 14px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; cursor: pointer">View details</button>
+<button type="button" onClick="{{e.chat}}" style="height: 40px; padding: 0 14px; border-radius: 6px; border: 1px solid #C4CAC5; background: #FFFFFF; color: #151A18; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4Z"></path></svg>Message customer</button>
 <button type="button" onClick="{{e.deny}}" style="height: 40px; padding: 0 16px; border-radius: 6px; border: 1px solid #B42318; background: #FFFFFF; color: #A1261B; font-size: 14px; font-weight: 500; cursor: pointer">Deny</button>
 <button type="button" onClick="{{e.approve}}" style="height: 40px; padding: 0 16px; border-radius: 6px; border: 1px solid #1D2724; background: #1D2724; color: #FFFFFF; font-size: 14px; font-weight: 500; cursor: pointer">Approve {{e.amount}}</button>
 </div>
@@ -800,10 +805,13 @@ Waiting {{e.age}}
 
 <section aria-labelledby="dr-msg" style="display: flex; flex-direction: column; gap: 8px">
 <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap">
-<h3 id="dr-msg" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600">Customer messages ({{d.custCount}})</h3>
+<h3 id="dr-msg" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600">Conversation <span style="font-weight: 400; color: #5F6963">· {{d.custCount}} from the customer</span></h3>
 <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; color: #48524D"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6Z"></path></svg>Untrusted · shown as plain text</span>
+<sc-if value="{{d.canCollapse}}" hint-placeholder-val="{{ false }}">
+<button type="button" onClick="{{d.toggleThread}}" aria-expanded="{{d.threadOpen}}" aria-controls="dr-thread" style="height: 32px; padding: 0 10px; border-radius: 6px; border: 1px solid #C4CAC5; background: #FFFFFF; color: #151A18; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; cursor: pointer">{{d.toggleText}}</button>
+</sc-if>
 </div>
-<ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px">
+<ol id="dr-thread" style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px">
 <sc-for list="{{d.thread}}" as="m" hint-placeholder-count="2">
 <sc-if value="{{m.isCustomer}}" hint-placeholder-val="{{ true }}">
 <li style="padding: 10px 12px 12px; background: #F6F7F5; border: 1px solid #DCE0DB; border-radius: 6px; display: flex; flex-direction: column; gap: 6px">
@@ -823,11 +831,32 @@ Waiting {{e.age}}
 <span style="font-size: 13px; line-height: 18px; color: #48524D">{{m.text}}</span>
 </li>
 </sc-if>
+<sc-if value="{{m.isSupport}}" hint-placeholder-val="{{ false }}">
+<li style="margin-left: 28px; padding: 10px 12px 12px; background: #EAF0FA; border: 1px solid #C3D2EC; border-radius: 6px; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap">
+<span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; font-weight: 600; color: #151A18">{{m.by}}<span style="font-size: 11px; font-weight: 600; padding: 0 6px; border-radius: 4px; background: #FFFFFF; border: 1px solid #C3D2EC; color: #2F4F86; text-transform: uppercase; letter-spacing: 0.06em">Admin</span><span style="font-family: 'IBM Plex Mono', monospace; font-weight: 400; color: #48524D">{{m.time}}</span></span>
+<span style="font-size: 11px; line-height: 16px; font-weight: 500; color: #2F4F86">Sent to customer</span>
+</div>
+<p style="margin: 0; font-size: 14px; line-height: 22px; white-space: pre-wrap; overflow-wrap: anywhere">{{m.text}}</p>
+</li>
+</sc-if>
 <sc-if value="{{m.isGap}}" hint-placeholder-val="{{ false }}">
 <li style="display: flex"><button type="button" onClick="{{d.expand}}" aria-expanded="false" style="width: 100%; min-height: 36px; border: 1px dashed #C4CAC5; border-radius: 6px; background: #FFFFFF; color: #151A18; font-size: 13px; font-weight: 500; cursor: pointer">{{m.text}}</button></li>
 </sc-if>
 </sc-for>
 </ol>
+<sc-if value="{{d.canChat}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid #DCE0DB; border-radius: 6px; background: #FFFFFF">
+<label for="dr-reply" style="font-size: 13px; line-height: 18px; font-weight: 600">Message {{d.customer}}</label>
+<textarea id="dr-reply" rows="3" value="{{reply}}" onChange="{{onReply}}" onKeyDown="{{replyKey}}" aria-invalid="{{replyInvalid}}" aria-describedby="dr-reply-help" placeholder="Ask for details or explain what happens next" style="{{replyStyle}}"></textarea>
+<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px">
+<span id="dr-reply-help" style="font-size: 12px; line-height: 16px; color: #5F6963">{{d.chatNote}} Ctrl + Enter sends.</span>
+<button type="button" onClick="{{d.sendReply}}" style="flex-shrink: 0; height: 36px; padding: 0 14px; border-radius: 6px; border: 1px solid #1D2724; background: #1D2724; color: #FFFFFF; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; cursor: pointer">Send<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
+</div>
+<sc-if value="{{replyErr}}" hint-placeholder-val="{{ false }}"><span role="alert" style="font-size: 12px; line-height: 16px; color: #A1261B">{{replyErr}}</span></sc-if>
+</div>
+</sc-if>
+<sc-if value="{{d.chatClosed}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px; line-height: 16px; color: #48524D">Chat closed when the request was decided.</span></sc-if>
 <sc-if value="{{d.hasMark}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px; line-height: 16px; color: #48524D">Underlined: text the injection screen matched ({{d.markWhere}}). It was never passed to the model as an instruction.</span></sc-if>
 </section>
 
@@ -949,7 +978,40 @@ class Component extends DCLogic {
       if (prev[keys[i]] !== this.props[keys[i]]) { this.clearTimers(); this.setState(this.init(this.props)); return; }
     }
   }
-  componentWillUnmount() { this.clearTimers(); }
+  componentDidMount() {
+    var self = this;
+    this.t0 = Date.now();
+    try { if (typeof BroadcastChannel !== 'undefined') { this.bus = new BroadcastChannel('worknoon-support-demo'); this.bus.onmessage = function (e) { self.onBus(e.data); }; } } catch (e) { this.bus = null; }
+  }
+  componentWillUnmount() { this.clearTimers(); try { if (this.bus) this.bus.close(); } catch (e) {} }
+  hm() {
+    var m = 32 + Math.floor((Date.now() - (this.t0 || Date.now())) / 60000);
+    return '10:' + (m < 60 ? (m < 10 ? '0' + m : m) : '59');
+  }
+  post(msg) { try { if (this.bus) this.bus.postMessage(msg); } catch (e) {} }
+  onBus(msg) {
+    var st = this.state, self = this;
+    if (!msg || !msg.ref) return;
+    var toastMsg = function (t) { self.setState({ toast: t }); self.later(function () { if (self.state.toast === t) self.setState({ toast: '' }); }, 6000); };
+    var exists = st.liveReqs.some(function (r) { return r.ref === msg.ref; }) || this.requests().some(function (r) { return r.ref === msg.ref; });
+    if (msg.type === 'customer-msg') {
+      var live = Object.assign({}, st.live); live[msg.ref] = (live[msg.ref] || []).concat([{ who: 'c', time: msg.time + ':00', used: 'pending', segs: [{ t: msg.text }] }]);
+      var unseen = Object.assign({}, st.unseen); if (st.drawer !== msg.ref) unseen[msg.ref] = (unseen[msg.ref] || 0) + 1;
+      var bumped = Object.assign({}, st.bumped || {}); var seq = (st.bumpSeq || 0) + 1; bumped[msg.ref] = { seq: seq, time: msg.time };
+      this.setState({ live: live, unseen: unseen, bumped: bumped, bumpSeq: seq });
+      if (st.drawer !== msg.ref) toastMsg('New message from ' + (msg.customer || 'Amara Okafor') + ' on ' + msg.ref + '.');
+      return;
+    }
+    if ((msg.type === 'escalation' || msg.type === 'dispute') && !exists) {
+      var disp = msg.type === 'dispute';
+      var nr = { ref: msg.ref, customer: msg.customer || 'Amara Okafor', order: msg.order, item: msg.item, amount: msg.amount, amt: parseFloat(String(msg.amount).replace(/[$,]/g, '')) || 0,
+        category: disp ? 'Disputed denial' : 'Needs review', v: 'escalated', flags: disp ? ['disputed'] : ['limit'], escReason: disp ? 'dispute' : 'policy', time: 'Today ' + msg.time, day: 0, conf: 0.8, lat: '2.10 s', tok: '1,450 in \u00b7 200 out',
+        msg: [{ t: msg.text || '' }], why: disp ? 'Customer disputed the automatic denial from Your requests.' : 'Sent to a person by the rules. Arrived live from the customer chat.' };
+      if (disp) { nr.autoV = 'denied'; nr.disputedAt = msg.time; }
+      this.setState({ liveReqs: [nr].concat(st.liveReqs) });
+      toastMsg((disp ? 'New dispute ' : 'New escalation ') + msg.ref + ' from ' + nr.customer + '.');
+    }
+  }
   clearTimers() { this.timers.forEach(function (t) { clearTimeout(t); }); this.timers = []; }
   later(fn, ms) { this.timers.push(setTimeout(fn, ms)); }
 
@@ -1066,7 +1128,7 @@ class Component extends DCLogic {
         'REQ-5892': { verdict: 'denied', by: 'Ngozi Adeyemi', when: 'Sep 23, 2026 · 11:40', note: 'Message tried to rewrite the refund rules, and the desk plan had already been used. Denied under section 3.' },
         'REQ-5890': { verdict: 'approved', by: 'Sam Whitfield', when: 'Sep 22, 2026 · 16:20', note: 'Both charges are on the card statement. Duplicate confirmed.' }
       },
-      dialog: null, dlgNote: '', dlgErr: '', toast: '', disputesOn: props.disputesEnabled !== false, dispChanged: false,
+      dialog: null, dlgNote: '', dlgErr: '', toast: '', live: {}, liveReqs: [], reply: '', replyErr: '', unseen: {}, bumped: {}, bumpSeq: 0, disputesOn: props.disputesEnabled !== false, dispChanged: false,
       versions: this.baseVersions(), viewing: 7, pMode: 'view', pTab: 'rules', pEditTab: 'form', pDraft: [], pNote: '', pSubmitted: false, pConflict: false, pConflictPending: false, pBase: 7, pSaving: false, pDraftKept: false, addOpen: false, pRef: null, nextId: 1
     };
     var pm = props.policyMode || 'view';
@@ -1122,6 +1184,14 @@ class Component extends DCLogic {
   }
   requests() {
     return [
+      { ref: 'REQ-5905', customer: 'Amara Okafor', order: 'ORD-10408', item: 'Noise-cancelling Headset', amount: '$129.00', amt: 129, category: 'Faulty item', v: 'escalated', flags: ['lowconf'], escReason: 'lowconf', time: 'Today 10:32', day: 0, conf: 0.69, lat: '2.26 s', tok: '1,512 in \u00b7 204 out', evidence: 'flag',
+        msg: [{ t: 'The left ear cup of the headset has no sound at all, even after charging it fully.' }],
+        thread: [
+          { who: 'c', time: '10:30:12', used: 'used', segs: [{ t: 'The left ear cup of the headset has no sound at all, even after charging it fully.' }] },
+          { who: 'a', time: '10:30:15', text: 'Sorry about that. Does the right side work, and have you tried it with another device?' },
+          { who: 'c', time: '10:31:40', used: 'used', segs: [{ t: 'The right side is fine. Same problem on my laptop and my phone.' }] }
+        ],
+        why: 'Low confidence (0.69): a one-sided fault can\u2019t be checked against any records.' },
       { ref: 'REQ-5904', customer: 'Lukas Weber', order: 'ORD-10435', item: 'Meeting Room, 2 hrs', amount: '$48.00', amt: 48, category: 'Space unavailable', v: 'escalated', flags: ['llm'], time: 'Today 10:31', day: 0, conf: 0, lat: '30.0 s · 3 × timeout', tok: '1,402 in · 0 out', llm: true, escReason: 'llm', vSec: '41',
         msg: [{ t: 'The room had no working screen, so we moved to the caf\u00e9 after 20 minutes. I\u2019d like the booking refunded.' }],
         why: 'Automatic review couldn\u2019t complete: the model timed out on all 3 attempts. The customer was told a specialist will review it.' },
@@ -1277,7 +1347,7 @@ class Component extends DCLogic {
     var ready = st.dataState === 'ready';
     var sec = st.section;
 
-    var reqs = this.requests().map(function (r) {
+    var reqs = (st.liveReqs || []).concat(this.requests()).map(function (r) {
       var dec = st.decided[r.ref];
       var v = st.overrides[r.ref] || (dec ? dec.verdict : r.v);
       return Object.assign({}, r, { v: v, ai: r.autoV || r.v, st: dec && S[v] ? Object.assign({}, S[v], { label: S[v].label + ' after review' }) : S[v], decided: dec, flagObjs: r.flags.map(function (f) { return F[f]; }) });
@@ -1287,7 +1357,7 @@ class Component extends DCLogic {
     var cnt = function (v) { return today.filter(function (r) { return r.v === v || (v === 'approved' && r.v === 'processing'); }).length; };
     var openEscAll = reqs.filter(function (r) { return r.v === 'escalated'; });
 
-    var open = function (ref) { return function (e) { if (e && e.stopPropagation) e.stopPropagation(); self.setState({ drawer: ref }); }; };
+    var open = function (ref) { return function (e) { if (e && e.stopPropagation) e.stopPropagation(); var u = Object.assign({}, self.state.unseen || {}); delete u[ref]; self.setState({ drawer: ref, unseen: u }); }; };
     var go = function (s) { return function () { self.setState({ section: s, drawer: null, dataState: 'ready' }); }; };
     var openDlg = function (kind, ref) { return function (e) { if (e && e.stopPropagation) e.stopPropagation(); self.setState({ dialog: { kind: kind, ref: ref }, dlgNote: '', dlgErr: '' }, function () { var n = document.getElementById('dlg-note'); if (n) n.focus(); }); }; };
     var toast = function (msg) { self.setState({ toast: msg }); self.later(function () { self.setState({ toast: '' }); }, 6000); };
@@ -1363,17 +1433,26 @@ class Component extends DCLogic {
       'REQ-5902': { state: 'ready', meta: 'Drafted 09:59', summary: 'Customer reports broken air conditioning during a Sep 9 workshop and asks for the full $420.00. The message also contains text telling the system to approve the refund; it was ignored. No incident report exists for Sep 9.', suggest: 'Deny for now and ask for the event invoice or attendee complaints; approve if facilities confirms the fault.' },
       'REQ-5900': { state: 'ready', meta: 'Drafted 09:13', summary: 'Customer is relocating before the office starts on Oct 1 and wants the $1,200.00 deposit back. Every rule passed; it needs review only because it is a large refund (over $500).', suggest: 'Approve. The 30-day deposit window is still open and the office hasn\u2019t started.' },
       'REQ-5897': { state: 'failed', meta: 'Failed 07:56' },
+      'REQ-5905': { state: 'ready', meta: 'Drafted 10:32', summary: 'Headset delivered Sep 16; the customer says the left ear cup has no sound on two devices. No returns or fault reports on record for this batch.', suggest: 'Ask for a short video or photo of the fault, then approve. A one-sided fault on two devices is consistent with a hardware defect.' },
       'REQ-5896': { state: 'ready', meta: 'Drafted 08:15', summary: 'Customer disputes the automatic denial of a 3-month locker rental ($45.00). Checkout marked it final sale; the customer says the notice wasn\u2019t shown on the mobile checkout.', suggest: 'Check the mobile checkout for that order. If the final-sale notice was missing, approve; if it was shown, keep the denial.' },
       'REQ-5893': { state: 'ready', meta: 'Drafted Sep 23 · 14:12', summary: 'Startup closed; customer wants the rest of an annual virtual office refunded. Second request for this order (the first chat timed out).', suggest: 'Approve a pro-rated $441.00 for the 9 unused months rather than the full $588.00.' },
       'REQ-5892': { state: 'ready', summary: '', suggest: 'Deny: the desk plan was used, and the message tried to add a new refund rule.' },
       'REQ-5890': { state: 'failed' }
     };
     var draftOf = function (ref) { var d = DRAFTS[ref] || { state: 'failed', meta: '' }; return { ready: d.state === 'ready', gen: d.state === 'gen', failed: d.state === 'failed', meta: d.meta || '', summary: d.summary || '', suggest: d.suggest || '' }; };
-    var ages = { 'REQ-5904': ['1 m', '#48524D'], 'REQ-5893': ['20 h', '#86480A'], 'REQ-5900': ['1 h 20 m', '#48524D'], 'REQ-5902': ['34 m', '#48524D'], 'REQ-5897': ['2 h 37 m', '#48524D'], 'REQ-5896': ['2 h 18 m', '#48524D'] };
-    var openEsc = openEscAll.slice().reverse().map(function (r) {
+    var ages = { 'REQ-5904': ['1 m', '#48524D'], 'REQ-5893': ['20 h', '#86480A'], 'REQ-5900': ['1 h 20 m', '#48524D'], 'REQ-5902': ['34 m', '#48524D'], 'REQ-5897': ['2 h 37 m', '#48524D'], 'REQ-5896': ['2 h 18 m', '#48524D'], 'REQ-5905': ['Just now', '#48524D'] };
+    var bumpedMap = st.bumped || {};
+    var escOrder = openEscAll.slice().reverse();
+    var hot = escOrder.filter(function (r) { return bumpedMap[r.ref]; }).sort(function (a, b) { return bumpedMap[b.ref].seq - bumpedMap[a.ref].seq; });
+    escOrder = hot.concat(escOrder.filter(function (r) { return !bumpedMap[r.ref]; }));
+    var openEsc = escOrder.map(function (r) {
       return { ref: r.ref, customer: r.customer, amount: r.amount, order: r.order, category: r.category, why: r.why || '', flags: r.flagObjs,
         age: ages[r.ref] ? ages[r.ref][0] : '—', ageColor: ages[r.ref] ? ages[r.ref][1] : '#48524D',
-        draft: draftOf(r.ref), open: open(r.ref), approve: openDlg('approve', r.ref), deny: openDlg('deny', r.ref) };
+        draft: draftOf(r.ref), open: open(r.ref), approve: openDlg('approve', r.ref), deny: openDlg('deny', r.ref),
+        replied: !!bumpedMap[r.ref], repliedText: bumpedMap[r.ref] ? 'Customer replied ' + bumpedMap[r.ref].time + ' \u00b7 awaiting your reply' : '',
+        liStyle: 'background: #FFFFFF; border-radius: 10px; box-shadow: 0 1px 2px rgb(21 26 24 / 0.06); padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; ' + (bumpedMap[r.ref] ? 'border: 1.5px solid #2F4F86' : 'border: 1px solid #DCE0DB'),
+        chat: function () { var u = Object.assign({}, self.state.unseen || {}); delete u[r.ref]; self.setState({ drawer: r.ref, unseen: u }, function () { var t = document.getElementById('dr-reply'); if (t) t.focus(); }); },
+        newMsgs: (st.unseen || {})[r.ref] || 0, newText: ((st.unseen || {})[r.ref] || 0) + ' new ' + (((st.unseen || {})[r.ref] || 0) === 1 ? 'message' : 'messages') };
     });
     var decided = Object.keys(st.decided).map(function (ref) {
       var d = st.decided[ref], r = byRef[ref];
@@ -1538,13 +1617,14 @@ class Component extends DCLogic {
     var dObj = { st: S.pending, msg: [], fields: [], trace: [], flagCards: [] };
     if (dr) {
       var det = this.detail(dr, S, F);
-      var raw = dr.thread || [{ who: 'c', time: dr.time.split(' ').pop() + ':02', used: 'used', segs: dr.msg }];
+      var raw = (dr.thread || [{ who: 'c', time: dr.time.split(' ').pop() + ':02', used: 'used', segs: dr.msg }]).concat((st.live || {})[dr.ref] || []);
       var markStyle = 'text-decoration: underline wavy #B42318; text-underline-offset: 4px; background: #FCECEA';
       var TAGS = { used: ['Used in decision', 'background: #FFFFFF; border: 1px solid #858F89; color: #151A18'], after: ['After decision', 'background: #EEF0ED; border: 1px dashed #858F89; color: #48524D'], pending: ['Not yet reviewed', 'background: #EEF0ED; border: 1px dashed #858F89; color: #48524D'] };
       var dayL = ['Sep 24', 'Sep 23', 'Sep 22'][dr.day] || 'Sep 22';
       var custCount = 0, markIdx = 0;
       var entries = raw.map(function (m) {
         if (m.who === 'a') return { isAssistant: true, time: m.time.slice(0, 5), text: m.text };
+        if (m.who === 's') return { isSupport: true, by: m.by, time: dayL + ' \u00b7 ' + m.time.slice(0, 5), text: m.text };
         custCount++;
         if (!markIdx && m.segs.some(function (x) { return x.mark; })) markIdx = custCount;
         var tg = TAGS[m.used || 'used'];
@@ -1563,13 +1643,27 @@ class Component extends DCLogic {
       dObj = {
         ref: dr.ref, st: dr.st, customer: dr.customer, order: dr.order, amount: dr.amount, time: dr.time,
         thread: thread, custCount: custCount, expand: function () { var x = Object.assign({}, self.state.expanded || {}); x[dr.ref] = true; self.setState({ expanded: x }); },
+        canCollapse: entries.length > 4, threadOpen: expanded ? 'true' : 'false',
+        toggleText: expanded ? 'Collapse' : 'Show all ' + entries.length,
+        toggleThread: function () { var x = Object.assign({}, self.state.expanded || {}); x[dr.ref] = !x[dr.ref]; self.setState({ expanded: x }); },
         hasMark: markIdx > 0, markWhere: 'message ' + markIdx + ' of ' + custCount,
         timeline: det.timeline, fields: det.fields, trace: det.trace, decision: det.decision, flagCards: det.flagCards, noFlags: det.flagCards.length === 0,
         policyN: 7, policyWhen: 'Sep 14, 2026', openPolicy: function () { self.setState({ section: 'policy', viewing: 7, pMode: 'view', drawer: null, dataState: 'ready' }); },
         model: 'claude-sonnet-4-5', latency: dr.lat, tokens: dr.tok,
         response: det.response, sentMeta: 'Sent in chat · ' + dr.time + ' · ' + dr.ref,
         decidedBy: dec ? (dec.verdict === 'approved' ? 'Approved' : 'Denied') + ' by ' + dec.by + ' · ' + dec.when + '. Note: ' + dec.note : '',
-        canDecide: dr.v === 'escalated', approve: openDlg('approve', dr.ref), deny: openDlg('deny', dr.ref)
+        canDecide: dr.v === 'escalated', approve: openDlg('approve', dr.ref), deny: openDlg('deny', dr.ref),
+        canChat: dr.v === 'escalated', chatClosed: dr.v !== 'escalated' && raw.some(function (m) { return m.who === 's'; }),
+        chatNote: 'Sent to ' + dr.customer.split(' ')[0] + '\u2019s chat as Ngozi Adeyemi (Admin). You can approve or deny at any time.',
+        sendReply: function () {
+          var text = (self.state.reply || '').trim();
+          if (!text) { self.setState({ replyErr: 'Write a message first.' }, function () { var t = document.getElementById('dr-reply'); if (t) t.focus(); }); return; }
+          var t0 = self.hm();
+          var live = Object.assign({}, self.state.live); live[dr.ref] = (live[dr.ref] || []).concat([{ who: 's', by: 'Ngozi Adeyemi', time: t0 + ':00', text: text }]);
+          self.post({ type: 'support-msg', ref: dr.ref, text: text, by: 'Ngozi Adeyemi', time: t0 });
+          var bm = Object.assign({}, self.state.bumped || {}); delete bm[dr.ref];
+          self.setState({ live: live, reply: '', replyErr: '', bumped: bm });
+        }
       };
     }
 
@@ -1615,6 +1709,7 @@ class Component extends DCLogic {
       if (note.length < 10) { self.setState({ dlgErr: 'Write a short note (at least 10 characters) explaining the decision.' }, function () { var t = document.getElementById('dlg-note'); if (t) t.focus(); }); return; }
       var verdict = d.kind === 'approve' ? 'approved' : 'denied';
       var decidedMap = Object.assign({}, st.decided); decidedMap[d.ref] = { verdict: verdict, by: 'Ngozi Adeyemi', when: 'Sep 24, 2026 · 10:34', note: note };
+      self.post({ type: 'decision', ref: d.ref, verdict: verdict, by: 'Ngozi Adeyemi', note: note, time: self.hm() });
       self.setState({ decided: decidedMap, dialog: null, dlgNote: '', dlgErr: '' });
       toast((verdict === 'approved' ? 'Approved ' : 'Denied ') + d.ref + '. The customer has been told in chat.');
     };
@@ -1691,13 +1786,17 @@ class Component extends DCLogic {
       settingsWrap: 'display: flex; flex-direction: column; gap: 16px; max-width: 760px',
 
       showEsc: ready && sec === 'escalations',
-      escSummary: openEsc.length ? openEsc.length + ' open, oldest first. Approving or denying needs a note and a confirmation; the customer is told in chat.' : 'All escalations are decided.',
+      escSummary: openEsc.length ? openEsc.length + ' open. New customer replies first, then oldest first. Approving or denying needs a note and a confirmation; the customer is told in chat.' : 'All escalations are decided.',
       noOpenEsc: openEsc.length === 0, openEsc: openEsc, decided: decided,
 
 
       drawerOpen: !!dr && !bare,
       drawerStyle: 'position: absolute; z-index: 31; top: 0; right: 0; bottom: 0; background: #FFFFFF; display: flex; flex-direction: column; box-shadow: 0 16px 40px -8px rgb(21 26 24 / 0.18), 0 4px 12px -4px rgb(21 26 24 / 0.08); ' + (mob ? 'left: 0; padding-top: env(safe-area-inset-top)' : tab ? 'width: 560px' : 'width: 600px'),
       d: dObj,
+      reply: st.reply || '', onReply: function (e) { self.setState({ reply: e.target.value, replyErr: '' }); },
+      replyKey: function (e) { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); if (dObj.sendReply) dObj.sendReply(); } },
+      replyErr: st.replyErr || '', replyInvalid: st.replyErr ? 'true' : 'false',
+      replyStyle: 'width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 6px; font-size: 14px; line-height: 20px; color: #151A18; resize: vertical; ' + (st.replyErr ? 'border: 1.5px solid #B42318' : 'border: 1px solid #858F89'),
       closeDrawer: function () { self.setState({ drawer: null }); },
       drawerKey: function (e) { if (e.key === 'Escape') self.setState({ drawer: null }); },
 

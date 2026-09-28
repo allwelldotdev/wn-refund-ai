@@ -3,6 +3,11 @@
 DATABASE_URL ?= postgres://refund:refund@localhost:5432/refund
 export DATABASE_URL
 
+# Native builds check SQL against the committed backend/.sqlx metadata, as the
+# Docker build does (ADR-007), so they compile before the database is migrated.
+SQLX_OFFLINE ?= true
+export SQLX_OFFLINE
+
 # Compose checks every service's variables, even for `up postgres`. Targets that
 # only need the database pass a stand-in key so they work without one; the
 # backend itself is only started by `up`, which needs the real key from .env.
@@ -37,7 +42,7 @@ db-reset: ## Drop the database volume, then migrate and seed from scratch
 
 sqlx-prepare: ## Regenerate backend/.sqlx offline query metadata (commit it)
 	$(DB_COMPOSE) up -d --wait postgres
-	cd backend && sqlx migrate run --source migrations && cargo sqlx prepare --workspace -- --all-targets
+	cd backend && sqlx migrate run --source migrations && SQLX_OFFLINE=false cargo sqlx prepare --workspace -- --all-targets
 
 test: ## Backend tests (database tests use the compose postgres)
 	$(DB_COMPOSE) up -d --wait postgres

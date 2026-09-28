@@ -142,14 +142,15 @@ Add order
 </main>
 
 <sc-if value="{{showLauncher}}" hint-placeholder-val="{{ true }}">
-<button id="wn-launcher" type="button" onClick="{{openChat}}" aria-expanded="false" aria-controls="wn-chat" style="{{launcherStyle}}">
+<button id="wn-launcher" type="button" onClick="{{openChat}}" aria-label="{{launcherAria}}" aria-expanded="false" aria-controls="wn-chat" style="{{launcherStyle}}">
 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4Z"></path></svg>
-<span>Need help with an order?</span>
+<span>{{launcherText}}</span>
+<sc-if value="{{hasUnread}}" hint-placeholder-val="{{ false }}"><span style="height: 22px; padding: 0 8px; margin-right: -6px; box-sizing: border-box; border-radius: 999px; background: #FFFFFF; color: #1D2724; font-size: 12px; line-height: 22px; font-weight: 600; white-space: nowrap">{{unreadN}}</span></sc-if>
 </button>
 </sc-if>
 
 <div id="wn-chat" style="{{panelWrapStyle}}">
-<dc-import name="ChatPanel" layout="{{panelLayout}}" scenario="{{chatScenario}}" preselect="{{preselect}}" preselect-key="{{key}}" start-view="{{startView}}" on-close="{{closeChat}}" extra-orders="{{extraOrders}}" session="{{session}}" on-session="{{onSession}}" disputes-enabled="{{disputesEnabled}}" hint-size="{{panelHint}}"></dc-import>
+<dc-import name="ChatPanel" layout="{{panelLayout}}" scenario="{{chatScenario}}" preselect="{{preselect}}" preselect-key="{{key}}" start-view="{{startView}}" on-close="{{closeChat}}" extra-orders="{{extraOrders}}" session="{{session}}" on-session="{{onSession}}" visible="{{open}}" disputes-enabled="{{disputesEnabled}}" hint-size="{{panelHint}}"></dc-import>
 </div>
 
 <sc-if value="{{addOpen}}" hint-placeholder-val="{{ false }}">
@@ -380,11 +381,11 @@ Add order
 
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"layout":{"editor":"enum","options":["desktop","mobile"],"default":"desktop"},"startOpen":{"editor":"boolean","default":false},"chatScenario":{"editor":"enum","options":["live","typing","processing","streaming","approved","denied","escalated","error","ratelimited","expired","noorders","requests","reqdetail","reqfinal"],"default":"live"},"disputesEnabled":{"editor":"boolean","default":true},"addDemo":{"editor":"enum","options":["none","empty","filled","calendar","errors"],"default":"none"},"$preview":{"width":1440,"height":900}}'>
+<script type="text/x-dc" data-dc-script data-props='{"layout":{"editor":"enum","options":["desktop","mobile"],"default":"desktop"},"startOpen":{"editor":"boolean","default":false},"chatScenario":{"editor":"enum","options":["live","typing","processing","streaming","approved","denied","escalated","error","ratelimited","expired","noorders","requests","reqdetail","reqfinal"],"default":"live"},"disputesEnabled":{"editor":"boolean","default":true},"startRequest":{"editor":null},"addDemo":{"editor":"enum","options":["none","empty","filled","calendar","errors"],"default":"none"},"$preview":{"width":1440,"height":900}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { open: !!props.startOpen, key: 0, preselect: '', startView: 'chat', added: [], session: null, page: 1, addOpen: false, ao: this.blankOrder(), aoSubmitted: false, dp: null, notice: '' };
+    this.state = { open: !!props.startOpen || !!props.startRequest, key: 0, preselect: props.startRequest || '', startView: props.startRequest ? 'requests' : 'chat', added: [], session: null, page: 1, addOpen: false, ao: this.blankOrder(), aoSubmitted: false, dp: null, notice: '' };
     var demo = props.addDemo || 'none';
     if (demo !== 'none') this.state.addOpen = true;
     if (demo === 'filled' || demo === 'calendar') this.state.ao = { date: '2026-09-19', lines: [{ id: 'meeting-hr', qty: 3 }, { id: 'coffee-addon', qty: 1 }], status: 'used', second: '', run: '30', cat: 'workspace', q: '' };
@@ -540,7 +541,7 @@ class Component extends DCLogic {
     };
     var openFor = function (id, view) {
       return function () {
-        self.setState({ open: true, key: st.key + 1, preselect: id || '', startView: view || 'chat' });
+        self.setState({ open: true, launcherUnread: 0, key: st.key + 1, preselect: id || '', startView: view || 'chat' });
       };
     };
     var CAT = this.catalog(), C = {}; CAT.forEach(function (c) { C[c.id] = c; });
@@ -551,7 +552,7 @@ class Component extends DCLogic {
       { id: 'ORD-10421', date: 'Sep 17, 2026', items: 'Flex Day Pass, 10-pack', total: '$180.00', delivery: 'Cancelled', dIcon: ICON.x, req: 'REQ-5817' },
       { id: 'ORD-10416', date: 'Sep 17, 2026', items: 'Coffee Subscription (September), Worknoon Mug', total: '$42.00', delivery: 'Delivered Sep 18', dIcon: ICON.box },
       { id: 'ORD-10411', date: 'Sep 15, 2026', items: 'Hot Desk, monthly', total: '$249.00', delivery: 'Active until Oct 15', dIcon: ICON.clock },
-      { id: 'ORD-10408', date: 'Sep 14, 2026', items: 'Noise-cancelling Headset', total: '$129.00', delivery: 'Delivered Sep 16', dIcon: ICON.box },
+      { id: 'ORD-10408', date: 'Sep 14, 2026', items: 'Noise-cancelling Headset', total: '$129.00', delivery: 'Delivered Sep 16', dIcon: ICON.box, req: 'REQ-5905' },
       { id: 'ORD-10402', date: 'Sep 12, 2026', items: 'Day Pass \u00d7 2', total: '$50.00', delivery: 'Used Sep 12', dIcon: ICON.check },
       { id: 'ORD-10399', date: 'Sep 11, 2026', items: 'Printing Credits, 500 pages', total: '$30.00', delivery: 'Active until Dec 11', dIcon: ICON.clock },
       { id: 'ORD-10395', date: 'Sep 10, 2026', items: 'Event Space, half day', total: '$420.00', delivery: 'Confirmed, starts Oct 8', dIcon: ICON.cal },
@@ -687,7 +688,7 @@ class Component extends DCLogic {
       prevDisabled: page <= 1, nextDisabled: page >= pages, prevStyle: pgBtn(page <= 1), nextStyle: pgBtn(page >= pages),
       pagerStyle: 'display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; ' + (mobile ? 'flex-direction: column; align-items: stretch' : ''),
       openRequests: openFor('', 'requests'),
-      openChat: function () { self.setState({ open: true }); },
+      openChat: function () { self.setState({ open: true, launcherUnread: 0 }); },
       closeChat: function () {
         self.setState({ open: false }, function () { var b = document.getElementById('wn-launcher'); if (b) b.focus(); });
       },
@@ -700,12 +701,18 @@ class Component extends DCLogic {
       disputesEnabled: this.props.disputesEnabled !== false,
       extraOrders: st.added.map(function (o) { return o.chat; }),
       session: st.session,
-      onSession: function (x) { self.setState({ session: x }); },
+      onSession: function (x) {
+        var ev = x.events || 0, last = self.state.lastEvents || 0, d = ev > last ? ev - last : 0;
+        self.setState({ session: x, lastEvents: ev, launcherUnread: self.state.open ? 0 : (self.state.launcherUnread || 0) + d });
+      },
       preselect: st.preselect,
       key: st.key,
       startView: st.startView,
 
-      reqCount: st.session && st.session.reqs ? st.session.reqs.length : 5,
+      reqCount: st.session && st.session.reqs ? st.session.reqs.length : 6,
+      hasUnread: !st.open && (st.launcherUnread || 0) > 0, unreadN: (st.launcherUnread || 0) + ' new',
+      launcherText: 'Need help with an order?', open: st.open,
+      launcherAria: !st.open && st.launcherUnread ? 'Need help with an order? ' + st.launcherUnread + ' new ' + (st.launcherUnread === 1 ? 'message' : 'messages') : 'Need help with an order?',
       notice: st.notice, dismissNotice: function () { self.setState({ notice: '' }); },
       openAdd: function () { self.setState({ addOpen: true, ao: self.blankOrder(), aoSubmitted: false, dp: null }, function () { var b = document.getElementById('dp-order'); if (b) b.focus(); }); },
       addOpen: st.addOpen, closeAdd: closeAdd, submitAdd: submitAdd,

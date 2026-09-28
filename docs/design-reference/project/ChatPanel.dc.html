@@ -46,10 +46,23 @@ button:disabled,select:disabled{cursor:not-allowed}
 <button type="button" onClick="{{toChat}}" aria-current="{{chatCurrent}}" style="{{chatTabStyle}}">Chat</button>
 <button type="button" onClick="{{toRequests}}" aria-current="{{reqCurrent}}" style="{{reqTabStyle}}">
 <span>Your requests</span>
+<sc-if value="{{hasUnread}}" hint-placeholder-val="{{ false }}"><span style="min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 999px; background: #2F4F86; color: #FFFFFF; font-size: 12px; line-height: 20px; font-weight: 600; text-align: center">{{unreadText}}</span></sc-if>
 <span style="min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 999px; background: #EEF0ED; color: #48524D; font-size: 12px; line-height: 20px; font-weight: 500; text-align: center; font-variant-numeric: tabular-nums">{{reqCount}}</span>
 </button>
 </nav>
 </div>
+
+<sc-if value="{{hasNotice}}" hint-placeholder-val="{{ false }}">
+<div role="status" style="flex-shrink: 0; display: flex; align-items: flex-start; gap: 10px; padding: 10px 8px 10px 14px; background: #EAF0FA; border-bottom: 1px solid #C3D2EC">
+<span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 999px; background: #2F4F86; color: #FFFFFF; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10px; font-weight: 600">{{noticeInitials}}</span>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 13px; line-height: 18px; font-weight: 600; color: #151A18">{{noticeTitle}}</span>
+<span style="font-size: 12px; line-height: 16px; color: #48524D; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{noticeText}}</span>
+</div>
+<button type="button" onClick="{{viewNotice}}" style="flex-shrink: 0; height: 32px; padding: 0 10px; border-radius: 6px; border: 1px solid #2F4F86; background: #FFFFFF; color: #2F4F86; font-size: 13px; font-weight: 500">View</button>
+<button type="button" onClick="{{dismissNotice}}" aria-label="Dismiss notification" style="flex-shrink: 0; width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; color: #2F4F86; display: inline-flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+</div>
+</sc-if>
 
 <sc-if value="{{isChat}}" hint-placeholder-val="{{ true }}">
 <div id="{{uid}}-thread" role="log" aria-live="polite" aria-label="Conversation" style="flex-grow: 1; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: #FFFFFF">
@@ -76,6 +89,18 @@ button:disabled,select:disabled{cursor:not-allowed}
 </section>
 </sc-if>
 
+<sc-if value="{{m.isSupport}}" hint-placeholder-val="{{ false }}">
+<div class="wn-in" style="flex-shrink: 0; display: flex; gap: 8px; align-items: flex-end; max-width: 92%">
+<span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 999px; background: #2F4F86; color: #FFFFFF; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10px; font-weight: 600">{{m.initials}}</span>
+<div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+<span style="display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; line-height: 16px; color: #48524D"><span style="font-weight: 600; color: #151A18">{{m.by}}</span><span style="font-size: 11px; line-height: 16px; font-weight: 600; padding: 0 6px; border-radius: 4px; background: #EAF0FA; border: 1px solid #C3D2EC; color: #2F4F86; text-transform: uppercase; letter-spacing: 0.06em">Admin</span><span style="font-family: 'IBM Plex Mono', monospace">{{m.time}}</span></span>
+<div style="padding: 10px 12px; background: #FFFFFF; border: 1px solid #C3D2EC; border-radius: 12px 12px 12px 4px; font-size: 14px; line-height: 20px; color: #151A18; overflow-wrap: anywhere"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0)">{{m.by}}, support: </span>{{m.text}}</div>
+<sc-if value="{{m.hasDecision}}" hint-placeholder-val="{{ false }}">
+<span style="align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px 0 6px; border-radius: 999px; font-size: 12px; line-height: 16px; font-weight: 500; white-space: nowrap; color: {{m.dst.fg}}; background: {{m.dst.bg}}; border: 1px solid {{m.dst.bd}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{m.dst.ic}}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{m.dst.icon}}"></path></svg>{{m.dst.label}}</span>
+</sc-if>
+</div>
+</div>
+</sc-if>
 <sc-if value="{{m.isBot}}" hint-placeholder-val="{{ true }}">
 <div class="wn-in" style="flex-shrink: 0; display: flex; gap: 8px; align-items: flex-end; max-width: 90%">
 <span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 999px; background: #1D2724; display: flex; align-items: center; justify-content: center; flex-shrink: 0">
@@ -321,10 +346,13 @@ Try again
 
 <sc-if value="{{isReqList}}" hint-placeholder-val="{{ false }}">
 <div style="flex-grow: 1; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: #FFFFFF">
-<p style="margin: 0; font-size: 13px; line-height: 18px; color: #48524D">Refund requests from the last 60 days. Open one to see the full chat.</p>
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: #48524D">Refund requests from the last 60 days, latest replies first. Open one to see the full chat.</p>
 <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px">
 <sc-for list="{{reqs}}" as="r" hint-placeholder-count="3">
 <li id="{{r.domId}}" tabindex="-1" style="{{r.style}}">
+<sc-if value="{{r.hasAct}}" hint-placeholder-val="{{ false }}">
+<span style="{{r.actStyle}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4Z"></path></svg>{{r.actText}}<sc-if value="{{r.isNew}}" hint-placeholder-val="{{ false }}"><span style="margin-left: auto; font-size: 11px; line-height: 16px; padding: 0 6px; border-radius: 4px; background: #2F4F86; color: #FFFFFF; text-transform: uppercase; letter-spacing: 0.06em">New</span></sc-if></span>
+</sc-if>
 <button type="button" onClick="{{r.open}}" aria-label="{{r.aria}}" style="width: 100%; padding: 12px 14px; border: 0; border-radius: 10px; background: transparent; text-align: left; display: flex; flex-direction: column; gap: 4px; color: #151A18; cursor: pointer">
 <span style="display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%">
 <span style="font-size: 14px; line-height: 20px; font-weight: 500">{{r.item}}</span>
@@ -349,7 +377,7 @@ Try again
 </sc-if>
 
 <sc-if value="{{isReqDetail}}" hint-placeholder-val="{{ false }}">
-<div style="flex-grow: 1; min-height: 0; overflow-y: auto; padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 12px; background: #FFFFFF">
+<div id="{{uid}}-rd" style="flex-grow: 1; min-height: 0; overflow-y: auto; padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 12px; background: #FFFFFF">
 <button type="button" onClick="{{backToList}}" style="align-self: flex-start; min-height: 36px; padding: 0 8px 0 4px; margin-left: -4px; border: 0; border-radius: 6px; background: transparent; color: #151A18; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>All requests</button>
 <div style="display: flex; flex-direction: column; gap: 4px">
 <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px">
@@ -366,6 +394,11 @@ Try again
 <sc-if value="{{e.isVerdict}}" hint-placeholder-val="{{ false }}"><li style="border: 1px solid {{e.st.bd}}; border-radius: 10px; overflow: hidden">
 <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 12px; background: {{e.st.bg}}; border-bottom: 1px solid {{e.st.bd}}"><span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; line-height: 18px; font-weight: 600; color: {{e.st.fg}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{e.st.ic}}" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{e.st.icon}}"></path></svg>{{e.st.label}}</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; line-height: 16px; color: {{e.st.fg}}">Ref {{e.ref}}</span></div>
 <p style="margin: 0; padding: 10px 12px; font-size: 13px; line-height: 18px">{{e.text}}</p>
+</li></sc-if>
+<sc-if value="{{e.isSupport}}" hint-placeholder-val="{{ false }}"><li style="align-self: flex-start; max-width: 92%; display: flex; flex-direction: column; gap: 4px">
+<span style="display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; line-height: 16px; color: #48524D"><span aria-hidden="true" style="width: 20px; height: 20px; border-radius: 999px; background: #2F4F86; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 600">{{e.initials}}</span><span style="font-weight: 600; color: #151A18">{{e.by}}</span><span style="font-size: 11px; line-height: 16px; font-weight: 600; padding: 0 6px; border-radius: 4px; background: #EAF0FA; border: 1px solid #C3D2EC; color: #2F4F86; text-transform: uppercase; letter-spacing: 0.06em">Admin</span><span style="font-family: 'IBM Plex Mono', monospace">{{e.time}}</span></span>
+<span style="padding: 8px 12px; background: #FFFFFF; border: 1px solid #C3D2EC; border-radius: 12px 12px 12px 4px; font-size: 13px; line-height: 18px; overflow-wrap: anywhere"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0)">{{e.by}}, support: </span>{{e.text}}</span>
+<sc-if value="{{e.hasDecision}}" hint-placeholder-val="{{ false }}"><span style="align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px 0 6px; border-radius: 999px; font-size: 12px; line-height: 16px; font-weight: 500; white-space: nowrap; color: {{e.dst.fg}}; background: {{e.dst.bg}}; border: 1px solid {{e.dst.bd}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{e.dst.ic}}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{e.dst.icon}}"></path></svg>{{e.dst.label}}</span></sc-if>
 </li></sc-if>
 <sc-if value="{{e.isNote}}" hint-placeholder-val="{{ false }}"><li style="padding: 8px 12px; border: 1px dashed #C4CAC5; border-radius: 6px; font-size: 12px; line-height: 16px; color: #48524D; text-align: center">{{e.text}}</li></sc-if>
 </sc-for>
@@ -395,43 +428,124 @@ Try again
 <p style="margin: 0; display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border: 1px solid #DCE0DB; border-radius: 6px; font-size: 13px; line-height: 18px; color: #48524D"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><path d="M5 11h14v10H5ZM8 11V7.5a4 4 0 0 1 8 0V11"></path></svg><span>{{rd.finalText}}</span></p>
 </sc-if>
 </div>
+<sc-if value="{{rd.canReply}}" hint-placeholder-val="{{ false }}">
+<div style="{{composerStyle}}">
+<label for="{{uid}}-reply" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0)">Reply to support about {{rd.ref}}</label>
+<div style="display: flex; gap: 8px; align-items: flex-end">
+<textarea id="{{uid}}-reply" rows="2" value="{{replyDraft}}" onChange="{{onReplyDraft}}" onKeyDown="{{onReplyKey}}" placeholder="Reply to the specialist" aria-describedby="{{uid}}-reply-hint" style="{{replyStyle}}"></textarea>
+<button type="button" onClick="{{sendReply}}" aria-label="Send reply" disabled="{{replyDisabled}}" style="{{replySendStyle}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"></path></svg></button>
+</div>
+<span id="{{uid}}-reply-hint" style="font-size: 12px; line-height: 16px; color: #5F6963">This request is with a specialist. Replies go straight to them.</span>
+</div>
+</sc-if>
+<sc-if value="{{rd.noReply}}" hint-placeholder-val="{{ true }}">
 <div style="{{closedStyle}}">
 <button type="button" onClick="{{startNew}}" style="width: 100%; height: 48px; border: 1px solid #1D2724; border-radius: 6px; background: #1D2724; color: #FFFFFF; font-size: 15px; line-height: 20px; font-weight: 500; cursor: pointer">Start new request</button>
 </div>
 </sc-if>
+</sc-if>
 
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"layout":{"editor":"enum","options":["panel","sheet"],"default":"panel"},"scenario":{"editor":"enum","options":["live","typing","processing","streaming","approved","denied","escalated","error","ratelimited","expired","noorders","requests","reqdetail","reqfinal"],"default":"live"},"preselect":{"editor":null},"session":{"editor":null},"onSession":{"editor":null},"preselectKey":{"editor":null},"startView":{"editor":null},"onClose":{"editor":null},"disputesEnabled":{"editor":"boolean","default":true},"extraOrders":{"editor":null},"$preview":{"width":400,"height":600}}'>
+<script type="text/x-dc" data-dc-script data-props='{"layout":{"editor":"enum","options":["panel","sheet"],"default":"panel"},"scenario":{"editor":"enum","options":["live","typing","processing","streaming","approved","denied","escalated","error","ratelimited","expired","noorders","requests","reqdetail","reqfinal"],"default":"live"},"preselect":{"editor":null},"visible":{"editor":null},"session":{"editor":null},"onSession":{"editor":null},"preselectKey":{"editor":null},"startView":{"editor":null},"onClose":{"editor":null},"disputesEnabled":{"editor":"boolean","default":true},"extraOrders":{"editor":null},"$preview":{"width":400,"height":600}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
     this.uid = 'wn' + Math.random().toString(36).slice(2, 8);
     this.iv = null;
-    this.nextRef = 5903;
+    this.nextRef = 5906;
     this.state = this.init(props);
   }
   componentDidUpdate(prev, prevState) {
+    // The canvas runtime passes only prevProps, so keep our own snapshot of the previous state.
+    prevState = prevState || this.__ps;
+    this.__ps = this.state;
     if (prev.preselectKey !== this.props.preselectKey || prev.scenario !== this.props.scenario) {
       this.stop();
       this.setState(this.init(this.props));
       return;
     }
-    if (prevState && this.props.onSession && (prevState.reqs !== this.state.reqs || prevState.orderState !== this.state.orderState)) {
-      this.props.onSession({ reqs: this.state.reqs, orderState: this.state.orderState });
+    var cur = this.state, shown = this.props.visible !== false;
+    var replies = function (ms) { return ms.filter(function (m) { return m.k !== 'user' && m.k !== 'proc' && m.k !== 'chips' && m.k !== 'support'; }).length; };
+    if (prevState && prevState.msgs !== cur.msgs && prevState.view === cur.view) {
+      var added = replies(cur.msgs) - replies(prevState.msgs);
+      if (added > 0) { this.setState(shown ? { evtR: (cur.evtR || 0) + added } : { evtR: (cur.evtR || 0) + added, chatUnread: (cur.chatUnread || 0) + added }); return; }
+    }
+    if (shown && cur.view === 'chat' && cur.chatUnread) { this.setState({ chatUnread: 0 }); return; }
+    var seenRef = !shown ? null : cur.view === 'requests' ? cur.reqDetail : (cur.view === 'chat' ? cur.openRef : null);
+    if (seenRef && ((cur.fresh || {})[seenRef] || (cur.notice && cur.notice.ref === seenRef))) {
+      var fr0 = Object.assign({}, cur.fresh || {}); delete fr0[seenRef];
+      this.setState({ fresh: fr0, notice: cur.notice && cur.notice.ref === seenRef ? null : cur.notice });
+      return;
+    }
+    if (prevState && this.props.onSession && (prevState.reqs !== this.state.reqs || prevState.orderState !== this.state.orderState || prevState.fresh !== this.state.fresh || prevState.chatUnread !== this.state.chatUnread || prevState.evtR !== this.state.evtR || prevState.actSeq !== this.state.actSeq)) {
+      this.props.onSession({ reqs: this.state.reqs, orderState: this.state.orderState, unread: Object.keys(this.state.fresh || {}).length + (this.state.chatUnread || 0), events: (this.state.actSeq || 0) + (this.state.evtR || 0) });
     }
     var sa = prevState && this.state, sb = prevState;
     if (sb && (sb.msgs.length !== sa.msgs.length || sb.stream !== sa.stream || sb.phase !== sa.phase || sb.closed !== sa.closed || sb.elapsed !== sa.elapsed || sb.chipsAll !== sa.chipsAll)) {
       var t = document.getElementById(this.uid + '-thread');
       if (t) t.scrollTop = t.scrollHeight;
     }
+    if (sb && sa.view === 'requests' && sa.reqDetail && sb.reqDetail === sa.reqDetail && sb.reqs !== sa.reqs) {
+      var rdEl = document.getElementById(this.uid + '-rd');
+      if (rdEl) rdEl.scrollTop = rdEl.scrollHeight;
+    }
   }
   componentDidMount() {
+    var self = this;
+    this.__ps = this.state;
+    this.t0 = Date.now();
+    try { if (typeof BroadcastChannel !== 'undefined') { this.bus = new BroadcastChannel('worknoon-support-demo'); this.bus.onmessage = function (e) { self.onBus(e.data); }; } } catch (e) { this.bus = null; }
     if (this.props.onSession) this.props.onSession({ reqs: this.state.reqs, orderState: this.state.orderState });
     var t = document.getElementById(this.uid + '-thread');
     if (t) t.scrollTop = t.scrollHeight;
   }
-  componentWillUnmount() { this.stop(); }
+  componentWillUnmount() { this.stop(); try { if (this.bus) this.bus.close(); } catch (e) {} }
+  hm() {
+    var m = 32 + Math.floor((Date.now() - (this.t0 || Date.now())) / 60000);
+    return '10:' + (m < 60 ? (m < 10 ? '0' + m : m) : '59');
+  }
+  bump(msg, seen) {
+    var st = this.state, seq = (st.actSeq || 0) + 1;
+    var activity = Object.assign({}, st.activity || {}); activity[msg.ref] = { seq: seq, time: msg.time, by: msg.by, decision: msg.type === 'decision' ? msg.verdict : '' };
+    var fresh = Object.assign({}, st.fresh || {}); if (seen) delete fresh[msg.ref]; else fresh[msg.ref] = true;
+    return { activity: activity, actSeq: seq, fresh: fresh };
+  }
+  post(msg) { try { if (this.bus) this.bus.postMessage(msg); } catch (e) {} }
+  onBus(msg) {
+    var st = this.state, self = this;
+    if (!msg || !msg.ref) return;
+    var has = st.reqs.some(function (r) { return r.ref === msg.ref; });
+    if (!has) return;
+    if (msg.type === 'support-msg') {
+      var entry = { k: 'support', by: msg.by, text: msg.text, time: msg.time };
+      var reqs = st.reqs.map(function (r) { return r.ref === msg.ref ? Object.assign({}, r, { transcript: (r.transcript || []).concat([entry]), note: 'reply from ' + msg.by.split(' ')[0] }) : r; });
+      var vis = this.props.visible !== false;
+      var inChat = st.view === 'chat' && st.openRef === msg.ref;
+      var inDetail = vis && st.view === 'requests' && st.reqDetail === msg.ref;
+      var patch = { reqs: reqs };
+      var act = this.bump(msg, inDetail || inChat); patch.activity = act.activity; patch.actSeq = act.actSeq; patch.fresh = act.fresh;
+      if (inChat) patch.msgs = st.msgs.concat([entry]);
+      if (!inChat && !inDetail) { patch.notice = { ref: msg.ref, by: msg.by, text: msg.text }; }
+      this.setState(patch);
+    }
+    if (msg.type === 'decision') {
+      var ok = msg.verdict === 'approved';
+      var r0 = st.reqs.filter(function (r) { return r.ref === msg.ref; })[0];
+      var text = ok ? 'I\u2019ve approved your refund of ' + r0.amount + '. It goes back to Visa ending 4242 and should arrive within 3\u20135 business days.' : 'I\u2019ve reviewed your request and can\u2019t approve this refund. ' + (msg.note || '');
+      var dEntry = { k: 'support', by: msg.by, text: text, time: msg.time, decision: msg.verdict };
+      var reqs2 = st.reqs.map(function (r) { return r.ref === msg.ref ? Object.assign({}, r, { kind: msg.verdict, by: 'admin', note: (ok ? 'approved' : 'denied') + ' by ' + msg.by.split(' ')[0], transcript: (r.transcript || []).concat([dEntry, { k: 'note', text: ok ? 'Approved after review by ' + msg.by + '. This request is closed.' : 'Denied after review by ' + msg.by + '. This decision is final.' }]) }) : r; });
+      var os = Object.assign({}, st.orderState); os[r0.order] = { state: msg.verdict, ref: msg.ref };
+      var vis2 = this.props.visible !== false;
+      var inChat2 = st.view === 'chat' && st.openRef === msg.ref;
+      var inDetail2 = vis2 && st.view === 'requests' && st.reqDetail === msg.ref;
+      var patch2 = { reqs: reqs2, orderState: os };
+      var act2 = this.bump(msg, inDetail2 || inChat2); patch2.activity = act2.activity; patch2.actSeq = act2.actSeq; patch2.fresh = act2.fresh;
+      if (inChat2) { patch2.msgs = st.msgs.concat([dEntry]); patch2.openRef = null; patch2.closed = true; patch2.draft = ''; }
+      if (!inChat2 && !inDetail2) { patch2.notice = { ref: msg.ref, by: msg.by, text: text, decision: msg.verdict }; }
+      this.setState(patch2);
+    }
+  }
   stop() { if (this.iv) { clearInterval(this.iv); this.iv = null; } if (this.sv) { clearInterval(this.sv); this.sv = null; } }
 
   ST() {
@@ -468,7 +582,7 @@ class Component extends DCLogic {
         denyText: 'Plans can be refunded before the first check-in. You checked in on Sep 15, 16 and 18, so this plan can\u2019t be refunded.',
         problem: 'My company is giving us office space from October, so I don\u2019t need the hot desk any more.' },
       { id: 'ORD-10408', date: 'Sep 14, 2026', amount: '$129.00', recent: true, outcome: 'approved',
-        parts: [{ name: 'Noise-cancelling Headset', price: '$129.00' }],
+        parts: [{ name: 'Noise-cancelling Headset', price: '$129.00', state: 'review', ref: 'REQ-5905' }],
         explain: 'The left ear cup has no sound, which our faulty-items rule covers, so you\u2019ll get a full refund.',
         problem: 'The left ear cup of the headset has no sound at all, even after charging it fully.' },
       { id: 'ORD-10402', date: 'Sep 12, 2026', amount: '$50.00', recent: true, outcome: 'denied',
@@ -503,6 +617,14 @@ class Component extends DCLogic {
   }
   baseReqs() {
     return [
+      { ref: 'REQ-5905', order: 'ORD-10408', item: 'Noise-cancelling Headset', amount: '$129.00', date: 'Sep 24', kind: 'escalated', by: 'auto', note: 'with a specialist',
+        transcript: [
+          { k: 'user', text: 'ORD-10408 · Noise-cancelling Headset · $129.00' },
+          { k: 'user', text: 'The left ear cup of the headset has no sound at all, even after charging it fully.' },
+          { k: 'bot', text: 'Sorry about that. Does the right side work, and have you tried it with another device?' },
+          { k: 'user', text: 'The right side is fine. Same problem on my laptop and my phone.' },
+          { k: 'verdict', kind: 'escalated', ref: 'REQ-5905', text: 'We can\u2019t confirm the fault from our records, so a support specialist will review it and reply here.' }
+        ] },
       { ref: 'REQ-5862', order: 'ORD-10331', item: 'Locker Rental, 1 month', amount: '$20.00', date: 'Sep 23', kind: 'denied', by: 'auto', note: 'past the refund window',
         transcript: [
           { k: 'user', text: 'ORD-10331 · Locker Rental, 1 month · $20.00' },
@@ -583,6 +705,7 @@ class Component extends DCLogic {
       if (m.k === 'user') out.push({ k: 'user', text: m.order ? m.order.id + ' · ' + m.order.items + ' · ' + m.order.amount : m.text });
       else if (m.k === 'bot') out.push({ k: 'bot', text: m.text });
       else if (m.k === 'verdict') out.push({ k: 'verdict', kind: m.v.kind, ref: m.v.ref, text: m.v.explain });
+      else if (m.k === 'support') out.push(m);
     });
     return out;
   }
@@ -591,7 +714,7 @@ class Component extends DCLogic {
     var self = this;
     var O = this.orders();
     var byId = function (id) { return O.filter(function (o) { return o.id === id; })[0]; };
-    var s = { view: props.startView === 'requests' ? 'requests' : 'chat', msgs: [], selected: null, draft: '', phase: 'idle', elapsed: 0, block: null, lock: 0, reqs: this.baseReqs(), orderState: {}, stream: null, focusReq: null, lastOrder: null, lastText: '', noOrders: false, closed: false, openRef: null, reqDetail: null, disputeAsk: false };
+    var s = { view: props.startView === 'requests' ? 'requests' : 'chat', msgs: [], selected: null, draft: '', phase: 'idle', elapsed: 0, block: null, lock: 0, reqs: this.baseReqs(), orderState: {}, stream: null, focusReq: null, lastOrder: null, lastText: '', noOrders: false, closed: false, openRef: null, reqDetail: null, disputeAsk: false, notice: null, unread: 0, replyDraft: '', activity: {}, actSeq: 0, fresh: {} };
     var ses = props.session;
     if (ses && ses.reqs) { s.reqs = ses.reqs.slice(); s.orderState = Object.assign({}, ses.orderState || {}); }
     var greet = { k: 'bot', text: 'Hi Amara. Which order do you need help with? Pick one, or just tell me what happened.' };
@@ -659,6 +782,7 @@ class Component extends DCLogic {
         os[o.id] = { state: self.lockState(v.kind), ref: v.ref };
         var reqs = [req].concat(self.state.reqs.filter(function (r) { return r.ref !== req.ref; }));
         if (v.kind === 'escalated') {
+          self.post({ type: 'escalation', ref: v.ref, order: o.id, item: req.item, amount: req.amount, text: text, time: self.hm(), customer: 'Amara Okafor', reason: appealed ? 'appeal' : 'policy' });
           var after = self.state.msgs.concat([{ k: 'bot', text: 'A specialist will pick this up. You can add details here while you wait.' }]);
           self.setState({ msgs: after, phase: 'idle', stream: null, selected: null, reqs: reqs, orderState: os, openRef: v.ref });
         } else {
@@ -696,6 +820,7 @@ class Component extends DCLogic {
       if (st.openRef) {
         var ref0 = st.openRef;
         var reqs0 = st.reqs.map(function (r) { return r.ref === ref0 ? Object.assign({}, r, { transcript: r.transcript.concat([{ k: 'user', text: text }]) }) : r; });
+        self.post({ type: 'customer-msg', ref: ref0, text: text, time: self.hm() });
         self.setState({ msgs: st.msgs.concat([{ k: 'user', text: text }, { k: 'bot', text: 'Added to ' + ref0 + '. The specialist will see it with your request.' }]), draft: '', reqs: reqs0 });
         return;
       }
@@ -749,15 +874,16 @@ class Component extends DCLogic {
       return b;
     };
     var canDisputeReq = function (r) { return !!r && r.kind === 'denied' && r.by === 'auto' && !r.disputed && disputesOn; };
-    var openDetail = function (ref) { return function () { self.setState({ view: 'requests', reqDetail: ref, disputeAsk: false, focusReq: ref }); }; };
+    var openDetail = function (ref) { return function () { self.setState({ view: 'requests', reqDetail: ref, disputeAsk: false, focusReq: ref, notice: (self.state.notice && self.state.notice.ref === ref) ? null : self.state.notice }); }; };
 
+    var initialsOf = function (n) { return (n || '').split(' ').map(function (w) { return w.charAt(0); }).join('').slice(0, 2).toUpperCase(); };
     var histVal = function (m) {
       if (m.k !== 'history') return { entries: [], st: S.processing };
       var r = reqByRef[m.ref]; if (!r) return { entries: [], st: S.processing };
       var o = O.filter(function (x) { return x.id === m.orderId; })[0];
       var rest = o ? self.avail(o, st.orderState).free.map(function (p) { return p.name; }).join(', ') : '';
       return { ref: r.ref, item: r.item, date: r.date, st: badge(r.kind, r.by), open: openDetail(r.ref),
-        entries: (r.transcript || []).filter(function (e) { return e.k !== 'verdict'; }).map(function (e) { return { isUser: e.k === 'user', isBot: e.k === 'bot', isNote: e.k === 'note', text: e.text }; }),
+        entries: (r.transcript || []).filter(function (e) { return e.k !== 'verdict'; }).map(function (e) { return { isUser: e.k === 'user', isBot: e.k === 'bot' || e.k === 'support', isNote: e.k === 'note', text: e.k === 'support' ? e.by + ': ' + e.text : e.text }; }),
         restText: 'This chat is still open for the rest of ' + m.orderId + (rest ? ': ' + rest : '') + '. If something went wrong with ' + (rest.indexOf(',') >= 0 ? 'those items' : 'it') + ' too, you can ask for a refund below.' };
     };
     var items = st.msgs.map(function (m, i) {
@@ -788,6 +914,7 @@ class Component extends DCLogic {
       return {
         explain: streamingNow ? explain.slice(0, st.stream.n) : explain, streaming: streamingNow, streamDone: !streamingNow, busyStr: streamingNow ? 'true' : 'false',
         isHistory: m.k === 'history', h: histVal(m),
+        isSupport: m.k === 'support', by: m.by || '', initials: initialsOf(m.by), time: m.time || '', hasDecision: !!m.decision, dst: m.decision ? badge(m.decision, 'admin') : S.processing,
         isBot: m.k === 'bot', isUser: m.k === 'user', isChips: m.k === 'chips', isProc: m.k === 'proc',
         isApproved: m.k === 'verdict' && v.kind === 'approved', isDenied: m.k === 'verdict' && v.kind === 'denied', isEscalated: m.k === 'verdict' && v.kind === 'escalated',
         isError: m.k === 'error', isRate: m.k === 'rate', isExpired: m.k === 'expired', isEmpty: m.k === 'empty',
@@ -813,19 +940,28 @@ class Component extends DCLogic {
       var disp = canDisputeReq(rdRaw);
       rd = {
         ref: rdRaw.ref, item: rdRaw.item, order: rdRaw.order, amount: rdRaw.amount, date: 'Requested ' + rdRaw.date, st: badge(rdRaw.kind, rdRaw.by),
-        entries: (rdRaw.transcript || []).map(function (e) { return { isUser: e.k === 'user', isBot: e.k === 'bot', isVerdict: e.k === 'verdict', isNote: e.k === 'note', text: e.text, ref: e.ref || '', st: e.k === 'verdict' ? S[e.kind] : S.processing }; }),
+        entries: (rdRaw.transcript || []).map(function (e) { return { isUser: e.k === 'user', isBot: e.k === 'bot', isVerdict: e.k === 'verdict', isNote: e.k === 'note', isSupport: e.k === 'support', by: e.by || '', initials: initialsOf(e.by), time: e.time || '', hasDecision: !!e.decision, dst: e.decision ? badge(e.decision, 'admin') : S.processing, text: e.text, ref: e.ref || '', st: e.k === 'verdict' ? S[e.kind] : S.processing }; }),
+        canReply: rdRaw.kind === 'escalated', noReply: rdRaw.kind !== 'escalated',
         canDispute: disp, asking: disp && st.disputeAsk, notAsking: disp && !st.disputeAsk,
         showFinal: rdRaw.kind === 'denied' && !disp,
         partialText: (function () { var o = O.filter(function (x) { return x.id === rdRaw.order; })[0]; if (!o) return ''; var f = self.avail(o, st.orderState).free; return f.length ? 'The rest of ' + o.id + ' (' + f.map(function (p) { return p.name; }).join(', ') + ') can still get its own refund request from the chat.' : ''; })(),
         finalText: rdRaw.by === 'admin' ? 'A support specialist reviewed this request. This decision is final.' : 'This decision is final.'
       };
     }
+    var sendReply = function () {
+      var text = (self.state.replyDraft || '').trim(); var ref = self.state.reqDetail;
+      if (!text || !ref) return;
+      var reqs = self.state.reqs.map(function (r) { return r.ref === ref ? Object.assign({}, r, { transcript: (r.transcript || []).concat([{ k: 'user', text: text }]) }) : r; });
+      self.post({ type: 'customer-msg', ref: ref, text: text, time: self.hm() });
+      self.setState({ reqs: reqs, replyDraft: '' });
+    };
     var confirmDispute = function () {
       var r0 = rdRaw; if (!r0) return;
       var reqs = st.reqs.map(function (r) {
         return r.ref === r0.ref ? Object.assign({}, r, { kind: 'escalated', disputed: true, note: 'disputed · reply by Sep 25', transcript: r.transcript.concat([{ k: 'note', text: 'You disputed this decision on Sep 24. A support specialist will review it and reply here within 1 business day.' }]) }) : r;
       });
       var os = Object.assign({}, st.orderState); os[r0.order] = { state: 'review', ref: r0.ref };
+      self.post({ type: 'dispute', ref: r0.ref, order: r0.order, item: r0.item, amount: r0.amount, time: self.hm(), customer: 'Amara Okafor', text: 'Customer disputed the automatic denial from Your requests.' });
       self.setState({ reqs: reqs, disputeAsk: false, orderState: os });
     };
 
@@ -866,13 +1002,37 @@ class Component extends DCLogic {
       isClosed: st.closed, showComposer: !st.closed, startNew: startNew,
       closedStyle: 'flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; padding: 12px 16px ' + (sheet ? 'calc(12px + env(safe-area-inset-bottom))' : '12px') + '; border-top: 1px solid #DCE0DB; background: #FFFFFF',
       toChat: function () { self.setState({ view: 'chat', reqDetail: null }); },
-      toRequests: function () { self.setState({ view: 'requests', reqDetail: null }); },
+      toRequests: function () { self.setState({ view: 'requests', reqDetail: null, notice: null }); },
       chatCurrent: st.view === 'chat' ? 'page' : 'false',
       reqCurrent: st.view === 'requests' ? 'page' : 'false',
       chatTabStyle: tab(st.view === 'chat'),
       reqTabStyle: tab(st.view === 'requests'),
       reqCount: st.reqs.length,
-      reqs: st.reqs.map(function (r) { var on = st.focusReq === r.ref; var b = badge(r.kind, r.by); return Object.assign({}, r, { st: b, open: openDetail(r.ref), aria: r.item + ', ' + b.label + ', ' + r.ref + '. View chat', domId: self.uid + '-req-' + r.ref, style: 'border-radius: 10px; outline: none; ' + (on ? 'border: 1.5px solid #151A18; background: #F1F4F0' : 'border: 1px solid #DCE0DB') }); }),
+      hasUnread: Object.keys(st.fresh || {}).length > 0, unreadText: Object.keys(st.fresh || {}).length + ' new',
+      hasNotice: !!st.notice, noticeInitials: st.notice ? initialsOf(st.notice.by) : '',
+      noticeTitle: st.notice ? (st.notice.decision ? st.notice.by + (st.notice.decision === 'approved' ? ' approved ' : ' denied ') + st.notice.ref : 'New message from ' + st.notice.by + ' · ' + st.notice.ref) : '',
+      noticeText: st.notice ? st.notice.text : '',
+      viewNotice: function () { var ref = st.notice && st.notice.ref; self.setState({ notice: null, view: 'requests', reqDetail: ref, disputeAsk: false, focusReq: ref }); },
+      dismissNotice: function () { self.setState({ notice: null }); },
+      replyDraft: st.replyDraft || '',
+      onReplyDraft: function (e) { self.setState({ replyDraft: e.target.value }); },
+      replyDisabled: !(st.replyDraft || '').trim(),
+      replyStyle: 'flex-grow: 1; min-width: 0; box-sizing: border-box; padding: 10px 12px; border: 1px solid #858F89; border-radius: 6px; resize: none; font-size: ' + (sheet ? '16px' : '14px') + '; line-height: 20px; color: #151A18; background: #FFFFFF',
+      replySendStyle: 'width: 44px; height: 44px; flex-shrink: 0; border-radius: 6px; border: 1px solid #1D2724; display: inline-flex; align-items: center; justify-content: center; ' + ((st.replyDraft || '').trim() ? 'background: #1D2724; color: #FFFFFF' : 'background: #EEF0ED; color: #8A938D; border-color: #DCE0DB'),
+      sendReply: sendReply,
+      onReplyKey: function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply(); } },
+      reqs: (function () {
+        var act = st.activity || {}, fr = st.fresh || {};
+        var hot = st.reqs.filter(function (r) { return act[r.ref]; }).sort(function (a, b) { return act[b.ref].seq - act[a.ref].seq; });
+        return hot.concat(st.reqs.filter(function (r) { return !act[r.ref]; })).map(function (r) {
+          var on = st.focusReq === r.ref; var b = badge(r.kind, r.by); var a = act[r.ref]; var isNew = !!fr[r.ref];
+          var actText = a ? (a.decision ? (a.decision === 'approved' ? 'Approved' : 'Denied') + ' by ' + a.by + ' \u00b7 ' + a.time : 'Reply from ' + a.by + ' \u00b7 ' + a.time) : '';
+          return Object.assign({}, r, { st: b, open: openDetail(r.ref), isNew: isNew, hasAct: !!a, actText: isNew ? actText : actText.replace(/^Reply from/, 'Last reply from'),
+            actStyle: 'display: flex; align-items: center; gap: 6px; padding: 10px 14px 0; font-size: 12px; line-height: 16px; ' + (isNew ? 'font-weight: 600; color: #2F4F86' : 'font-weight: 500; color: #5F6963'),
+            aria: (isNew ? 'New: ' + actText + '. ' : '') + r.item + ', ' + b.label + ', ' + r.ref + '. View chat', domId: self.uid + '-req-' + r.ref,
+            style: 'border-radius: 10px; outline: none; ' + (isNew ? 'border: 1.5px solid #2F4F86; background: #FFFFFF' : 'border: 1px solid #DCE0DB') });
+        });
+      })(),
       noReqs: st.reqs.length === 0,
       items: items,
       steps: steps,

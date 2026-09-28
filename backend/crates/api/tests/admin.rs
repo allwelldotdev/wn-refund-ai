@@ -7,8 +7,8 @@ use domain::types::ReasonCategory;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-/// Runs one message through the pipeline with a correct intake stub and
-/// returns (conversation id, request ref).
+/// Runs a request through the pipeline with a correct intake stub, answering
+/// the final question, and returns (conversation id, request ref).
 async fn decided(
     app: &TestApp,
     email: &str,
@@ -18,8 +18,15 @@ async fn decided(
 ) -> (String, String) {
     let token = app.login(email).await;
     let conv = app.new_conversation(&token).await;
-    app.fake.push_intake(Ok(complete_intake(order_ref, reason)));
-    let res = app.say(&token, &conv, text).await;
+    let res = app
+        .decide(
+            &token,
+            &conv,
+            text,
+            None,
+            complete_intake(order_ref, reason),
+        )
+        .await;
     let request_ref = res.event("request_updated")["ref"]
         .as_str()
         .unwrap()
@@ -134,7 +141,7 @@ async fn the_case_file_tags_messages_and_shows_the_audit(pool: PgPool) {
     assert_eq!(d["order"]["item"]["name"], "Worknoon Desk Lamp");
     assert_eq!(d["audit"]["verdict"], "approved");
     assert_eq!(d["audit"]["policy_version"]["version"], 1);
-    assert_eq!(d["audit"]["evaluated_through_seq"], 1);
+    assert_eq!(d["audit"]["evaluated_through_seq"], 3);
     assert_eq!(d["review"], Value::Null);
     let tags: Vec<(&str, &Value)> = d["messages"]
         .as_array()
@@ -145,6 +152,8 @@ async fn the_case_file_tags_messages_and_shows_the_audit(pool: PgPool) {
     assert_eq!(
         tags,
         [
+            ("customer", &json!("used_in_decision")),
+            ("assistant", &Value::Null),
             ("customer", &json!("used_in_decision")),
             ("assistant", &Value::Null),
         ]
@@ -177,7 +186,7 @@ async fn the_case_file_tags_messages_and_shows_the_audit(pool: PgPool) {
         .get(&format!("/api/admin/requests/{grace_ref}"), &admin)
         .await
         .json();
-    assert_eq!(d["messages"][2]["tag"], "after_decision");
+    assert_eq!(d["messages"][4]["tag"], "after_decision");
 
     for path in [
         "/api/admin/requests/RR-9999",

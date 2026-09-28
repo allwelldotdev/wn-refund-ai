@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT r.ref, r.state, c.name, c.email, o.ref AS \"order_ref?\", i.name AS \"item_name?\",\n                  r.amount_cents, r.reason_category, a.flags AS \"flags?\", v.status AS \"review_status?\",\n                  r.created_at, r.resolved_at, r.disputed_at\n           FROM refund_requests r\n           JOIN customers c ON c.id = r.customer_id\n           LEFT JOIN orders o ON o.id = r.order_id\n           LEFT JOIN order_items i ON i.id = r.order_item_id\n           LEFT JOIN decision_audit a ON a.refund_request_id = r.id\n           LEFT JOIN escalation_reviews v ON v.refund_request_id = r.id\n           WHERE ($1::text IS NULL OR r.state = $1)\n             AND ($2::text IS NULL OR r.ref ILIKE $2 OR c.name ILIKE $2\n                  OR c.email ILIKE $2 OR o.ref ILIKE $2)\n             AND ($3::timestamptz IS NULL OR r.created_at >= $3)\n             AND NOT EXISTS (\n                   SELECT 1 FROM unnest($4::text[]) AS g(grp)\n                   WHERE NOT (coalesce(a.flags, '[]'::jsonb) ?| string_to_array(g.grp, ',')))\n             AND (NOT $5 OR r.disputed_at IS NOT NULL)\n           ORDER BY r.created_at DESC, r.id\n           LIMIT $6 OFFSET $7",
+  "query": "SELECT r.ref, r.state, c.name, c.email, o.ref AS \"order_ref?\", i.name AS \"item_name?\",\n                  r.amount_cents, r.reason_category, a.flags AS \"flags?\", v.status AS \"review_status?\",\n                  r.created_at, r.resolved_at, r.disputed_at,\n                  (SELECT count(*) FROM messages m\n                   WHERE m.conversation_id = r.conversation_id AND m.role = 'customer'\n                     AND m.seq > GREATEST(cv.admin_read_seq, coalesce(a.evaluated_through_seq, 0)))\n                    AS \"unread_from_customer!\",\n                  (SELECT max(m.created_at) FROM messages m\n                   WHERE m.conversation_id = r.conversation_id AND m.role = 'customer'\n                     AND m.seq > coalesce(a.evaluated_through_seq, 0)\n                     AND m.seq > coalesce((SELECT max(x.seq) FROM messages x\n                                           WHERE x.conversation_id = r.conversation_id\n                                             AND x.role = 'admin'), 0))\n                    AS \"customer_replied_at?\"\n           FROM refund_requests r\n           JOIN customers c ON c.id = r.customer_id\n           JOIN conversations cv ON cv.id = r.conversation_id\n           LEFT JOIN orders o ON o.id = r.order_id\n           LEFT JOIN order_items i ON i.id = r.order_item_id\n           LEFT JOIN decision_audit a ON a.refund_request_id = r.id\n           LEFT JOIN escalation_reviews v ON v.refund_request_id = r.id\n           WHERE ($1::text IS NULL OR r.state = $1)\n             AND ($2::text IS NULL OR r.ref ILIKE $2 OR c.name ILIKE $2\n                  OR c.email ILIKE $2 OR o.ref ILIKE $2)\n             AND ($3::timestamptz IS NULL OR r.created_at >= $3)\n             AND NOT EXISTS (\n                   SELECT 1 FROM unnest($4::text[]) AS g(grp)\n                   WHERE NOT (coalesce(a.flags, '[]'::jsonb) ?| string_to_array(g.grp, ',')))\n             AND (NOT $5 OR r.disputed_at IS NOT NULL)\n           ORDER BY r.created_at DESC, r.id\n           LIMIT $6 OFFSET $7",
   "describe": {
     "columns": [
       {
@@ -145,6 +145,18 @@
             "name": "disputed_at"
           }
         }
+      },
+      {
+        "ordinal": 13,
+        "name": "unread_from_customer!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 14,
+        "name": "customer_replied_at?",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -171,8 +183,10 @@
       false,
       false,
       true,
-      true
+      true,
+      null,
+      null
     ]
   },
-  "hash": "c8dfb25e094730c4fd3c30cef277b71a6cf08aed4baa8c880170b5d079a1b04c"
+  "hash": "daef0654d733136f9fd685f54598597ba724590093da5d6894253da525d53f58"
 }

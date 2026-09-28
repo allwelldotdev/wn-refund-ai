@@ -2,11 +2,13 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 
+import { AdminTag, StatusBadge } from "@/components/ui/Badge";
 import { buttonClasses } from "@/components/ui/Button";
 import { Icon, Spinner, type IconName } from "@/components/ui/Icon";
 import type { RequestSummary } from "@/lib/api-types";
 import { cn } from "@/lib/cn";
-import { formatCents, formatClock } from "@/lib/format";
+import { initials } from "@/lib/customer";
+import { formatCents, formatClock, formatTime } from "@/lib/format";
 
 export function BotBubble({ children, className }: { children: ReactNode; className?: string }) {
   return (
@@ -327,19 +329,46 @@ export function NoteLine({ children }: { children: ReactNode }) {
   );
 }
 
-/** A support specialist's message, sent when they decide a request that went to a person. */
-export function StaffBubble({ children }: { children: ReactNode }) {
+type StaffBubbleProps = {
+  /** The admin who wrote it; older decision messages have no author. */
+  by: string | null;
+  at: string;
+  /** Set on the message that decided the request. */
+  decision?: "resolved_approved" | "resolved_denied" | null;
+  compact?: boolean;
+  children: ReactNode;
+};
+
+/** A support specialist's message: a question while they review, or their decision. */
+export function StaffBubble({ by, at, decision, compact = false, children }: StaffBubbleProps) {
+  const name = by ?? "Support team";
   return (
-    <div className="flex animate-wn-in flex-col gap-1">
-      <span className="ml-8 text-caption font-semibold text-ink-muted">Support team</span>
-      <div className="flex items-end gap-2">
-        <span aria-hidden="true" className="inline-flex size-6 shrink-0 items-center justify-center rounded-full border border-border-strong bg-surface text-ink">
-          <Icon name="check-circle" size={12} strokeWidth={2.5} />
+    <div className="flex max-w-[92%] animate-wn-in items-end gap-2">
+      <span
+        aria-hidden="true"
+        className={cn(
+          "inline-flex shrink-0 items-center justify-center rounded-full bg-info-fg font-semibold text-white",
+          compact ? "size-5 text-[9px]" : "size-6 text-[10px]",
+        )}
+      >
+        {initials(name)}
+      </span>
+      <div className="flex min-w-0 flex-col gap-1">
+        <span className="flex flex-wrap items-center gap-1.5 text-caption text-ink-muted">
+          <span className="font-semibold text-ink">{name}</span>
+          <AdminTag />
+          <span className="font-mono">{formatTime(at)}</span>
         </span>
-        <p className="max-w-[85%] rounded-[12px_12px_12px_4px] border border-border bg-surface px-3 py-2 text-body-sm whitespace-pre-wrap text-ink [overflow-wrap:anywhere]">
-          <span className="sr-only">Support team: </span>
+        <p
+          className={cn(
+            "rounded-[12px_12px_12px_4px] border border-info-border bg-surface whitespace-pre-wrap text-ink [overflow-wrap:anywhere]",
+            compact ? "px-3 py-2 text-meta" : "px-3 py-2.5 text-body-sm",
+          )}
+        >
+          <span className="sr-only">{name}, support: </span>
           {children}
         </p>
+        {decision ? <StatusBadge state={decision} size="sm" className="self-start" /> : null}
       </div>
     </div>
   );

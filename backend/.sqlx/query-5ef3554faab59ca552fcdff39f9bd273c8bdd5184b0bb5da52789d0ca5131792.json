@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE conversations\n         SET customer_read_seq = GREATEST(customer_read_seq, LEAST($3, last_seq))\n         WHERE id = $1 AND customer_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5ef3554faab59ca552fcdff39f9bd273c8bdd5184b0bb5da52789d0ca5131792"
+}

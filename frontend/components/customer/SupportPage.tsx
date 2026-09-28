@@ -13,8 +13,8 @@ import { Alert, Avatar, EmptyState, Skeleton } from "@/components/ui/Surface";
 import { Pagination, TD, TH, THead, TR, Table } from "@/components/ui/Table";
 import type { ConversationSummary, Order, Principal } from "@/lib/api-types";
 import { api } from "@/lib/bff";
-import { customerRequests, fulfilment, orderAvailability } from "@/lib/customer";
-import { formatCents, formatDate, formatShortDate } from "@/lib/format";
+import { REVIEW_POLL_MS, customerRequests, fulfilment, orderAvailability } from "@/lib/customer";
+import { formatCents, formatDate, formatShortDate, plural } from "@/lib/format";
 
 const noSubscription = () => () => {};
 const PAGE_SIZE = 10;
@@ -36,6 +36,7 @@ export function SupportPage({ principal }: { principal: Principal }) {
   const conversations = useQuery({
     queryKey: ["conversations"],
     queryFn: () => api<ConversationSummary[]>("conversations"),
+    refetchInterval: (q) => (q.state.data?.some((c) => c.request?.state === "escalated") ? REVIEW_POLL_MS : false),
   });
 
   const initialChat = params.get("chat");
@@ -120,6 +121,7 @@ export function SupportPage({ principal }: { principal: Principal }) {
   }
 
   const requestCount = customerRequests(conversations.data).length;
+  const unread = (conversations.data ?? []).reduce((n, c) => n + c.unread_count, 0);
 
   return (
     <div className="min-h-dvh">
@@ -218,11 +220,17 @@ export function SupportPage({ principal }: { principal: Principal }) {
           type="button"
           aria-expanded="false"
           aria-controls="wn-chat"
+          aria-label={unread ? `Need help with an order? ${plural(unread, "new message")}` : undefined}
           onClick={openLauncher}
           className="fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-10 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-5 text-body-sm font-medium text-white shadow-md hover:bg-primary-hover sm:right-6 sm:bottom-6"
         >
           <Icon name="chat" size={18} />
           Need help with an order?
+          {unread ? (
+            <span className="-mr-1.5 h-[22px] rounded-full bg-surface px-2 text-caption leading-[22px] font-semibold whitespace-nowrap text-primary">
+              {unread} new
+            </span>
+          ) : null}
         </button>
       ) : null}
 
@@ -252,7 +260,11 @@ export function SupportPage({ principal }: { principal: Principal }) {
               }
             }}
             onOpenThread={(t) => openThread(t)}
-            onConversationCreated={(id) => writeUrl({ open: true, view: "chat", conversationId: id, orderId: null })}
+            onConversationCreated={(id) => {
+              // Same key: the thread keeps running, but a remount or tab switch now finds it.
+              setTarget((prev) => ({ ...prev, conversationId: id, orderId: null }));
+              writeUrl({ open: true, view: "chat", conversationId: id, orderId: null });
+            }}
             onClose={close}
           />
         </div>

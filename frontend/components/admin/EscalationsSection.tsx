@@ -2,16 +2,17 @@
 
 import { useQueries } from "@tanstack/react-query";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { StatusBadge } from "@/components/ui/Badge";
 import { Button, buttonClasses } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { EmptyState, LoadingRegion, Skeleton } from "@/components/ui/Surface";
+import { useToast } from "@/components/ui/Toast";
 import { FLAG_META, detailQuery, distinctFlags, useRequests } from "@/lib/admin";
 import type { AdminListItem, RequestDetail } from "@/lib/api-types";
 import { cn } from "@/lib/cn";
-import { REASON_LABELS, formatAge, formatCents, formatDateTime } from "@/lib/format";
+import { REASON_LABELS, formatAge, formatCents, formatDateTime, formatRelativeDayTime, plural } from "@/lib/format";
 import { useNow } from "@/lib/use-now";
 import { useOpenRequest } from "@/lib/use-open-request";
 
@@ -31,15 +32,49 @@ function whyEscalated(d: RequestDetail | undefined): string | null {
   return [...rules, ...flags].join(" ") || "No policy rule applied, so a person decides.";
 }
 
+/** "10:34" today, else "Yesterday 18:02" / "Sep 22 15:48". */
+function replyTime(iso: string): string {
+  return formatRelativeDayTime(iso).replace(/^Today /, "");
+}
+
+/**
+ * Toasts what changed in the open queue since the last poll: a new
+ * escalation or dispute, or a customer message on a request not open in the drawer.
+ */
+function useQueueToasts(items: AdminListItem[] | undefined, openRef: string | null) {
+  const toast = useToast();
+  const seen = useRef<Map<string, number> | null>(null);
+  useEffect(() => {
+    if (!items) return;
+    const before = seen.current;
+    seen.current = new Map(items.map((r) => [r.ref, r.unread_from_customer]));
+    if (!before) return;
+    for (const r of items) {
+      const had = before.get(r.ref);
+      if (had === undefined) {
+        toast({ tone: "info", title: `New ${r.disputed_at ? "dispute" : "escalation"} ${r.ref} from ${r.customer_name}.` });
+      } else if (r.unread_from_customer > had && r.ref !== openRef) {
+        toast({ tone: "info", title: `New message from ${r.customer_name} on ${r.ref}.` });
+      }
+    }
+  }, [items, openRef, toast]);
+}
+
 export function EscalationsSection() {
   const open = useRequests({ state: "escalated", limit: 200, offset: 0 });
   const approved = useRequests({ state: "resolved_approved", limit: 10, offset: 0 });
   const denied = useRequests({ state: "resolved_denied", limit: 10, offset: 0 });
-  const { open: openDrawer } = useOpenRequest();
+  const { open: openDrawer, selected } = useOpenRequest();
   const [resolve, setResolve] = useState<ResolveTarget | null>(null);
   const now = useNow();
+  useQueueToasts(open.data?.items, selected);
 
-  const queue = [...(open.data?.items ?? [])].reverse();
+  // New customer replies first (latest first), then oldest first.
+  const oldestFirst = [...(open.data?.items ?? [])].reverse();
+  const queue = [
+    ...oldestFirst.filter((r) => r.customer_replied_at).sort((a, b) => b.customer_replied_at!.localeCompare(a.customer_replied_at!)),
+    ...oldestFirst.filter((r) => !r.customer_replied_at),
+  ];
   const decided = [...(approved.data?.items ?? []), ...(denied.data?.items ?? [])]
     .sort((a, b) => (b.resolved_at ?? "").localeCompare(a.resolved_at ?? ""))
     .slice(0, 10);
@@ -89,7 +124,7 @@ export function EscalationsSection() {
     <div className="flex flex-col gap-6">
       <p className="text-body-sm text-ink-muted">
         {queue.length
-          ? `${queue.length} open, oldest first. Approving or denying needs a note and a confirmation; the customer sees the result in their requests.`
+          ? `${queue.length} open. New customer replies first, then oldest first. Approving or denying needs a note and a confirmation; the customer is told in chat.`
           : "All escalations are decided."}
       </p>
 
@@ -103,7 +138,17 @@ export function EscalationsSection() {
             const d = detailOf(r.ref);
             const old = now.getTime() - new Date(r.created_at).getTime() > OLD_AFTER_MS;
             return (
-              <li key={r.ref} className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5 shadow-xs">
+              <li key={r.ref}
+                className={cn(
+                  "flex flex-col gap-3 rounded-lg bg-surface p-5 shadow-xs",
+                  r.customer_replied_at ? "border-[1.5px] border-info-fg" : "border border-border",
+                )}>
+                {r.customer_replied_at ? (
+                  <span className="inline-flex h-6 items-center gap-1.5 self-start rounded-full border border-info-border bg-info-bg pr-2.5 pl-2 text-caption font-semibold text-info-fg">
+                    <Icon name="chat" size={14} strokeWidth={2.25} />
+                    Customer replied {replyTime(r.customer_replied_at)} · awaiting your reply
+                  </span>
+                ) : null}
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="flex flex-col gap-0.5">
                     <h2 className="text-title-sm font-semibold">
@@ -132,8 +177,16 @@ export function EscalationsSection() {
                   <FlagChips flags={r.flags} disputed={r.disputed_at !== null} full />
                   <div role="group" aria-label="Your decision" className="ml-auto flex flex-wrap items-center gap-2">
                     <span className="text-caption font-semibold tracking-[0.05em] text-ink-subtle uppercase">Your decision</span>
+                    {r.unread_from_customer > 0 ? (
+                      <span className="rounded-full border border-info-border bg-info-bg px-2 py-0.5 text-caption font-semibold text-info-fg">
+                        {plural(r.unread_from_customer, "new message")}
+                      </span>
+                    ) : null}
                     <Button variant="ghost" onClick={() => openDrawer(r.ref)}>
                       View details
+                    </Button>
+                    <Button icon="chat" onClick={() => openDrawer(r.ref, { reply: true })}>
+                      Message customer
                     </Button>
                     <Button variant="danger-outline" onClick={() => setResolve(target(r, "denied"))}>
                       Deny

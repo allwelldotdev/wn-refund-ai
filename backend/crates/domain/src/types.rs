@@ -117,6 +117,10 @@ string_enum! {
         ExistingRequest = "existing_request",
         Closing = "closing",
         Redirect = "redirect",
+        Greeting = "greeting",
+        OrderStatus = "order_status",
+        OrderList = "order_list",
+        FinalCheck = "final_check",
     }
 }
 
@@ -167,6 +171,8 @@ mod tests {
         include_str!("../../../migrations/0002_assistant_scope.sql"),
         include_str!("../../../migrations/0003_disputes.sql"),
         include_str!("../../../migrations/0004_test_orders.sql"),
+        include_str!("../../../migrations/0005_order_questions.sql"),
+        include_str!("../../../migrations/0006_final_check.sql"),
     ];
 
     /// The quoted values of the first `CHECK (<column> IN (...))` in the newest

@@ -11,9 +11,10 @@ import { CountPill } from "@/components/ui/Tabs";
 import type { ConversationSummary, Order, PublicPolicy } from "@/lib/api-types";
 import { api } from "@/lib/bff";
 import { cn } from "@/lib/cn";
-import { customerRequests } from "@/lib/customer";
+import { customerRequests, initials } from "@/lib/customer";
 
 import { ChatThreadView } from "./ChatThreadView";
+import { useConversation } from "./RequestTranscript";
 import { RequestsView } from "./RequestsView";
 
 /** Which thread the widget shows: an existing conversation, or a new one (optionally for an order). */
@@ -45,8 +46,19 @@ type ChatWidgetProps = {
 export function ChatWidget(props: ChatWidgetProps) {
   const { layout, target, view, orders, conversations, onView, onOpenThread, onClose } = props;
   const [policyOpen, setPolicyOpen] = useState(false);
+  const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
   const policy = useQuery({ queryKey: ["policy"], queryFn: () => api<PublicPolicy>("policy"), enabled: policyOpen });
-  const requestCount = customerRequests(conversations.data).length;
+  const requests = customerRequests(conversations.data);
+  const requestCount = requests.length;
+  const freshCount = (conversations.data ?? []).filter((c) => c.unread_count > 0).length;
+
+  // A specialist's newest reply on a request the customer isn't looking at.
+  const onScreen =
+    view === "chat" ? target.conversationId : (requests.find((r) => r.request.ref === props.detailRef)?.conversationId ?? null);
+  const replyKey = (c: ConversationSummary) => `${c.id}@${c.last_reply_at}`;
+  const unseen = (conversations.data ?? [])
+    .filter((c) => c.request && c.unread_count > 0 && c.id !== onScreen && !dismissed.has(replyKey(c)))
+    .sort((a, b) => (b.last_reply_at ?? "").localeCompare(a.last_reply_at ?? ""))[0];
 
   function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
     if (e.key === "Escape" && !policyOpen) {
@@ -96,6 +108,11 @@ export function ChatWidget(props: ChatWidgetProps) {
                 )}
               >
                 {label}
+                {v === "requests" && freshCount > 0 ? (
+                  <span className="h-5 min-w-5 rounded-full bg-info-fg px-1.5 text-center text-caption leading-5 font-semibold text-white">
+                    {freshCount} new
+                  </span>
+                ) : null}
                 {v === "requests" ? <CountPill active={view === v}>{requestCount}</CountPill> : null}
               </button>
             ))}
@@ -103,7 +120,16 @@ export function ChatWidget(props: ChatWidgetProps) {
         </div>
       </div>
 
-      {view === "chat" ? (
+      {unseen ? (
+        <ReplyBanner
+          conversation={unseen}
+          onView={() => props.onShowRequest(unseen.request!.ref)}
+          onDismiss={() => setDismissed((d) => new Set(d).add(replyKey(unseen)))}
+        />
+      ) : null}
+
+      {/* Hidden, not unmounted, on Your requests: an in-flight reply, a picked order and the scroll position survive. */}
+      <div className={cn("flex min-h-0 flex-grow flex-col", view !== "chat" && "hidden")}>
         <ChatThreadView
           key={target.key}
           customerName={props.customerName}
@@ -113,12 +139,14 @@ export function ChatWidget(props: ChatWidgetProps) {
           conversationId={target.conversationId}
           preselectOrderId={target.orderId}
           large={layout === "sheet"}
+          visible={view === "chat"}
           onConversationCreated={props.onConversationCreated}
           onNewThread={(orderId) => onOpenThread({ conversationId: null, orderId })}
           onShowRequest={props.onShowRequest}
           onShowPolicy={() => setPolicyOpen(true)}
         />
-      ) : (
+      </div>
+      {view === "requests" ? (
         <RequestsView
           conversations={conversations.data}
           orders={orders.data}
@@ -129,10 +157,10 @@ export function ChatWidget(props: ChatWidgetProps) {
           detailRef={props.detailRef}
           onOpenDetail={props.onShowRequest}
           onBack={props.onBackToList}
-          onOpenChat={(id) => onOpenThread({ conversationId: id, orderId: null })}
           onNewRequest={() => onOpenThread({ conversationId: null, orderId: null })}
+          large={layout === "sheet"}
         />
-      )}
+      ) : null}
 
       <Dialog
         open={policyOpen}
@@ -157,6 +185,35 @@ export function ChatWidget(props: ChatWidgetProps) {
           )}
         </div>
       </Dialog>
+    </div>
+  );
+}
+
+function ReplyBanner({ conversation: c, onView, onDismiss }: { conversation: ConversationSummary; onView: () => void; onDismiss: () => void }) {
+  const detail = useConversation(c.id);
+  const r = c.request!;
+  const by = c.last_reply_by ?? "Support team";
+  const title =
+    r.state === "resolved_approved"
+      ? `${by} approved ${r.ref}`
+      : r.state === "resolved_denied"
+        ? `${by} denied ${r.ref}`
+        : `New message from ${by} · ${r.ref}`;
+  const latest = detail.data?.messages.findLast((m) => m.role === "admin");
+  return (
+    <div role="status" className="flex shrink-0 items-start gap-2.5 border-b border-info-border bg-info-bg py-2.5 pr-2 pl-3.5">
+      <span aria-hidden="true" className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-info-fg text-[10px] font-semibold text-white">
+        {initials(by)}
+      </span>
+      <div className="flex min-w-0 flex-grow flex-col gap-0.5">
+        <span className="text-[13px] leading-[18px] font-semibold text-ink">{title}</span>
+        <span className="truncate text-caption text-ink-muted">{latest?.body ?? ""}</span>
+      </div>
+      <button type="button" onClick={onView}
+        className="h-8 shrink-0 rounded-md border border-info-fg bg-surface px-2.5 text-[13px] font-medium text-info-fg hover:bg-info-bg">
+        View
+      </button>
+      <IconButton icon="close" label="Dismiss notification" size={32} onClick={onDismiss} />
     </div>
   );
 }

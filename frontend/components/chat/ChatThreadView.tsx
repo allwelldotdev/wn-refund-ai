@@ -5,8 +5,9 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, Skeleton } from "@/components/ui/Surface";
 import type { ConversationSummary, Message, Order } from "@/lib/api-types";
-import { customerRequests, isClosed, orderAvailability } from "@/lib/customer";
+import { alreadyStored, customerRequests, decisionMessageId, isClosed, orderAvailability } from "@/lib/customer";
 import { firstName, formatCents } from "@/lib/format";
+import { useMarkRead } from "@/lib/use-mark-read";
 
 import { Composer } from "./Composer";
 import { OrderChips } from "./OrderChips";
@@ -34,6 +35,8 @@ type ChatThreadViewProps = {
   conversationId: string | null;
   preselectOrderId: string | null;
   large: boolean;
+  /** On screen (not hidden behind Your requests). */
+  visible: boolean;
   onConversationCreated: (id: string) => void;
   onNewThread: (orderId: string | null) => void;
   onShowRequest: (ref: string) => void;
@@ -57,11 +60,16 @@ export function ChatThreadView(props: ChatThreadViewProps) {
   const orderById = new Map((orders ?? []).map((o) => [o.id, o]));
   const customerMessages = messages.filter((m) => m.role === "customer");
   const started = customerMessages.length > 0 || outgoing !== null;
-  const orderSent = customerMessages.some((m) => m.order_id !== null) || (outgoing?.orderId ?? null) !== null;
+  // The order the thread is about so far: the latest one sent with a message.
+  const sentOrderId = outgoing?.orderId ?? customerMessages.findLast((m) => m.order_id !== null)?.order_id ?? null;
+  const orderSent = sentOrderId !== null;
   const pickedOrder = picked ? (orderById.get(picked) ?? null) : null;
   const busy = phase !== "idle";
   const closed = isClosed(request);
   const paused = notice?.kind === "rate" || notice?.kind === "expired";
+  const decisionId = decisionMessageId(messages, request);
+  const unread = (conversations?.find((c) => c.id === thread.conversationId)?.unread_count ?? 0) > 0;
+  useMarkRead(thread.conversationId, messages.at(-1)?.seq, props.visible && unread);
 
   // Lift the rate-limit pause when its countdown ends.
   useEffect(() => {
@@ -85,7 +93,7 @@ export function ChatThreadView(props: ChatThreadViewProps) {
   function send() {
     const text = draft.trim();
     if (!text) return;
-    const orderId = picked && !orderSent ? picked : null;
+    const orderId = picked && picked !== sentOrderId ? picked : null;
     void thread.send({ text, clientMsgId: crypto.randomUUID(), orderId, saved: false });
   }
 
@@ -173,13 +181,18 @@ export function ChatThreadView(props: ChatThreadViewProps) {
     } else if (m.role === "system") {
       entries.push(<NoteLine key={m.id}>{m.body}</NoteLine>);
     } else if (m.role === "admin") {
-      entries.push(<StaffBubble key={m.id}>{m.body}</StaffBubble>);
+      entries.push(
+        <StaffBubble key={m.id} by={m.author_name} at={m.created_at}
+          decision={m.id === decisionId && request ? (request.state as "resolved_approved" | "resolved_denied") : null}>
+          {m.body}
+        </StaffBubble>,
+      );
     } else {
       entries.push(<BotBubble key={m.id}>{m.body}</BotBubble>);
     }
   });
 
-  if (outgoing) {
+  if (outgoing && !alreadyStored(outgoing.messageId, messages)) {
     orderLead(outgoing.orderId, "order-outgoing");
     entries.push(
       <UserBubble key="outgoing" pending={!outgoing.saved}>
@@ -193,10 +206,12 @@ export function ChatThreadView(props: ChatThreadViewProps) {
     entries.push(<ReviewingCard key="reviewing" startedAt={thread.startedAt} orderRef={ref} writing={phase === "replying"} />);
   }
 
-  // Still clarifying: offer the orders again, or confirm a mid-thread pick.
+  // Still clarifying, or asked to see the orders: offer them, or confirm a mid-thread pick.
   const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
-  if (started && !busy && !request && !orderSent && lastAssistant?.assistant_kind === "clarify" && orders?.length) {
-    if (pickedOrder) {
+  const offerOrders =
+    lastAssistant?.assistant_kind === "order_list" || (lastAssistant?.assistant_kind === "clarify" && !orderSent);
+  if (started && !busy && !request && offerOrders && orders?.length) {
+    if (pickedOrder && picked !== sentOrderId) {
       const s = orderSummary(pickedOrder);
       entries.push(<OrderBubble key="late-pick" orderRef={pickedOrder.ref} amount={s.amount} items={s.items} />);
       entries.push(...earlier(pickedOrder));

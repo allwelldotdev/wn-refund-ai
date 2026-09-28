@@ -50,7 +50,17 @@ export const designOrders: Order[] = [
 ];
 
 function conversation(id: string, request: ConversationSummary["request"]): ConversationSummary {
-  return { id, created_at: day("21"), updated_at: day("21"), last_seq: 2, preview: null, request };
+  return {
+    id,
+    created_at: day("21"),
+    updated_at: day("21"),
+    last_seq: 2,
+    preview: null,
+    request,
+    unread_count: 0,
+    last_reply_at: null,
+    last_reply_by: null,
+  };
 }
 
 /** The "Your requests" tab: REQ-5817 is still with a person, REQ-5790 was refunded. */

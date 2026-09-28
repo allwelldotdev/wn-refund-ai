@@ -114,3 +114,17 @@ export function Chip({ tone = "neutral", icon, tip, dashed, className, children 
     </span>
   );
 }
+
+/** Marks a message written by a support admin, in the chat and the case file. */
+export function AdminTag({ onTint = false }: { onTint?: boolean }) {
+  return (
+    <span
+      className={cn(
+        "rounded-[4px] border border-info-border px-1.5 text-[11px] leading-4 font-semibold tracking-[0.06em] text-info-fg uppercase",
+        onTint ? "bg-surface" : "bg-info-bg",
+      )}
+    >
+      Admin
+    </span>
+  );
+}

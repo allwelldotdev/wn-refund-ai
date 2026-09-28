@@ -17,10 +17,12 @@ type ComposerProps = {
   hint: string;
   /** 16px text in the mobile sheet so iOS doesn't zoom. */
   large: boolean;
+  /** Screen-reader label for the text box. */
+  label?: string;
 };
 
 export const Composer = forwardRef<HTMLTextAreaElement, ComposerProps>(function Composer(
-  { value, onChange, onSend, placeholder, blocked, hint, large },
+  { value, onChange, onSend, placeholder, blocked, hint, large, label = "Describe the problem" },
   ref,
 ) {
   const uid = useId();
@@ -44,7 +46,7 @@ export const Composer = forwardRef<HTMLTextAreaElement, ComposerProps>(function 
       }}
     >
       <label htmlFor={`${uid}-input`} className="sr-only">
-        Describe the problem
+        {label}
       </label>
       <div className="flex items-end gap-2">
         <textarea

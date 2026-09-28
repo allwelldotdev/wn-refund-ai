@@ -28,7 +28,17 @@ export type Flag =
   | "clarification_limit"
   | "no_rule_fired";
 export type ReviewStatus = "pending" | "drafted" | "failed";
-export type AssistantKind = "clarify" | "verdict" | "holding" | "existing_request" | "closing" | "redirect";
+export type AssistantKind =
+  | "clarify"
+  | "verdict"
+  | "holding"
+  | "existing_request"
+  | "closing"
+  | "redirect"
+  | "greeting"
+  | "order_status"
+  | "order_list"
+  | "final_check";
 export type OrderStatus = "processing" | "shipped" | "delivered";
 export type Fulfilment = "delivered" | "used" | "confirmed" | "active";
 
@@ -159,9 +169,14 @@ export interface ConversationSummary {
   last_seq: number;
   preview: string | null;
   request: RequestSummary | null;
+  /** Admin messages the customer has not seen yet. */
+  unread_count: number;
+  /** The latest admin message: when, and who wrote it. */
+  last_reply_at: ISODate | null;
+  last_reply_by: string | null;
 }
 
-/** `admin`: an admin's decision sent to the customer; `system`: a note such as a dispute. */
+/** `admin`: a support specialist's message, including their decision; `system`: a note such as a dispute. */
 export type MessageRole = "customer" | "assistant" | "admin" | "system";
 
 export interface Message {
@@ -172,6 +187,8 @@ export interface Message {
   body: string;
   order_id: UUID | null;
   created_at: ISODate;
+  /** Who wrote an admin message. */
+  author_name: string | null;
 }
 
 export interface ConversationDetail {
@@ -205,6 +222,10 @@ export interface AdminListItem {
   created_at: ISODate;
   resolved_at: ISODate | null;
   disputed_at: ISODate | null;
+  /** Customer messages after the decision that no admin has read. */
+  unread_from_customer: number;
+  /** When the customer last wrote after the decision, while no admin has replied since. */
+  customer_replied_at: ISODate | null;
 }
 
 export interface AdminList {
@@ -258,6 +279,7 @@ export interface DetailMessage {
   assistant_kind: AssistantKind | null;
   body: string;
   created_at: ISODate;
+  author_name: string | null;
   tag: "used_in_decision" | "after_decision" | null;
   signals: SignalView[];
 }

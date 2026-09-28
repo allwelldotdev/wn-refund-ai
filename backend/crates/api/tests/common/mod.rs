@@ -231,6 +231,37 @@ impl TestApp {
         .await
     }
 
+    /// Sends a complete request (intake scripted as `intake`) and answers the
+    /// assistant's final question, returning the stream with the decision.
+    pub async fn decide(
+        &self,
+        token: &str,
+        conversation: &str,
+        body: &str,
+        order_id: Option<Uuid>,
+        intake: IntakeOutput,
+    ) -> TestResponse {
+        self.fake.push_intake(Ok(intake.clone()));
+        let res = self
+            .say_with(token, conversation, body, order_id, Uuid::new_v4())
+            .await;
+        assert_eq!(res.event("reply_start")["kind"], "final_check");
+        self.confirm(token, conversation, intake).await
+    }
+
+    /// Answers the final question with "No, that's all."; intake repeats
+    /// `intake` with the customer done.
+    pub async fn confirm(
+        &self,
+        token: &str,
+        conversation: &str,
+        mut intake: IntakeOutput,
+    ) -> TestResponse {
+        intake.intent = Intent::Finished;
+        self.fake.push_intake(Ok(intake));
+        self.say(token, conversation, "No, that's all.").await
+    }
+
     /// The conversation's `decision_audit` row as JSON.
     pub async fn audit(&self, conversation: &str) -> Value {
         sqlx::query_scalar(

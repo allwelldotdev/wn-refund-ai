@@ -2,6 +2,46 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.10.0] — 2026-09-28
+### New
+- While a request is escalated, admins can message the customer from the escalation card or the request details panel; the message appears in the customer's chat exactly as written, with the admin's name.
+- Escalation cards show when the customer has replied and is waiting, with a count of new messages, and move those cards to the top; admins get a notification for a new customer message or a new escalation.
+- Customers see a specialist's message in the chat tagged with the admin's name and an Admin tag.
+- The decision message in the chat now carries an "Approved after review" or "Denied after review" tag.
+- When a specialist replies about a request the customer isn't looking at, a banner with View and Dismiss appears in the chat, and "N new" shows on the Your requests tab and on the closed help button.
+- An escalated request's details now include a box for customers to reply to the specialist.
+
+### Improved
+- The request details panel now shows the whole conversation, including admin messages, with a Collapse / Show all button.
+- Your requests now lists requests with a reply first and marks new ones.
+
+### Changed
+- Once a specialist has written on a request, the assistant no longer answers the customer's messages on it; before that, it answered only once.
+
+## [0.9.1] — 2026-09-28
+### Improved
+- The assistant's chat replies are now shorter and more to the point, professional and courteous, without apologies or filler.
+- The message customers receive after an admin decides their escalated request is now one or two short sentences explaining the decision, without a sympathy line.
+
+## [0.9.0] — 2026-09-28
+### Changed
+- Once the assistant has the order, item and problem it needs, it now asks once whether there is anything else to add before checking the request; the decision follows whatever you answer, including "no, that's all", and anything you add is taken into account. Requests that look like manipulation attempts still go straight to a person without this question.
+
+## [0.8.0] — 2026-09-28
+### New
+- Saying hello to the assistant now gets a short welcome instead of being told it can only help with refunds.
+- Customers can ask the assistant what happened to an order or an earlier request, by order number or by item name; it reports when the order was placed and delivered, each item's amount, and any refund request and its status, and offers to file one for items that don't have one yet.
+- Asking to see your orders brings up the order list in the chat so you can pick one to ask about.
+
+## [0.7.2] — 2026-09-28
+### Fixed
+- Once an admin decides an escalated request, the customer now sees it within a few seconds without reloading: the status tag in Your requests and the request details changes to "Approved after review" or "Denied after review", the admin's message appears in the chat, and the message box is replaced by the "Start new request" button. Before, the tag stayed "Escalated" until the page was reloaded.
+
+## [0.7.1] — 2026-09-28
+### Fixed
+- A new chat's first message no longer briefly appears twice while the assistant is working on it.
+- Switching from Chat to Your requests and back no longer loses a new conversation; the chat keeps its messages, a reply still arriving, the picked order and the scroll position. "Start new request" still starts an empty chat.
+
 ## [0.7.0] — 2026-09-27
 ### New
 - Customers can add a test order from My orders, picking a date, items from a catalogue, and a delivery status, to try the chat.
@@ -84,6 +124,7 @@ This file records what changed in Worknoon Support for the customers who request
 - Admins can see the policy's full version history and revert to an earlier version.
 
 ## Planned
+- The assistant will remember a customer's orders and past conversations so it asks fewer repeat questions, conversations are shorter and replies are more personal.
 - Approved requests will show Processing and Processed labels once a payment processor is connected; the demo has none today, so labels stay limited to what the system can verify.
 - A rule will refuse refunds for items that have already been used, based on evidence the customer uploads, once file storage for photos or documents is added.
 - Orders past their refund window will be hidden from the chat's order picker; they stay visible today so the policy is applied in one place only.
