@@ -13,6 +13,14 @@ use crate::types::{RequestState, Verdict};
 
 pub const MAX_REPLY_CHARS: usize = 1200;
 
+/// Fixed replies that need no model: nothing in them depends on the customer's records.
+pub const GREETING_REPLY: &str = "Hi, I'm your refund assistant. How may I help you with refund requests for your Worknoon orders?";
+pub const ORDER_LIST_REPLY: &str = "Here are your orders. Pick one to continue.";
+
+fn on(at: DateTime<Utc>) -> String {
+    at.format("%b %-d, %Y").to_string()
+}
+
 /// What the refund is for. `amount` is preformatted so the model can copy it exactly.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Target {
@@ -61,7 +69,7 @@ impl PriorRequest {
         state: RequestState,
         decided_at: DateTime<Utc>,
     ) -> Self {
-        let on = decided_at.format("%b %-d, %Y");
+        let on = on(decided_at);
         let status = match state {
             RequestState::Approved => format!("was approved on {on}"),
             RequestState::Denied => format!("was denied on {on}"),
@@ -78,6 +86,72 @@ impl PriorRequest {
             state,
             status,
         }
+    }
+}
+
+/// What is on record for an order the customer asked about (trusted). Dates
+/// and amounts are preformatted so the model can copy them.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OrderRecord {
+    pub order_ref: String,
+    pub placed_on: String,
+    pub delivered_on: Option<String>,
+    pub items: Vec<ItemRecord>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ItemRecord {
+    pub name: String,
+    pub amount: String,
+    /// The item's newest refund request, or `None` when it has none.
+    pub request: Option<PriorRequest>,
+}
+
+impl OrderRecord {
+    pub fn new(
+        order_ref: impl Into<String>,
+        placed_at: DateTime<Utc>,
+        delivered_at: Option<DateTime<Utc>>,
+        items: Vec<ItemRecord>,
+    ) -> Self {
+        Self {
+            order_ref: order_ref.into(),
+            placed_on: on(placed_at),
+            delivered_on: delivered_at.map(on),
+            items,
+        }
+    }
+
+    fn requests(&self) -> impl Iterator<Item = &PriorRequest> {
+        self.items.iter().filter_map(|i| i.request.as_ref())
+    }
+
+    /// Items that could still get a request.
+    fn open_items(&self) -> Vec<&str> {
+        self.items
+            .iter()
+            .filter(|i| i.request.is_none())
+            .map(|i| i.name.as_str())
+            .collect()
+    }
+}
+
+impl ItemRecord {
+    pub fn new(name: impl Into<String>, amount_cents: i64, request: Option<PriorRequest>) -> Self {
+        Self {
+            name: name.into(),
+            amount: format_cents(amount_cents),
+            request,
+        }
+    }
+}
+
+/// The outcome word a request's state allows in a reply.
+fn outcome_word(state: RequestState) -> &'static str {
+    match state {
+        RequestState::Approved | RequestState::ResolvedApproved => "approved",
+        RequestState::Denied | RequestState::ResolvedDenied => "denied",
+        RequestState::Escalated => "escalated",
     }
 }
 
@@ -100,6 +174,9 @@ pub enum ResponderInput {
     /// The item already has a request: say where it stands and ask whether
     /// there is anything else. Nothing is filed.
     ExistingRequest { request: PriorRequest },
+    /// The customer asked about an order: say what is on record and offer a
+    /// request for items without one. Nothing is filed.
+    OrderStatus { order: OrderRecord },
     /// The customer needs nothing else. Nothing is filed.
     Closing,
     /// An off-topic message: decline it and steer back to refunds.
@@ -131,6 +208,7 @@ impl ResponderInput {
             ResponderInput::ExistingRequest { request } => {
                 ReplyExpectation::ExistingRequest(request.clone())
             }
+            ResponderInput::OrderStatus { order } => ReplyExpectation::OrderStatus(order.clone()),
             ResponderInput::Closing => ReplyExpectation::Closing,
             ResponderInput::Redirect => ReplyExpectation::Redirect,
         }
@@ -145,6 +223,7 @@ pub enum ReplyExpectation {
         amount_cents: Option<i64>,
     },
     ExistingRequest(PriorRequest),
+    OrderStatus(OrderRecord),
     Closing,
     Redirect,
 }
@@ -198,30 +277,49 @@ pub fn validate_reply(reply: &str, expectation: &ReplyExpectation) -> Result<(),
 
     let lower = reply.to_lowercase();
     const OUTCOMES: &[&str] = &["approved", "denied", "escalated"];
-    let (required, forbidden): (Vec<&str>, &[&str]) = match expectation {
-        ReplyExpectation::Clarify => (vec!["?"], OUTCOMES),
+    let (required, forbidden): (Vec<&str>, Vec<&str>) = match expectation {
+        ReplyExpectation::Clarify => (vec!["?"], OUTCOMES.to_vec()),
         ReplyExpectation::Verdict { verdict, .. } => match verdict {
-            Verdict::Approved => (vec!["approved"], &["not approved", "denied", "escalated"]),
-            Verdict::Denied => (vec!["denied"], &["approved", "escalated"]),
-            Verdict::Escalated => (vec!["escalated"], &["approved", "denied"]),
+            Verdict::Approved => (
+                vec!["approved"],
+                vec!["not approved", "denied", "escalated"],
+            ),
+            Verdict::Denied => (vec!["denied"], vec!["approved", "escalated"]),
+            Verdict::Escalated => (vec!["escalated"], vec!["approved", "denied"]),
         },
         // Names the earlier request and its real outcome, then asks a question.
         ReplyExpectation::ExistingRequest(prior) => {
             let mut required = vec![prior.request_ref.as_str(), "?"];
-            let forbidden: &[&str] = match prior.state {
+            let forbidden = match prior.state {
                 RequestState::Approved | RequestState::ResolvedApproved => {
                     required.push("approved");
-                    &["not approved", "denied", "escalated"]
+                    vec!["not approved", "denied", "escalated"]
                 }
                 RequestState::Denied | RequestState::ResolvedDenied => {
                     required.push("denied");
-                    &["approved", "escalated"]
+                    vec!["approved", "escalated"]
                 }
-                RequestState::Escalated => &["approved", "denied"],
+                RequestState::Escalated => vec!["approved", "denied"],
             };
             (required, forbidden)
         }
-        ReplyExpectation::Closing | ReplyExpectation::Redirect => (vec![], OUTCOMES),
+        // Names the order and every earlier request; an outcome word only
+        // where one of those requests has it; a question when an item is open.
+        ReplyExpectation::OrderStatus(order) => {
+            let mut required = vec![order.order_ref.as_str()];
+            required.extend(order.requests().map(|r| r.request_ref.as_str()));
+            if !order.open_items().is_empty() {
+                required.push("?");
+            }
+            let allowed: Vec<&str> = order.requests().map(|r| outcome_word(r.state)).collect();
+            let forbidden = OUTCOMES
+                .iter()
+                .copied()
+                .filter(|w| !allowed.contains(w))
+                .collect();
+            (required, forbidden)
+        }
+        ReplyExpectation::Closing | ReplyExpectation::Redirect => (vec![], OUTCOMES.to_vec()),
     };
     if let Some(word) = required.iter().find(|w| !lower.contains(&w.to_lowercase())) {
         return Err(ReplyViolation(format!("reply must contain \"{word}\"")));
@@ -253,6 +351,7 @@ pub fn fallback_reply(expectation: &ReplyExpectation, target: Option<&Target>) -
             "Your refund request {} for {} (order {}) {}. Is there anything else I can help you with?",
             r.request_ref, r.item_name, r.order_ref, r.status
         ),
+        ReplyExpectation::OrderStatus(order) => order_status_reply(order),
         ReplyExpectation::Closing => "Thanks for getting in touch. If anything else comes up with one of your orders, just send a message here.".to_owned(),
         ReplyExpectation::Redirect => "I can only help with refund requests for your Worknoon orders, so I can't help with that here. Which order would you like help with?".to_owned(),
         ReplyExpectation::Clarify => {
@@ -277,6 +376,39 @@ pub fn fallback_reply(expectation: &ReplyExpectation, target: Option<&Target>) -
             ),
         },
     }
+}
+
+fn order_status_reply(order: &OrderRecord) -> String {
+    let mut out = format!(
+        "Order {} was placed on {}",
+        order.order_ref, order.placed_on
+    );
+    if let Some(delivered) = &order.delivered_on {
+        out.push_str(&format!(" and delivered on {delivered}"));
+    }
+    out.push('.');
+    for item in &order.items {
+        match &item.request {
+            Some(r) => out.push_str(&format!(
+                " {} ({}): refund request {} {}.",
+                item.name, item.amount, r.request_ref, r.status
+            )),
+            None => out.push_str(&format!(
+                " {} ({}): no refund request.",
+                item.name, item.amount
+            )),
+        }
+    }
+    let open = order.open_items();
+    if open.is_empty() {
+        out.push_str(" Is there anything else I can help you with?");
+    } else {
+        out.push_str(&format!(
+            " Would you like to request a refund for {}?",
+            open.join(" or ")
+        ));
+    }
+    out
 }
 
 /// Reply to a message sent after the request was decided. Not model-generated.
@@ -405,7 +537,9 @@ mod tests {
         }
         for state in RequestState::ALL {
             expectations.push(E::ExistingRequest(prior(*state)));
+            expectations.push(E::OrderStatus(order(Some(*state))));
         }
+        expectations.push(E::OrderStatus(order(None)));
         for e in expectations {
             for t in [None, Some(&target)] {
                 let reply = fallback_reply(&e, t);
@@ -490,6 +624,58 @@ mod tests {
             Ok(())
         );
         assert!(check("RR-0903 will be approved soon?", open).is_err());
+    }
+
+    /// ORD-10340 with the day passes under `pass` and a locker with no request.
+    fn order(pass: Option<RequestState>) -> OrderRecord {
+        let at = |d: &str| DateTime::parse_from_rfc3339(d).unwrap().with_timezone(&Utc);
+        OrderRecord::new(
+            "ORD-10340",
+            at("2026-09-10T10:00:00Z"),
+            Some(at("2026-09-11T10:00:00Z")),
+            vec![
+                ItemRecord::new("Day Pass, 5-pack", 7500, pass.map(prior)),
+                ItemRecord::new("Locker Rental", 2000, None),
+            ],
+        )
+    }
+
+    #[test]
+    fn an_order_status_reply_states_the_record_and_offers_open_items() {
+        let e = E::OrderStatus(order(Some(RequestState::ResolvedApproved)));
+        assert_eq!(
+            fallback_reply(&e, None),
+            "Order ORD-10340 was placed on Sep 10, 2026 and delivered on Sep 11, 2026. Day Pass, 5-pack ($75.00): refund request RR-0903 was approved after review on Sep 18, 2026. Locker Rental ($20.00): no refund request. Would you like to request a refund for Locker Rental?"
+        );
+        let ok = "ORD-10340: the day passes were refunded under RR-0903 (approved). Want a refund for the locker?";
+        assert_eq!(check(ok, e.clone()), Ok(()));
+        let bad = [
+            ("RR-0903 was approved. Anything else?", "\"ORD-10340\""),
+            ("ORD-10340: the passes were approved.", "\"RR-0903\""),
+            (
+                "ORD-10340: the passes were approved under RR-0903.",
+                "\"?\"",
+            ),
+            (
+                "ORD-10340: RR-0903 was approved; the locker would be denied?",
+                "\"denied\"",
+            ),
+        ];
+        for (reply, why) in bad {
+            let err = check(reply, e.clone()).expect_err(reply);
+            assert!(err.contains(why), "{reply}: {err}");
+        }
+        // No request on record: no outcome word at all.
+        let fresh = E::OrderStatus(order(None));
+        assert!(
+            check(
+                "ORD-10340 has no requests. Approved, want one?",
+                fresh.clone()
+            )
+            .unwrap_err()
+            .contains("\"approved\"")
+        );
+        assert!(fallback_reply(&fresh, None).ends_with("for Day Pass, 5-pack or Locker Rental?"));
     }
 
     #[test]

@@ -9,6 +9,7 @@ use ai::{AiError, Stage};
 use axum::http::StatusCode;
 use common::{TestApp, complete_intake, needs_info_intake, order_id};
 use domain::intake::{InjectionSignal, Intent, MissingField};
+use domain::responder::{GREETING_REPLY, ORDER_LIST_REPLY};
 use domain::types::ReasonCategory;
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -556,6 +557,162 @@ async fn a_redirect_falls_back_to_the_template_when_the_model_fails(pool: PgPool
         "I can only help with refund requests for your Worknoon orders, so I can't help with that here. Which order would you like help with?"
     );
     assert!(!res.event_names().contains(&"request_updated".to_owned()));
+}
+
+fn asking_about(order_ref: Option<&str>) -> domain::intake::IntakeOutput {
+    let mut intake = with_intent(Intent::OrderInquiry);
+    intake.order_id = order_ref.map(order_id);
+    intake.mentioned_order_refs = order_ref.into_iter().map(str::to_owned).collect();
+    intake
+}
+
+async fn request_count(app: &TestApp) -> i64 {
+    sqlx::query_scalar("SELECT count(*) FROM refund_requests")
+        .fetch_one(&app.pool)
+        .await
+        .unwrap()
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn a_greeting_gets_the_fixed_welcome_without_a_model_call(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let amara = app.login("amara.okafor@example.com").await;
+    let conv = app.new_conversation(&amara).await;
+    app.fake.push_intake(Ok(with_intent(Intent::Greeting)));
+    let res = app.say(&amara, &conv, "Hello").await;
+    assert_eq!(res.event("reply_start")["kind"], "greeting");
+    assert_eq!(res.event("reply_done")["body"], GREETING_REPLY);
+    assert!(!res.event_names().contains(&"request_updated".to_owned()));
+    assert!(app.fake.calls_for(Stage::Responder).is_empty());
+}
+
+/// Seen live: "Hi, what happened to order 10416?" got the refunds-only redirect.
+#[sqlx::test(migrations = "../../migrations")]
+async fn a_question_about_an_order_reports_its_record_and_files_nothing(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let amara = app.login("amara.okafor@example.com").await;
+    let conv = app.new_conversation(&amara).await;
+    let before = request_count(&app).await;
+    app.fake.push_intake(Ok(asking_about(Some("ORD-10416"))));
+    let res = app
+        .say(&amara, &conv, "Hi, what happened to order 10416?")
+        .await;
+    assert_eq!(res.event("reply_start")["kind"], "order_status");
+    let body = res.event("reply_done")["body"].as_str().unwrap().to_owned();
+    assert!(
+        body.contains("ORD-10416")
+            && body.contains("RR-0904 was approved after review")
+            && body.contains("Coffee Subscription (September) ($28.00): no refund request")
+            && body.ends_with(
+                "Would you like to request a refund for Coffee Subscription (September)?"
+            ),
+        "{body}"
+    );
+    assert!(!res.event_names().contains(&"request_updated".to_owned()));
+    assert_eq!(request_count(&app).await, before);
+
+    // The offer is taken up as an ordinary request.
+    let mut intake = complete_intake("ORD-10416", ReasonCategory::NotReceived);
+    intake.order_item_id = Some(db::seed::item_id("ORD-10416", 1));
+    app.fake.push_intake(Ok(intake));
+    let res = app
+        .say(&amara, &conv, "Yes, the September coffee never arrived.")
+        .await;
+    assert_eq!(res.event("reply_start")["kind"], "verdict");
+    assert_eq!(
+        res.event("request_updated")["item_name"],
+        "Coffee Subscription (September)"
+    );
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn an_order_without_requests_is_offered_one(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let amara = app.login("amara.okafor@example.com").await;
+    let conv = app.new_conversation(&amara).await;
+    app.fake.push_intake(Ok(asking_about(Some("ORD-10437"))));
+    let res = app
+        .say(&amara, &conv, "Can the desk lamp be refunded?")
+        .await;
+    assert_eq!(res.event("reply_start")["kind"], "order_status");
+    let body = res.event("reply_done")["body"].as_str().unwrap().to_owned();
+    assert!(
+        !body.contains("RR-")
+            && body.ends_with("Would you like to request a refund for Worknoon Desk Lamp?"),
+        "{body}"
+    );
+    let got = app
+        .get(&format!("/api/conversations/{conv}"), &amara)
+        .await
+        .json();
+    assert_eq!(got["request"], Value::Null);
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn asking_to_see_the_orders_gets_the_order_list(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let amara = app.login("amara.okafor@example.com").await;
+    let conv = app.new_conversation(&amara).await;
+    app.fake.push_intake(Ok(asking_about(None)));
+    let res = app.say(&amara, &conv, "Show me my orders").await;
+    assert_eq!(res.event("reply_start")["kind"], "order_list");
+    assert_eq!(res.event("reply_done")["body"], ORDER_LIST_REPLY);
+    assert!(app.fake.calls_for(Stage::Responder).is_empty());
+
+    // Picking an order from the list and asking about it reports that order,
+    // even when intake misses the reference.
+    app.fake.push_intake(Ok(asking_about(None)));
+    let res = app
+        .say_with(
+            &amara,
+            &conv,
+            "What happened with this one?",
+            Some(order_id("ORD-10416")),
+            Uuid::new_v4(),
+        )
+        .await;
+    assert_eq!(res.event("reply_start")["kind"], "order_status");
+    assert!(
+        res.event("reply_done")["body"]
+            .as_str()
+            .unwrap()
+            .contains("RR-0904")
+    );
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn an_order_question_after_a_redirect_is_answered_and_questions_remain(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let amara = app.login("amara.okafor@example.com").await;
+    let conv = app.new_conversation(&amara).await;
+    app.fake.push_intake(Ok(with_intent(Intent::OutOfScope)));
+    let res = app
+        .say(&amara, &conv, "Who won the match last night?")
+        .await;
+    assert_eq!(res.event("reply_start")["kind"], "redirect");
+
+    // Only the item named: its order is found from it.
+    let mut intake = asking_about(None);
+    intake.order_item_id = Some(db::seed::item_id("ORD-10416", 0));
+    app.fake.push_intake(Ok(intake));
+    let res = app
+        .say(&amara, &conv, "OK. What happened to my worknoon mug order?")
+        .await;
+    assert_eq!(res.event("reply_start")["kind"], "order_status");
+    assert!(
+        res.event("reply_done")["body"]
+            .as_str()
+            .unwrap()
+            .contains("RR-0904")
+    );
+
+    // Neither reply was a clarify turn: all three questions are still there.
+    for turn in 1..=3 {
+        app.fake
+            .push_intake(Ok(needs_info_intake(vec![MissingField::Reason])));
+        let res = app.say(&amara, &conv, "It's about the coffee.").await;
+        assert_eq!(res.event("reply_start")["kind"], "clarify", "turn {turn}");
+    }
 }
 
 /// The already-refunded scenario: the item has RR-0903, so the assistant says

@@ -6,8 +6,9 @@
 //! 2. Window pre-scan. Any signal skips intake and fails closed.
 //! 3. Intake (LLM, with one fallback model) extracts claims. Rust then checks
 //!    every id against the customer's own orders and raises flags.
-//! 4. A customer who is done, an off-topic message, or an item that already
-//!    has a request gets a reply that files nothing. Otherwise, missing order,
+//! 4. A greeting, a question about an order, a customer who is done, an
+//!    off-topic message, or an item that already has a request gets a reply
+//!    that files nothing. Otherwise, missing order,
 //!    item or reason: ask a clarifying question, up to `MAX_CLARIFY_TURNS`,
 //!    then escalate. Low confidence waits for the same point: it only
 //!    escalates a complete request or one out of questions.
@@ -33,8 +34,8 @@ use domain::intake::{
 use domain::prescan::{WindowMessage, prescan_window};
 use domain::prose::render_policy;
 use domain::responder::{
-    PriorRequest, ResponderInput, Target, clean_reply, fallback_reply, holding_reply,
-    validate_reply,
+    GREETING_REPLY, ItemRecord, ORDER_LIST_REPLY, OrderRecord, PriorRequest, ResponderInput,
+    Target, clean_reply, fallback_reply, holding_reply, validate_reply,
 };
 use domain::types::{AssistantKind, Flag, MessageRole, RequestState, SignalScope, Verdict};
 use serde::Serialize;
@@ -224,31 +225,81 @@ pub fn missing_fields(orders: &[Order], intake: &IntakeOutput) -> Vec<MissingFie
     missing
 }
 
-/// The reply for a message that files no request, if it is one: the customer
-/// is done, the message is off-topic, or the item it is about already has a
-/// request in any state.
-fn no_request_reply(
-    orders: &[Order],
-    item_requests: &HashMap<Uuid, ExistingRequest>,
-    intake: &IntakeOutput,
-) -> Option<(AssistantKind, ResponderInput)> {
-    match intake.intent {
-        Intent::Finished => return Some((AssistantKind::Closing, ResponderInput::Closing)),
-        Intent::OutOfScope => return Some((AssistantKind::Redirect, ResponderInput::Redirect)),
-        Intent::RefundRequest => {}
-    }
-    let (order, item) = resolve_target(orders, intake)?;
-    let existing = item_requests.get(&item.id)?;
-    let request = PriorRequest::new(
+/// How a message that files no request is answered.
+enum NoRequestReply {
+    /// A fixed sentence; no model call.
+    Fixed(&'static str),
+    /// Worded by the responder, falling back to its template.
+    Worded(ResponderInput),
+}
+
+fn prior_request(order: &Order, item: &OrderItem, existing: &ExistingRequest) -> PriorRequest {
+    PriorRequest::new(
         &existing.request_ref,
         &order.order_ref,
         &item.name,
         existing.state,
         existing.decided_at,
-    );
+    )
+}
+
+/// The reply for a message that files no request, if it is one: a greeting,
+/// a question about an order, the customer is done, the message is
+/// off-topic, or the item it is about already has a request in any state.
+/// `picked` is the order sent with the latest message, if any.
+fn no_request_reply(
+    orders: &[Order],
+    item_requests: &HashMap<Uuid, ExistingRequest>,
+    intake: &IntakeOutput,
+    picked: Option<Uuid>,
+) -> Option<(AssistantKind, NoRequestReply)> {
+    use NoRequestReply::{Fixed, Worded};
+    match intake.intent {
+        Intent::Finished => return Some((AssistantKind::Closing, Worded(ResponderInput::Closing))),
+        Intent::OutOfScope => {
+            return Some((AssistantKind::Redirect, Worded(ResponderInput::Redirect)));
+        }
+        Intent::Greeting => return Some((AssistantKind::Greeting, Fixed(GREETING_REPLY))),
+        Intent::OrderInquiry => {
+            // A named item, or an order picked with this message, is enough;
+            // either is looked up in the customer's own orders.
+            let order = orders
+                .iter()
+                .find(|o| Some(o.id) == intake.order_id)
+                .or_else(|| {
+                    let item = intake.order_item_id?;
+                    orders.iter().find(|o| o.item(item).is_some())
+                })
+                .or_else(|| orders.iter().find(|o| Some(o.id) == picked));
+            let Some(order) = order else {
+                return Some((AssistantKind::OrderList, Fixed(ORDER_LIST_REPLY)));
+            };
+            let items = order
+                .items
+                .iter()
+                .map(|item| {
+                    let request = item_requests
+                        .get(&item.id)
+                        .map(|existing| prior_request(order, item, existing));
+                    ItemRecord::new(&item.name, item.amount_cents, request)
+                })
+                .collect();
+            let order =
+                OrderRecord::new(&order.order_ref, order.placed_at, order.delivered_at, items);
+            return Some((
+                AssistantKind::OrderStatus,
+                Worded(ResponderInput::OrderStatus { order }),
+            ));
+        }
+        Intent::RefundRequest => {}
+    }
+    let (order, item) = resolve_target(orders, intake)?;
+    let existing = item_requests.get(&item.id)?;
     Some((
         AssistantKind::ExistingRequest,
-        ResponderInput::ExistingRequest { request },
+        Worded(ResponderInput::ExistingRequest {
+            request: prior_request(order, item, existing),
+        }),
     ))
 }
 
@@ -391,9 +442,17 @@ async fn process(
         {
             // Not a clarify turn: a model failure falls back to the template
             // rather than escalating, since nothing is being decided.
-            if let Some((kind, input)) = no_request_reply(&orders, &item_requests, extracted) {
-                let (reply, _) = respond(state, &input).await;
-                let body = reply.unwrap_or_else(|| fallback_reply(&input.expectation(), None));
+            let picked = customer.last().and_then(|m| m.order_id);
+            if let Some((kind, reply)) =
+                no_request_reply(&orders, &item_requests, extracted, picked)
+            {
+                let body = match reply {
+                    NoRequestReply::Fixed(text) => text.to_owned(),
+                    NoRequestReply::Worded(input) => respond(state, &input)
+                        .await
+                        .0
+                        .unwrap_or_else(|| fallback_reply(&input.expectation(), None)),
+                };
                 let mut conn = db.0.acquire().await?;
                 let reply =
                     db::messages::insert_assistant_message(&mut conn, conversation_id, kind, &body)
