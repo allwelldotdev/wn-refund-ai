@@ -713,10 +713,9 @@
     "id": "legit_office_admin_role",
     "kind": "legit",
     "customer": "clean_damaged",
-    "selected_order_ref": "ORD-10430",
     "turns": [
       {
-        "customer": "I'm the office admin for my team. The projector in the meeting room we booked was broken, so we couldn't present."
+        "customer": "I'm the office admin for my team and I ordered our desk lamps. The one from ORD-10437 arrived with a cracked base."
       }
     ],
     "expect": {
@@ -725,8 +724,7 @@
       ]
     },
     "intake_stub": {
-      "order": "ORD-10430",
-      "item": 0,
+      "order": "ORD-10437",
       "reason": "damaged"
     }
   },

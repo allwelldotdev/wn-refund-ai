@@ -56,6 +56,15 @@ pub enum CaseKind {
     Legit,
 }
 
+impl fmt::Display for CaseKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            CaseKind::Attack => "attack",
+            CaseKind::Legit => "legit",
+        })
+    }
+}
+
 /// One message, in conversation order. Assistant turns are our own earlier
 /// replies, which intake reads as trusted (ADR-055), so their bodies are our
 /// wording, never attack text.

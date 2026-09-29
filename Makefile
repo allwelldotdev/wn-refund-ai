@@ -14,7 +14,7 @@ export SQLX_OFFLINE
 DB_COMPOSE = OPENROUTER_API_KEY="$${OPENROUTER_API_KEY:-not-needed-for-this-target}" docker compose
 
 .DEFAULT_GOAL := help
-.PHONY: help up down dev psql seed db-reset sqlx-prepare test redteam check
+.PHONY: help up down dev psql seed db-reset sqlx-prepare test redteam model-eval check
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  %-14s %s\n",$$1,$$2}'
@@ -48,8 +48,15 @@ test: ## Backend tests (database tests use the compose postgres)
 	$(DB_COMPOSE) up -d --wait postgres
 	cd backend && cargo test --workspace
 
-redteam: ## Red-team suite against the live model (available from milestone 7)
-	@echo "Red-team suite is added in milestone 7." && exit 1
+# The live eval tools read OPENROUTER_API_KEY from the shell (make does not read
+# .env) and run on a scratch database they create and drop, never the demo data.
+redteam: ## Red-team cases against the live models (export OPENROUTER_API_KEY first)
+	$(DB_COMPOSE) up -d --wait postgres
+	cd backend && cargo run --bin redteam -- --cases eval/cases.json
+
+model-eval: ## Compare intake models on the red-team cases; options via ARGS="--repeat 3"
+	$(DB_COMPOSE) up -d --wait postgres
+	cd backend && cargo run --bin model-eval -- --cases eval/cases.json $(ARGS)
 
 check: ## fmt, clippy -D warnings, tests; frontend tsc, eslint and unit tests
 	cd backend && cargo fmt --all -- --check
