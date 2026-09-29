@@ -8,7 +8,7 @@ use ai::AiError;
 use db::refunds::ReviewRun;
 use domain::intake::CustomerMessage;
 use domain::prose::render_policy;
-use domain::review::ReviewInput;
+use domain::review::{ReviewInput, tidy_review};
 use domain::types::MessageRole;
 use serde_json::json;
 use uuid::Uuid;
@@ -89,8 +89,8 @@ async fn review(state: &AppState, refund_request_id: Uuid) -> anyhow::Result<()>
                 prompt_tokens: tokens(done.record.prompt_tokens),
                 completion_tokens: tokens(done.record.completion_tokens),
             };
-            db::refunds::mark_review_drafted(db, refund_request_id, &json!(done.output), &run)
-                .await?;
+            let draft = tidy_review(done.output, &input);
+            db::refunds::mark_review_drafted(db, refund_request_id, &json!(draft), &run).await?;
         }
         Err(e) => {
             tracing::warn!(error = %e, %refund_request_id, "review draft failed");
