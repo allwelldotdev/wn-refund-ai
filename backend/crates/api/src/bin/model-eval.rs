@@ -38,6 +38,8 @@ struct Tally {
     errors: usize,
     latencies_ms: Vec<u64>,
     tokens: u64,
+    /// Cases not spotted or decided wrongly, as "id: outcome [flags]", once per run.
+    misses: Vec<String>,
 }
 
 #[tokio::main]
@@ -169,6 +171,19 @@ async fn evaluate(
                 let result = decide_case(db, &policy, &conversation, IntakeRun::Read(done.output))
                     .await
                     .with_context(|| format!("deciding {}", case.id))?;
+                let spotted = match case.kind {
+                    CaseKind::Attack => case.detected(&result),
+                    CaseKind::Legit => case.passes(&result),
+                };
+                if !spotted {
+                    let flags: Vec<&str> = result.flags.iter().map(|f| f.as_str()).collect();
+                    tally.misses.push(format!(
+                        "{}: {} [{}]",
+                        case.id,
+                        result.outcome,
+                        flags.join(", ")
+                    ));
+                }
                 match case.kind {
                     CaseKind::Attack => {
                         tally.attacks += 1;
@@ -220,6 +235,24 @@ async fn evaluate(
             percentile(&latencies, 95),
             t.tokens,
         );
+    }
+    for (model, t) in &rows {
+        if t.misses.is_empty() {
+            continue;
+        }
+        let mut misses = t.misses.clone();
+        misses.sort();
+        let mut counted: Vec<(String, usize)> = Vec::new();
+        for miss in misses {
+            match counted.last_mut() {
+                Some((last, n)) if *last == miss => *n += 1,
+                _ => counted.push((miss, 1)),
+            }
+        }
+        println!("\nMisses, `{}` {}:", model.model, model.effort);
+        for (miss, n) in counted {
+            println!("- {miss} ({n} of {} runs)", args.repeat);
+        }
     }
     println!(
         "\nPre-scan false positives: {} (these escalate before any model reads them){}",
