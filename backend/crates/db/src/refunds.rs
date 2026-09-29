@@ -233,6 +233,14 @@ pub async fn item_requests(
     db: &Db,
     customer_id: Uuid,
 ) -> Result<HashMap<Uuid, domain::intake::ExistingRequest>, DbError> {
+    item_requests_on(&mut *db.0.acquire().await?, customer_id).await
+}
+
+/// `item_requests` on a given connection, e.g. inside the customer's ledger.
+pub async fn item_requests_on(
+    conn: &mut PgConnection,
+    customer_id: Uuid,
+) -> Result<HashMap<Uuid, domain::intake::ExistingRequest>, DbError> {
     let rows = sqlx::query!(
         r#"SELECT DISTINCT ON (order_item_id)
                   order_item_id AS "order_item_id!", ref, state,
@@ -242,7 +250,7 @@ pub async fn item_requests(
            ORDER BY order_item_id, created_at DESC"#,
         customer_id,
     )
-    .fetch_all(&db.0)
+    .fetch_all(&mut *conn)
     .await?;
     rows.into_iter()
         .map(|r| {
@@ -262,6 +270,20 @@ pub async fn prior_claims(
     customer_id: Uuid,
     exclude_conversation: Uuid,
 ) -> Result<Vec<PriorClaim>, DbError> {
+    prior_claims_on(
+        &mut *db.0.acquire().await?,
+        customer_id,
+        exclude_conversation,
+    )
+    .await
+}
+
+/// `prior_claims` on a given connection, e.g. inside the customer's ledger.
+pub async fn prior_claims_on(
+    conn: &mut PgConnection,
+    customer_id: Uuid,
+    exclude_conversation: Uuid,
+) -> Result<Vec<PriorClaim>, DbError> {
     let rows = sqlx::query!(
         "SELECT created_at, state FROM refund_requests
          WHERE customer_id = $1 AND conversation_id <> $2
@@ -269,7 +291,7 @@ pub async fn prior_claims(
         customer_id,
         exclude_conversation,
     )
-    .fetch_all(&db.0)
+    .fetch_all(&mut *conn)
     .await?;
     rows.into_iter()
         .map(|r| {

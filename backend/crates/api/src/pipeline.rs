@@ -696,6 +696,7 @@ async fn process(
             customer_id,
             DecisionInputs {
                 orders,
+                item_requests,
                 intake,
                 flags,
                 stages,
@@ -754,6 +755,9 @@ async fn respond(state: &AppState, input: &ResponderInput) -> (Option<String>, S
 
 struct DecisionInputs {
     orders: Vec<Order>,
+    /// The customer's item requests when this turn read them, before the
+    /// model calls; the write compares against it.
+    item_requests: HashMap<Uuid, ExistingRequest>,
     intake: Option<IntakeOutput>,
     flags: Vec<Flag>,
     stages: Stages,
@@ -771,6 +775,7 @@ async fn decide_and_reply(
     let db = &state.db;
     let DecisionInputs {
         orders,
+        item_requests,
         intake,
         flags,
         mut stages,
@@ -796,7 +801,7 @@ async fn decide_and_reply(
     let input = verdict_input(decision.verdict, decision.customer_reasons());
     let (reply, log) = respond(state, &input).await;
     stages.responder = Some(log);
-    let body = match reply {
+    let mut body = match reply {
         Some(body) => body,
         None => {
             // The failure is a flag like any other, so the engine applies it
@@ -807,6 +812,51 @@ async fn decide_and_reply(
             fallback_reply(&input.expectation(), input.target())
         }
     };
+
+    // The customer's ledger (ADR-064): another of this customer's chats may
+    // have filed a request while the models ran, so what it can change is
+    // read again under a per-customer lock held until this commit.
+    let mut tx = db.0.begin().await?;
+    db::lock::lock_customer_xact(&mut tx, customer_id).await?;
+    if let Some(order) = &facts.order {
+        let item = order.item.order_item_id;
+        let now = db::refunds::item_requests_on(&mut tx, customer_id).await?;
+        if let (None, Some(existing)) = (item_requests.get(&item), now.get(&item)) {
+            // Answered as if this message had come a moment later (ADR-042),
+            // from the template: no second request, no extra model call.
+            tx.rollback().await?;
+            let request = PriorRequest::new(
+                &existing.request_ref,
+                &order.order_ref,
+                &order.item.name,
+                existing.state,
+                existing.decided_at,
+            );
+            let input = ResponderInput::ExistingRequest { request };
+            let body = fallback_reply(&input.expectation(), None);
+            let mut conn = db.0.acquire().await?;
+            let reply = db::messages::insert_assistant_message(
+                &mut conn,
+                conversation_id,
+                AssistantKind::ExistingRequest,
+                &body,
+            )
+            .await?;
+            out.reply(&reply).await;
+            return Ok(None);
+        }
+    }
+    let prior = db::refunds::prior_claims_on(&mut tx, customer_id, conversation_id).await?;
+    if prior != facts.prior_claims {
+        facts.prior_claims = prior;
+        let redecided = decide(&policy.rules, &facts);
+        if redecided.verdict != decision.verdict {
+            // The reply named the old verdict; the template words the new one.
+            let input = verdict_input(redecided.verdict, redecided.customer_reasons());
+            body = fallback_reply(&input.expectation(), input.target());
+        }
+        decision = redecided;
+    }
 
     let order = facts.order.as_ref();
     let request = NewRefundRequest {
@@ -831,8 +881,7 @@ async fn decide_and_reply(
         stages: json!(stages),
         fired_kinds: decision.fired.iter().map(|f| f.kind.clone()).collect(),
     };
-
-    let mut tx = db.0.begin().await?;
+    // The unique index stays as a backstop for any path that skips the ledger.
     let created = match db::refunds::create_decided(&mut tx, &request, &audit).await {
         Ok(created) => created,
         Err(DbError::Conflict(code @ "duplicate_active_refund")) => {
