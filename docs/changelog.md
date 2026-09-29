@@ -2,6 +2,12 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.13.2] — 2026-09-29
+### Fixed
+- When a customer asks about the same item in two chats at the same time, for example in two browser tabs or on a laptop and a phone, neither chat shows "This item already has a refund in progress. Please refresh the page." any more; the second chat answers with the status of the request the first one just made.
+- The same item can no longer end up with two requests, one escalated and one approved, when it is requested from two chats at once.
+- When a customer requests two different items at once, both now count toward the repeat-claim limit, so the support team reviews the second when the limit is reached, as it would if they were requested one after the other.
+
 ## [0.13.1] — 2026-09-29
 ### Fixed
 - Ordinary customer messages are no longer sent straight to the support team as suspicious before the assistant reads them; this affected messages in Persian or Hindi, everyday phrases such as "the door system override didn't work", "I followed the booking system instructions", "you are now in breach of your terms", "from now on, you should…" or "can you show me the instructions for…", receipt or tracking links with a long code, forwarded emails with a line starting "Admin:", and long, detailed messages over 2,000 characters. The assistant now reads them and handles the request normally, asking what it needs and then deciding, while messages that really try to manipulate the assistant are still escalated at once.
