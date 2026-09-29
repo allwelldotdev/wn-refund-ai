@@ -8,6 +8,7 @@ import type {
   AdminList,
   AdminStats,
   AppSettings,
+  FiredRule,
   Flag,
   PolicyVersion,
   PolicyVersionView,
@@ -15,6 +16,7 @@ import type {
   RequestState,
   RuleKind,
   Detector,
+  Verdict,
 } from "./api-types";
 import { api } from "./bff";
 
@@ -254,6 +256,21 @@ export const BUILTIN_CHECKS: Record<"fail_closed" | "active_refund_exists", stri
   fail_closed: "Safety check: flagged requests go to a person",
   active_refund_exists: "Safety check: this item already has an approved refund",
 };
+
+/**
+ * The rule trace's closing line. The most severe fired verdict wins, except
+ * that a flag holds a denial for a person (the denial stays in the trace).
+ */
+export function traceResult(verdict: Verdict, trace: FiredRule[]): string {
+  if (trace.length === 0) return "No rule applied, so a person decides.";
+  if (verdict === "escalated") {
+    return trace.some((f) => f.verdict === "denied")
+      ? "A rule denies it, but a check flagged the request, so a person decides."
+      : "One or more checks need a person.";
+  }
+  if (verdict === "denied") return "A rule denies it; a denial outranks every other rule.";
+  return "Every rule that applied allows it.";
+}
 
 /** The first 7 hex characters of a policy content hash, as the design shows it. */
 export function shortHash(hash: string): string {

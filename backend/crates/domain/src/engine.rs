@@ -4,7 +4,9 @@
 //!
 //! Two checks sit outside the configurable policy, so no admin setting can
 //! switch them off: any flag fails closed (ADR-003), and an item that already
-//! has an approved refund is never approved again (ADR-013).
+//! has an approved refund is never approved again (ADR-013). Failing closed
+//! also holds a denial for a person: a flagged request is never denied
+//! automatically, unless the only flag is a responder failure (ADR-032).
 
 use chrono::{DateTime, TimeDelta, Utc};
 use serde::{Deserialize, Serialize};
@@ -128,6 +130,12 @@ pub fn decide(policy: &Policy, facts: &Facts) -> Decision {
     }
 
     let verdict = match fired.iter().map(|f| f.verdict).reduce(Verdict::max) {
+        // The denial may rest on an order or claim the pipeline itself
+        // distrusts. A responder failure comes after the decision and says
+        // nothing about its inputs, so on its own it keeps the denial.
+        Some(Verdict::Denied) if flags.iter().any(|f| *f != Flag::ResponderFailure) => {
+            Verdict::Escalated
+        }
         Some(v) => v,
         None => {
             flags.push(Flag::NoRuleFired);

@@ -139,7 +139,8 @@ string_enum! {
 }
 
 string_enum! {
-    /// Reasons the pipeline did not trust its own inputs. Any flag escalates.
+    /// Reasons the pipeline did not trust its own inputs. Any flag escalates,
+    /// even over a denial; a responder failure alone keeps a denial (ADR-032).
     #[derive(PartialOrd, Ord)]
     pub enum Flag {
         PrescanSignal = "prescan_signal",
