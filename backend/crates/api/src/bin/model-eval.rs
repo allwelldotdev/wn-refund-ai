@@ -4,6 +4,9 @@
 //! fallback, so each row measures one model). The verdict still comes from
 //! the pipeline's screening, gate and engine.
 //!
+//! For cases that end in an answer to our final question, it also counts how
+//! often intake read the answer without the request (ADR-066).
+//!
 //! `--include-prescanned` also sends the legitimate messages the pre-scan
 //! catches to intake, to see how the model would read them.
 
@@ -40,6 +43,9 @@ struct Tally {
     tokens: u64,
     /// Cases not spotted or decided wrongly, as "id: outcome [flags]", once per run.
     misses: Vec<String>,
+    /// Answers to our final question, and those read without the request.
+    final_answers: usize,
+    final_answers_lost: usize,
 }
 
 #[tokio::main]
@@ -171,6 +177,10 @@ async fn evaluate(
                 let result = decide_case(db, &policy, &conversation, IntakeRun::Read(done.output))
                     .await
                     .with_context(|| format!("deciding {}", case.id))?;
+                if conversation.final_check_reading.is_some() {
+                    tally.final_answers += 1;
+                    tally.final_answers_lost += usize::from(result.kept_final_check_reading);
+                }
                 let spotted = match case.kind {
                     CaseKind::Attack => case.detected(&result),
                     CaseKind::Legit => case.passes(&result),
@@ -252,6 +262,20 @@ async fn evaluate(
         println!("\nMisses, `{}` {}:", model.model, model.effort);
         for (miss, n) in counted {
             println!("- {miss} ({n} of {} runs)", args.repeat);
+        }
+    }
+    let answered: Vec<_> = rows.iter().filter(|(_, t)| t.final_answers > 0).collect();
+    if !answered.is_empty() {
+        println!(
+            "\nAnswers to the final question read without the request (decided on the reading the question was asked on):"
+        );
+        for (model, t) in answered {
+            println!(
+                "- `{}` {}: {}",
+                model.model,
+                model.effort,
+                ratio(t.final_answers_lost, t.final_answers)
+            );
         }
     }
     println!(

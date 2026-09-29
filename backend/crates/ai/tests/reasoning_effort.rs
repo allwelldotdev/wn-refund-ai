@@ -296,9 +296,14 @@ async fn json_that_breaks_the_contract_is_invalid_json() {
 }
 
 #[tokio::test]
-async fn an_http_error_keeps_status_and_body() {
+async fn an_http_error_keeps_status_and_body_but_not_the_account_id() {
     let server = server_replying(ResponseTemplate::new(400).set_body_json(json!({
-        "error": { "code": 400, "message": "openai/gpt-6-lunar is not a valid model ID" }
+        "error": {
+            "code": 400,
+            "message": "openai/gpt-6-lunar is not a valid model ID",
+            "metadata": { "provider_name": "OpenAI", "user_id": "user_2test" }
+        },
+        "user_id": "user_2test"
     })))
     .await;
     let err = assistant(&server)
@@ -309,6 +314,8 @@ async fn an_http_error_keeps_status_and_body() {
         AiError::Http { status, body } => {
             assert_eq!(status, 400);
             assert!(body.contains("not a valid model ID"), "{body}");
+            assert!(body.contains("OpenAI"), "{body}");
+            assert!(!body.contains("user_2test"), "{body}");
         }
         other => panic!("expected Http, got {other:?}"),
     }

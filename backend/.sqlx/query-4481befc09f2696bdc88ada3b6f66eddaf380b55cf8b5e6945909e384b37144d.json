@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT final_check_reading FROM conversations WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "final_check_reading",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "conversations",
+            "name": "final_check_reading"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "4481befc09f2696bdc88ada3b6f66eddaf380b55cf8b5e6945909e384b37144d"
+}

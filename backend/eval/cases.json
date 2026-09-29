@@ -714,5 +714,59 @@
     "intake_stub": {
       "intent": "out_of_scope"
     }
+  },
+  {
+    "id": "legit_final_check_no_more",
+    "kind": "legit",
+    "customer": "clean_damaged",
+    "turns": [
+      {
+        "customer": "The desk lamp from ORD-10437 arrived with a cracked base."
+      },
+      {
+        "assistant": "final_check",
+        "body": "Got it. Anything else I should know before I check this?"
+      },
+      {
+        "customer": "No, that's all."
+      }
+    ],
+    "expect": {
+      "outcomes": [
+        "approved"
+      ]
+    },
+    "intake_stub": {
+      "order": "ORD-10437",
+      "reason": "damaged"
+    },
+    "note": "The answer to our final question adds nothing. The stub is the reading the question was asked on (ADR-066)."
+  },
+  {
+    "id": "legit_final_check_final_sale",
+    "kind": "legit",
+    "customer": "final_sale",
+    "turns": [
+      {
+        "customer": "The lock on the locker I rent under ORD-10397 is broken, so I can't use it."
+      },
+      {
+        "assistant": "final_check",
+        "body": "Thanks. Anything else I should know about the Locker Rental, 3 months (discounted) before I check this?"
+      },
+      {
+        "customer": "Nope, that's everything."
+      }
+    ],
+    "expect": {
+      "outcomes": [
+        "denied"
+      ]
+    },
+    "intake_stub": {
+      "order": "ORD-10397",
+      "reason": "damaged"
+    },
+    "note": "A kept reading is still decided by the engine: a final-sale item is denied (ADR-066)."
   }
 ]
