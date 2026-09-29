@@ -2,6 +2,11 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.12.1] — 2026-09-29
+### Improved
+- When a customer asks to refund another customer's order, tries to instruct the assistant, impersonates staff or claims a policy change, or sends instruction-like text, the suggested review in the request details panel now starts its first risk note with "Possible misuse:" and says what happened, for example "Possible misuse: claim on another customer's order."
+- When the only order involved belongs to someone else, the suggested review now recommends denying and no longer asks the customer to confirm the order number.
+
 ## [0.12.0] — 2026-09-28
 ### New
 - When you ask the assistant again about a request it just reported, it now points you to that request's conversation instead of repeating the status, with an "Open … in Your requests" button that takes you there. A request still with the support team gets a short note that you can follow and message the team in Your requests; a decided request gets its outcome and date, followed by a note that the full conversation is in Your requests. Asking about an order for the first time still gets the normal order status.
