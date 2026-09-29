@@ -629,6 +629,15 @@ pub async fn resolve_request(
     let (resolution, note) = (r.resolution, r.note);
     let state = resolution.state();
     let mut tx = db.0.begin().await?;
+    // The customer's ledger (`lock::lock_customer_xact`): every write that
+    // decides a request for this customer holds it.
+    sqlx::query!(
+        "SELECT pg_advisory_xact_lock(hashtextextended('customer:' || customer_id::text, 0))
+         FROM refund_requests WHERE ref = $1",
+        request_ref,
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
     let updated = sqlx::query!(
         "UPDATE refund_requests SET state = $2, resolved_at = now()
          WHERE ref = $1 AND state = 'escalated'

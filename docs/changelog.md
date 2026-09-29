@@ -2,6 +2,27 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.13.2] — 2026-09-29
+### Fixed
+- When a customer asks about the same item in two chats at the same time, for example in two browser tabs or on a laptop and a phone, neither chat shows "This item already has a refund in progress. Please refresh the page." any more; the second chat answers with the status of the request the first one just made.
+- The same item can no longer end up with two requests, one escalated and one approved, when it is requested from two chats at once.
+- When a customer requests two different items at once, both now count toward the repeat-claim limit, so the support team reviews the second when the limit is reached, as it would if they were requested one after the other.
+
+## [0.13.1] — 2026-09-29
+### Fixed
+- Ordinary customer messages are no longer sent straight to the support team as suspicious before the assistant reads them; this affected messages in Persian or Hindi, everyday phrases such as "the door system override didn't work", "I followed the booking system instructions", "you are now in breach of your terms", "from now on, you should…" or "can you show me the instructions for…", receipt or tracking links with a long code, forwarded emails with a line starting "Admin:", and long, detailed messages over 2,000 characters. The assistant now reads them and handles the request normally, asking what it needs and then deciding, while messages that really try to manipulate the assistant are still escalated at once.
+- In the request details panel, admins still see a long message under Flags as "Noted, did not escalate", and the conversation now underlines only text that caused an escalation, no longer a long message.
+
+## [0.13.0] — 2026-09-29
+### Fixed
+- A request the assistant was unsure about or found suspicious, for example an attempt to instruct the assistant, a mention of someone else's order, an unclear request or clarifying questions that ran out, is no longer denied automatically when a final-sale or expired-refund-window rule applies; it goes to the support team, and the customer is told it needs a closer look from the team. Ordinary requests that a rule denies are still denied automatically.
+- Admins now see these requests in Escalations; the request details panel still lists the denial rule and says "A rule denies it, but a check flagged the request, so a person decides.", while a plain denial reads "A rule denies it; a denial outranks every other rule."
+
+## [0.12.1] — 2026-09-29
+### Improved
+- When a customer asks to refund another customer's order, tries to instruct the assistant, impersonates staff or claims a policy change, or sends instruction-like text, the suggested review in the request details panel now starts its first risk note with "Possible misuse:" and says what happened, for example "Possible misuse: claim on another customer's order."
+- When the only order involved belongs to someone else, the suggested review now recommends denying and no longer asks the customer to confirm the order number.
+
 ## [0.12.0] — 2026-09-28
 ### New
 - When you ask the assistant again about a request it just reported, it now points you to that request's conversation instead of repeating the status, with an "Open … in Your requests" button that takes you there. A request still with the support team gets a short note that you can follow and message the team in Your requests; a decided request gets its outcome and date, followed by a note that the full conversation is in Your requests. Asking about an order for the first time still gets the normal order status.

@@ -7,6 +7,7 @@ pub mod auth;
 pub mod config;
 pub mod conversations;
 pub mod error;
+pub mod eval;
 pub mod orders;
 pub mod pipeline;
 pub mod policy;

@@ -340,11 +340,56 @@ fn denial_outranks_review_when_both_fire() {
         &with(|f| {
             item(f).final_sale = true;
             item(f).amount_cents = 129_900;
-            f.flags = vec![Flag::ForeignOrderReference];
         }),
     );
     assert_eq!(d.verdict, Verdict::Denied);
     assert_eq!(d.fired[0].verdict, Verdict::Denied, "most severe first");
+}
+
+#[test]
+fn a_flag_holds_a_denial_for_a_person() {
+    let flags = Flag::ALL
+        .iter()
+        .filter(|f| !matches!(f, Flag::ResponderFailure | Flag::NoRuleFired));
+    for &flag in flags {
+        let d = decide(
+            &default_policy(),
+            &with(|f| {
+                item(f).final_sale = true;
+                f.flags = vec![flag];
+            }),
+        );
+        assert_eq!(d.verdict, Verdict::Escalated, "{flag}");
+        // The trace still shows the denial, so the admin can deny in one step.
+        assert_eq!(d.fired[0].kind, "final_sale_not_refundable", "{flag}");
+        assert_eq!(d.fired[0].verdict, Verdict::Denied, "{flag}");
+        assert_eq!(d.customer_reasons(), [CLOSER_LOOK_REASON], "{flag}");
+    }
+}
+
+#[test]
+fn a_responder_failure_alone_keeps_a_denial() {
+    let failed = |flags: Vec<Flag>| {
+        decide(
+            &default_policy(),
+            &with(|f| {
+                item(f).final_sale = true;
+                f.flags = flags;
+            }),
+        )
+    };
+    let d = failed(vec![Flag::ResponderFailure]);
+    assert_eq!(d.verdict, Verdict::Denied);
+    assert_eq!(
+        d.customer_reasons(),
+        ["Items marked as final sale at purchase cannot be refunded."]
+    );
+    let d = failed(vec![Flag::ResponderFailure, Flag::LowConfidence]);
+    assert_eq!(
+        d.verdict,
+        Verdict::Escalated,
+        "any other flag still holds it"
+    );
 }
 
 #[test]

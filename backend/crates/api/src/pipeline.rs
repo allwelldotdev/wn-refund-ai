@@ -4,7 +4,7 @@
 //! 1. Take the conversation lock. A conversation that already has its request
 //!    gets one holding reply, and none once an admin has written; the verdict
 //!    never changes (ADR-021).
-//! 2. Window pre-scan. Any signal skips intake and fails closed.
+//! 2. Window pre-scan. Any signal except length skips intake and fails closed.
 //! 3. Intake (LLM, with one fallback model) extracts claims, reading the
 //!    latest message as an answer to our last reply. Rust then checks every
 //!    id against the customer's own orders and raises flags.
@@ -231,7 +231,7 @@ pub fn missing_fields(orders: &[Order], intake: &IntakeOutput) -> Vec<MissingFie
 }
 
 /// How a message that files no request is answered.
-enum NoRequestReply {
+pub(crate) enum NoRequestReply {
     /// A fixed sentence; no model call.
     Fixed(&'static str),
     /// A Rust template filled from our records; no model call.
@@ -397,6 +397,113 @@ fn order_summaries(
         .collect()
 }
 
+/// Intake's view of the conversation: the customer's orders, their messages
+/// (untrusted) and our replies (trusted, ADR-055).
+pub(crate) fn intake_input(
+    all: &[Message],
+    orders: &[Order],
+    item_requests: &HashMap<Uuid, ExistingRequest>,
+) -> IntakeInput {
+    let customer = || all.iter().filter(|m| m.role == MessageRole::Customer);
+    IntakeInput {
+        orders: order_summaries(orders, item_requests),
+        selected_order_id: customer().rev().find_map(|m| m.order_id),
+        messages: customer()
+            .map(|m| CustomerMessage {
+                id: m.id,
+                seq: m.seq,
+                body: m.body.clone(),
+            })
+            .collect(),
+        replies: all
+            .iter()
+            .filter(|m| m.role == MessageRole::Assistant)
+            .filter_map(|m| {
+                Some(AssistantReply {
+                    seq: m.seq,
+                    kind: m.assistant_kind?,
+                    body: m.body.clone(),
+                })
+            })
+            .collect(),
+    }
+}
+
+/// What a turn gets once intake has been screened.
+pub(crate) enum Gate {
+    /// Files nothing; answered with this reply.
+    Reply(AssistantKind, NoRequestReply),
+    /// Asks for what is missing; `turn` counts from 1.
+    Clarify {
+        missing: Vec<MissingField>,
+        turn: u8,
+    },
+    /// Asks the one final question before deciding (ADR-050).
+    FinalCheck,
+    /// Decides now. Running out of clarifying questions adds its flags first.
+    Decide,
+}
+
+/// Steps 4 and 5 of the module doc, without the model calls or writes. Pure,
+/// so the red-team harness runs the same gate. Any flag, or no intake, goes
+/// straight to the decision. `all` is every message in the conversation.
+pub(crate) fn gate(
+    orders: &[Order],
+    item_requests: &HashMap<Uuid, ExistingRequest>,
+    all: &[Message],
+    intake: Option<&IntakeOutput>,
+    flags: &mut Vec<Flag>,
+) -> Gate {
+    let Some(extracted) = intake.filter(|_| flags.is_empty()) else {
+        return Gate::Decide;
+    };
+    let last_reply = all.iter().rev().find(|m| m.role == MessageRole::Assistant);
+    // "No, that's all" answers the final question: go on to decide.
+    let answers_final_check = last_reply.and_then(|m| m.assistant_kind)
+        == Some(AssistantKind::FinalCheck)
+        && matches!(
+            extracted.intent,
+            Intent::Finished | Intent::OutOfScope | Intent::Greeting
+        );
+    let picked = all
+        .iter()
+        .rev()
+        .find(|m| m.role == MessageRole::Customer)
+        .and_then(|m| m.order_id);
+    if !answers_final_check
+        && let Some((kind, reply)) =
+            no_request_reply(orders, item_requests, extracted, picked, last_reply)
+    {
+        return Gate::Reply(kind, reply);
+    }
+    let missing = missing_fields(orders, extracted);
+    if !missing.is_empty() {
+        let asked = all
+            .iter()
+            .filter(|m| m.assistant_kind == Some(AssistantKind::Clarify))
+            .count();
+        if asked >= usize::from(MAX_CLARIFY_TURNS) {
+            flags.push(Flag::ClarificationLimit);
+            if extracted.low_confidence() {
+                flags.push(Flag::LowConfidence);
+            }
+            return Gate::Decide;
+        }
+        return Gate::Clarify {
+            missing,
+            turn: u8::try_from(asked + 1).unwrap_or(u8::MAX),
+        };
+    }
+    if all
+        .iter()
+        .any(|m| m.assistant_kind == Some(AssistantKind::FinalCheck))
+    {
+        Gate::Decide
+    } else {
+        Gate::FinalCheck
+    }
+}
+
 /// Entry point for the spawned task. Always ends the stream with `done`;
 /// unexpected errors are logged and reported as `error{code:"internal"}`.
 pub async fn run_message(
@@ -476,10 +583,6 @@ async fn process(
             .iter()
             .filter(|m| m.role == MessageRole::Customer)
             .collect();
-        let last_reply = all.iter().rev().find(|m| m.role == MessageRole::Assistant);
-        let final_check_asked = all
-            .iter()
-            .any(|m| m.assistant_kind == Some(AssistantKind::FinalCheck));
         let signals = window_prescan(state, conversation_id, &customer).await?;
         let orders = db::orders::list_orders_for_customer(db, customer_id).await?;
         let item_requests = db::refunds::item_requests(db, customer_id).await?;
@@ -487,32 +590,12 @@ async fn process(
         let mut flags = Vec::new();
         let mut stages = Stages::default();
         let mut intake = None;
-        if !signals.is_empty() {
+        // A long message is recorded and shown to admins, but intake still
+        // reads it; every other pre-scan hit escalates at once.
+        if signals.iter().any(|s| s.detector.escalates()) {
             flags.push(Flag::PrescanSignal);
         } else {
-            let input = IntakeInput {
-                orders: order_summaries(&orders, &item_requests),
-                selected_order_id: customer.iter().rev().find_map(|m| m.order_id),
-                messages: customer
-                    .iter()
-                    .map(|m| CustomerMessage {
-                        id: m.id,
-                        seq: m.seq,
-                        body: m.body.clone(),
-                    })
-                    .collect(),
-                replies: all
-                    .iter()
-                    .filter(|m| m.role == MessageRole::Assistant)
-                    .filter_map(|m| {
-                        Some(AssistantReply {
-                            seq: m.seq,
-                            kind: m.assistant_kind?,
-                            body: m.body.clone(),
-                        })
-                    })
-                    .collect(),
-            };
+            let input = intake_input(&all, &orders, &item_requests);
             let assistant = &state.assistant;
             let input = &input;
             let (result, log) = call_with_fallback(&state.ai, Stage::Intake, |m| async move {
@@ -529,23 +612,10 @@ async fn process(
             }
         }
 
-        if flags.is_empty()
-            && let Some(extracted) = &intake
-        {
-            // "No, that's all" answers the final question: go on to decide.
-            let answers_final_check = last_reply.and_then(|m| m.assistant_kind)
-                == Some(AssistantKind::FinalCheck)
-                && matches!(
-                    extracted.intent,
-                    Intent::Finished | Intent::OutOfScope | Intent::Greeting
-                );
+        match gate(&orders, &item_requests, &all, intake.as_ref(), &mut flags) {
             // Not a clarify turn: a model failure falls back to the template
             // rather than escalating, since nothing is being decided.
-            let picked = customer.last().and_then(|m| m.order_id);
-            if !answers_final_check
-                && let Some((kind, reply)) =
-                    no_request_reply(&orders, &item_requests, extracted, picked, last_reply)
-            {
+            Gate::Reply(kind, reply) => {
                 let body = match reply {
                     NoRequestReply::Fixed(text) => text.to_owned(),
                     NoRequestReply::Template(text) => text,
@@ -561,43 +631,37 @@ async fn process(
                 out.reply(&reply).await;
                 return Ok(None);
             }
-            let missing = missing_fields(&orders, extracted);
-            if !missing.is_empty() {
-                let asked = db::messages::clarify_count(db, conversation_id).await?;
-                if asked >= i64::from(MAX_CLARIFY_TURNS) {
-                    flags.push(Flag::ClarificationLimit);
-                    if extracted.low_confidence() {
-                        flags.push(Flag::LowConfidence);
+            Gate::Clarify { missing, turn } => {
+                let policy = db::policy::latest_policy(db).await?;
+                let input = ResponderInput::Clarify {
+                    missing,
+                    clarify_turn: turn,
+                    policy_prose: render_policy(&policy.rules),
+                };
+                let (reply, _) = respond(state, &input).await;
+                match reply {
+                    Some(body) => {
+                        let mut conn = db.0.acquire().await?;
+                        let reply = db::messages::insert_assistant_message(
+                            &mut conn,
+                            conversation_id,
+                            AssistantKind::Clarify,
+                            &body,
+                        )
+                        .await?;
+                        out.reply(&reply).await;
+                        return Ok(None);
                     }
-                } else {
-                    let policy = db::policy::latest_policy(db).await?;
-                    let input = ResponderInput::Clarify {
-                        missing,
-                        clarify_turn: u8::try_from(asked + 1).unwrap_or(u8::MAX),
-                        policy_prose: render_policy(&policy.rules),
-                    };
-                    let (reply, _) = respond(state, &input).await;
-                    match reply {
-                        Some(body) => {
-                            let mut conn = db.0.acquire().await?;
-                            let reply = db::messages::insert_assistant_message(
-                                &mut conn,
-                                conversation_id,
-                                AssistantKind::Clarify,
-                                &body,
-                            )
-                            .await?;
-                            out.reply(&reply).await;
-                            return Ok(None);
-                        }
-                        None => flags.push(Flag::LlmFailure),
-                    }
+                    None => flags.push(Flag::LlmFailure),
                 }
-            } else if !final_check_asked {
+            }
+            Gate::FinalCheck => {
                 // Asked once per conversation; a model failure uses the template,
                 // since nothing is being decided.
                 let input = ResponderInput::FinalCheck {
-                    target: resolve_target(&orders, extracted)
+                    target: intake
+                        .as_ref()
+                        .and_then(|extracted| resolve_target(&orders, extracted))
                         .map(|(o, item)| Target::new(&o.order_ref, &item.name, item.amount_cents)),
                 };
                 let body = respond(state, &input)
@@ -615,6 +679,7 @@ async fn process(
                 out.reply(&reply).await;
                 return Ok(None);
             }
+            Gate::Decide => {}
         }
 
         // Messages that arrived during the LLM calls are waiting on the lock;
@@ -631,6 +696,7 @@ async fn process(
             customer_id,
             DecisionInputs {
                 orders,
+                item_requests,
                 intake,
                 flags,
                 stages,
@@ -689,6 +755,9 @@ async fn respond(state: &AppState, input: &ResponderInput) -> (Option<String>, S
 
 struct DecisionInputs {
     orders: Vec<Order>,
+    /// The customer's item requests when this turn read them, before the
+    /// model calls; the write compares against it.
+    item_requests: HashMap<Uuid, ExistingRequest>,
     intake: Option<IntakeOutput>,
     flags: Vec<Flag>,
     stages: Stages,
@@ -706,6 +775,7 @@ async fn decide_and_reply(
     let db = &state.db;
     let DecisionInputs {
         orders,
+        item_requests,
         intake,
         flags,
         mut stages,
@@ -731,7 +801,7 @@ async fn decide_and_reply(
     let input = verdict_input(decision.verdict, decision.customer_reasons());
     let (reply, log) = respond(state, &input).await;
     stages.responder = Some(log);
-    let body = match reply {
+    let mut body = match reply {
         Some(body) => body,
         None => {
             // The failure is a flag like any other, so the engine applies it
@@ -742,6 +812,51 @@ async fn decide_and_reply(
             fallback_reply(&input.expectation(), input.target())
         }
     };
+
+    // The customer's ledger (ADR-064): another of this customer's chats may
+    // have filed a request while the models ran, so what it can change is
+    // read again under a per-customer lock held until this commit.
+    let mut tx = db.0.begin().await?;
+    db::lock::lock_customer_xact(&mut tx, customer_id).await?;
+    if let Some(order) = &facts.order {
+        let item = order.item.order_item_id;
+        let now = db::refunds::item_requests_on(&mut tx, customer_id).await?;
+        if let (None, Some(existing)) = (item_requests.get(&item), now.get(&item)) {
+            // Answered as if this message had come a moment later (ADR-042),
+            // from the template: no second request, no extra model call.
+            tx.rollback().await?;
+            let request = PriorRequest::new(
+                &existing.request_ref,
+                &order.order_ref,
+                &order.item.name,
+                existing.state,
+                existing.decided_at,
+            );
+            let input = ResponderInput::ExistingRequest { request };
+            let body = fallback_reply(&input.expectation(), None);
+            let mut conn = db.0.acquire().await?;
+            let reply = db::messages::insert_assistant_message(
+                &mut conn,
+                conversation_id,
+                AssistantKind::ExistingRequest,
+                &body,
+            )
+            .await?;
+            out.reply(&reply).await;
+            return Ok(None);
+        }
+    }
+    let prior = db::refunds::prior_claims_on(&mut tx, customer_id, conversation_id).await?;
+    if prior != facts.prior_claims {
+        facts.prior_claims = prior;
+        let redecided = decide(&policy.rules, &facts);
+        if redecided.verdict != decision.verdict {
+            // The reply named the old verdict; the template words the new one.
+            let input = verdict_input(redecided.verdict, redecided.customer_reasons());
+            body = fallback_reply(&input.expectation(), input.target());
+        }
+        decision = redecided;
+    }
 
     let order = facts.order.as_ref();
     let request = NewRefundRequest {
@@ -766,8 +881,7 @@ async fn decide_and_reply(
         stages: json!(stages),
         fired_kinds: decision.fired.iter().map(|f| f.kind.clone()).collect(),
     };
-
-    let mut tx = db.0.begin().await?;
+    // The unique index stays as a backstop for any path that skips the ledger.
     let created = match db::refunds::create_decided(&mut tx, &request, &audit).await {
         Ok(created) => created,
         Err(DbError::Conflict(code @ "duplicate_active_refund")) => {

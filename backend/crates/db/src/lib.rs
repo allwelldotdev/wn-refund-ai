@@ -11,6 +11,7 @@ pub mod messages;
 pub mod orders;
 pub mod policy;
 pub mod refunds;
+pub mod scratch;
 pub mod seed;
 pub mod settings;
 

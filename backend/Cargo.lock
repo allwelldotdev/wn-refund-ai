@@ -111,6 +111,7 @@ dependencies = [
  "ai",
  "anyhow",
  "argon2",
+ "async-trait",
  "axum",
  "chrono",
  "db",
