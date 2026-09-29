@@ -18,6 +18,7 @@ import {
   RULE_META,
   distinctFlags,
   shortHash,
+  traceResult,
   useRequestDetail,
   usePolicyVersion,
 } from "@/lib/admin";
@@ -531,7 +532,8 @@ function firedFor(rule: Rule, fired: FiredRule[]): FiredRule | undefined {
 /**
  * Every rule of the policy version that decided the request, marked fired or
  * not, plus any built-in safety check. The engine is deterministic: the most
- * severe fired verdict wins; with none fired, a person decides.
+ * severe fired verdict wins, except that a flag holds a denial for a person;
+ * with none fired, a person decides.
  */
 function RuleTrace({ audit }: { audit: AuditInfo | null }) {
   const version = usePolicyVersion(audit?.policy_version.id ?? null);
@@ -567,7 +569,7 @@ function RuleTrace({ audit }: { audit: AuditInfo | null }) {
           ))}
           <li className="px-3 py-2.5 text-body-sm">
             <span className="font-semibold">Result: {stateLabel(audit.verdict)}.</span>{" "}
-            {audit.rule_trace.length === 0 ? "No rule applied, so a person decides." : audit.verdict === "escalated" ? "One or more checks need a person." : audit.verdict === "denied" ? "A rule denies it; denials outrank everything else." : "Every rule that applied allows it."}
+            {traceResult(audit.verdict, audit.rule_trace)}
           </li>
         </ol>
       )}
