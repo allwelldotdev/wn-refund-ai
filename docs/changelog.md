@@ -5,6 +5,7 @@ This file records what changed in Worknoon Support for the customers who request
 ## [0.13.3] — 2026-09-29
 ### Fixed
 - When an AI call fails because the AI provider returned an error, the error text admins see, in the failed review note in the request case file and in the raw audit details, no longer includes the provider account's ID; the rest of the message is kept.
+- When a customer answers the assistant's final question, "Anything else I should know before I check this?", with a plain "No, that's all.", they now always get the decision on the request as it stood when the question was asked; before, the answer was sometimes misread and the assistant asked again which order, item or what happened. Answers that add details, and anything flagged, are handled as before, and admins also see how the answer was read in the raw audit details of such a decision.
 
 ## [0.13.2] — 2026-09-29
 ### Fixed

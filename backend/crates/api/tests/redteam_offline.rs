@@ -8,6 +8,7 @@ use std::collections::HashSet;
 
 use api::eval::{Case, CaseKind, IntakeRun, Outcome, Turn, decide_case, parse_cases};
 use db::{Db, seed};
+use domain::intake::{IntakeStatus, Intent, MissingField};
 use domain::policy::Policy;
 use domain::prescan::{Detector, prescan};
 use domain::types::{AssistantKind, Flag, Verdict};
@@ -71,6 +72,17 @@ fn the_cases_file_is_well_formed() {
                     "{id}: a reply after a decision"
                 );
             }
+        }
+        // The stub of a case with our final question is the reading it was
+        // asked on, so it is a complete request (ADR-066).
+        if case.final_check_reading().is_some() {
+            let stub = case.intake_stub.as_ref().unwrap();
+            assert!(
+                stub.intent == Intent::RefundRequest
+                    && stub.order.is_some()
+                    && stub.reason.is_some(),
+                "{id}: a final question is asked on a complete request"
+            );
         }
         for signal in case.intake_stub.iter().flat_map(|s| &s.injection) {
             assert!(
@@ -139,6 +151,52 @@ async fn every_case_is_stopped_or_decided_as_expected(pool: PgPool) {
         }
     }
     assert!(failures.is_empty(), "\n{}", failures.join("\n"));
+}
+
+/// An answer to our final question read without the request is decided on the
+/// reading the question was asked on; without that reading it would get a
+/// clarifying question (ADR-066).
+#[sqlx::test(migrations = "../../migrations")]
+async fn a_final_answer_without_the_request_is_decided_on_the_reading_asked_on(pool: PgPool) {
+    let (db, policy) = seeded(pool).await;
+    let cases: Vec<Case> = parse_cases(CASES)
+        .unwrap()
+        .into_iter()
+        .filter(|case| case.final_check_reading().is_some())
+        .collect();
+    assert!(cases.len() >= 2);
+    for case in cases {
+        let id = &case.id;
+        let lost = || {
+            let mut lost = case.intake_stub.as_ref().unwrap().to_output();
+            lost.intent = Intent::Finished;
+            lost.status = IntakeStatus::NeedsInfo;
+            lost.missing = vec![
+                MissingField::Order,
+                MissingField::Item,
+                MissingField::Reason,
+            ];
+            lost.order_id = None;
+            lost.order_item_id = None;
+            lost.mentioned_order_refs.clear();
+            lost.reason_category = None;
+            lost
+        };
+        let mut conversation = case.load(&db).await.unwrap();
+        let result = decide_case(&db, &policy, &conversation, IntakeRun::Read(lost()))
+            .await
+            .unwrap();
+        assert!(
+            case.passes(&result) && result.kept_final_check_reading,
+            "{id}: {result:?}"
+        );
+
+        conversation.final_check_reading = None;
+        let result = decide_case(&db, &policy, &conversation, IntakeRun::Read(lost()))
+            .await
+            .unwrap();
+        assert_eq!(result.outcome, Outcome::Clarify, "{id}");
+    }
 }
 
 /// Sofia Rossi's intake points at ORD-10388, Grace Liu's order. `order` names

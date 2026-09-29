@@ -12,7 +12,9 @@
 //!    off-topic message, or an item that already has a request gets a reply
 //!    that files nothing; asking again about a request we just reported gets
 //!    a pointer to its thread. A complete request first gets one final question
-//!    ("anything else?"); the answer, even "no", leads to the decision.
+//!    ("anything else?"); the answer, even "no", leads to the decision. An
+//!    answer that adds nothing but loses the request is decided on the reading
+//!    the question was asked on.
 //!    Otherwise, missing order,
 //!    item or reason: ask a clarifying question, up to `MAX_CLARIFY_TURNS`,
 //!    then escalate. Low confidence waits for the same point: it only
@@ -69,6 +71,10 @@ pub struct StageFailure {
 struct Stages {
     intake: Option<StageLog>,
     responder: Option<StageLog>,
+    /// Intake's reading of the answer to the final question, when it lost the
+    /// request and `extracted` is the reading the question was asked on.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    final_check_answer: Option<IntakeOutput>,
 }
 
 /// Calls the stage's model, then the fallback model once. Each attempt is
@@ -458,19 +464,12 @@ pub(crate) fn gate(
         return Gate::Decide;
     };
     let last_reply = all.iter().rev().find(|m| m.role == MessageRole::Assistant);
-    // "No, that's all" answers the final question: go on to decide.
-    let answers_final_check = last_reply.and_then(|m| m.assistant_kind)
-        == Some(AssistantKind::FinalCheck)
-        && matches!(
-            extracted.intent,
-            Intent::Finished | Intent::OutOfScope | Intent::Greeting
-        );
     let picked = all
         .iter()
         .rev()
         .find(|m| m.role == MessageRole::Customer)
         .and_then(|m| m.order_id);
-    if !answers_final_check
+    if !answers_final_check(all, extracted)
         && let Some((kind, reply)) =
             no_request_reply(orders, item_requests, extracted, picked, last_reply)
     {
@@ -502,6 +501,43 @@ pub(crate) fn gate(
     } else {
         Gate::FinalCheck
     }
+}
+
+/// "No, that's all" answers the final question: go on to decide.
+fn answers_final_check(all: &[Message], intake: &IntakeOutput) -> bool {
+    all.iter()
+        .rev()
+        .find(|m| m.role == MessageRole::Assistant)
+        .and_then(|m| m.assistant_kind)
+        == Some(AssistantKind::FinalCheck)
+        && matches!(
+            intake.intent,
+            Intent::Finished | Intent::OutOfScope | Intent::Greeting
+        )
+}
+
+/// ADR-066: an answer to the final question that adds nothing but comes back
+/// without the order, item or reason is decided on `asked_on`, the reading the
+/// question was asked on. Returns the answer's own reading when it was
+/// replaced. A flag, low confidence, a contradiction or a claimed amount on
+/// the answer leaves it as it is. Runs just before `gate`, here and in the eval.
+pub(crate) fn keep_final_check_reading(
+    orders: &[Order],
+    all: &[Message],
+    intake: &mut Option<IntakeOutput>,
+    asked_on: Option<IntakeOutput>,
+    flags: &[Flag],
+) -> Option<IntakeOutput> {
+    let answer = intake.as_ref()?;
+    let adds_nothing = flags.is_empty()
+        && !answer.contradictory_statements
+        && answer.claimed_amount_cents.is_none()
+        && !answer.low_confidence()
+        && answers_final_check(all, answer);
+    if !adds_nothing || missing_fields(orders, answer).is_empty() {
+        return None;
+    }
+    intake.replace(asked_on?)
 }
 
 /// Entry point for the spawned task. Always ends the stream with `done`;
@@ -612,6 +648,9 @@ async fn process(
             }
         }
 
+        let asked_on = db::conversations::final_check_reading(db, conversation_id).await?;
+        stages.final_check_answer =
+            keep_final_check_reading(&orders, &all, &mut intake, asked_on, &flags);
         match gate(&orders, &item_requests, &all, intake.as_ref(), &mut flags) {
             // Not a clarify turn: a model failure falls back to the template
             // rather than escalating, since nothing is being decided.
@@ -668,6 +707,10 @@ async fn process(
                     .await
                     .0
                     .unwrap_or_else(|| fallback_reply(&input.expectation(), None));
+                if let Some(reading) = &intake {
+                    db::conversations::set_final_check_reading(db, conversation_id, reading)
+                        .await?;
+                }
                 let mut conn = db.0.acquire().await?;
                 let reply = db::messages::insert_assistant_message(
                     &mut conn,
