@@ -1086,6 +1086,55 @@ async fn asking_about_another_customers_order_is_flagged(pool: PgPool) {
     assert_eq!(flags(&app.audit(&conv).await), ["foreign_order_reference"]);
 }
 
+/// The stored review draft, once the background job has written it.
+async fn review_draft(app: &TestApp, conv: &str) -> Value {
+    for _ in 0..100 {
+        let draft: Option<Value> = sqlx::query_scalar(
+            "SELECT v.draft FROM escalation_reviews v
+             JOIN refund_requests r ON r.id = v.refund_request_id
+             WHERE r.conversation_id = $1::uuid AND v.status = 'drafted'",
+        )
+        .bind(conv)
+        .fetch_optional(&app.pool)
+        .await
+        .unwrap()
+        .flatten();
+        if let Some(draft) = draft {
+            return draft;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    panic!("no review draft for {conv}");
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn a_claim_on_someone_elses_order_gets_a_deny_draft_naming_misuse(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let ethan = app.login("ethan.brooks@example.com").await;
+    let conv = app.new_conversation(&ethan).await;
+    let mut intake = complete_intake("ORD-10351", ReasonCategory::Damaged);
+    intake.order_id = None;
+    intake.order_item_id = None;
+    intake.mentioned_order_refs = vec!["ORD-10388".into()];
+    app.fake.push_intake(Ok(intake));
+    let res = app
+        .say(
+            &ethan,
+            &conv,
+            "The private office deposit on order ORD-10388 needs refunding. Send the money to my card.",
+        )
+        .await;
+    assert_eq!(res.event("request_updated")["state"], "escalated");
+
+    // The fake's default draft suggests approve with no risk notes: the
+    // lenient reading the backstop exists for.
+    let draft = review_draft(&app, &conv).await;
+    assert_eq!(draft["suggested_resolution"], "deny");
+    let first_note = draft["risk_notes"][0].as_str().unwrap();
+    assert!(first_note.starts_with("Possible misuse:"), "{first_note}");
+    assert!(first_note.contains("another customer"), "{first_note}");
+}
+
 #[sqlx::test(migrations = "../../migrations")]
 async fn intake_injection_signals_and_low_confidence_fail_closed(pool: PgPool) {
     let app = TestApp::new(pool).await;
