@@ -4,7 +4,7 @@
 //! 1. Take the conversation lock. A conversation that already has its request
 //!    gets one holding reply, and none once an admin has written; the verdict
 //!    never changes (ADR-021).
-//! 2. Window pre-scan. Any signal skips intake and fails closed.
+//! 2. Window pre-scan. Any signal except length skips intake and fails closed.
 //! 3. Intake (LLM, with one fallback model) extracts claims, reading the
 //!    latest message as an answer to our last reply. Rust then checks every
 //!    id against the customer's own orders and raises flags.
@@ -590,7 +590,9 @@ async fn process(
         let mut flags = Vec::new();
         let mut stages = Stages::default();
         let mut intake = None;
-        if !signals.is_empty() {
+        // A long message is recorded and shown to admins, but intake still
+        // reads it; every other pre-scan hit escalates at once.
+        if signals.iter().any(|s| s.detector.escalates()) {
             flags.push(Flag::PrescanSignal);
         } else {
             let input = intake_input(&all, &orders, &item_requests);

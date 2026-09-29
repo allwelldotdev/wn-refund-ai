@@ -46,9 +46,9 @@ fn the_cases_file_is_well_formed() {
             );
         }
         // Only an attack the pre-scan stops can do without the correct reading.
+        let stopped = case.expect.prescan.iter().any(|d| d.escalates());
         assert!(
-            case.intake_stub.is_some()
-                || (case.kind == CaseKind::Attack && !case.expect.prescan.is_empty()),
+            case.intake_stub.is_some() || (case.kind == CaseKind::Attack && stopped),
             "{id}: needs an intake_stub"
         );
         assert!(
@@ -100,8 +100,8 @@ async fn every_case_is_stopped_or_decided_as_expected(pool: PgPool) {
                 "{id}: pre-scan fired {detectors:?}, expected {expected:?}"
             ));
         }
-        if !detectors.is_empty() {
-            // Any pre-scan hit escalates without calling intake.
+        if case.prescan_escalates() {
+            // A pre-scan hit other than length escalates without calling intake.
             let result = decide_case(&db, &policy, &conversation, IntakeRun::Prescanned)
                 .await
                 .unwrap();

@@ -281,6 +281,36 @@ async fn prescan_hit_skips_intake_and_escalates(pool: PgPool) {
     assert_eq!(audit["rule_trace"][0]["kind"], "fail_closed");
 }
 
+/// Length alone says nothing about manipulation: the signal is stored for
+/// the admin, and intake still reads the message.
+#[sqlx::test(migrations = "../../migrations")]
+async fn a_long_message_is_recorded_but_still_read_by_intake(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let amara = app.login("amara.okafor@example.com").await;
+    let conv = app.new_conversation(&amara).await;
+    let long = format!(
+        "The desk lamp from ORD-10437 arrived with a cracked base. {}",
+        "I unpacked it carefully and found the damage straight away. ".repeat(40)
+    );
+    assert!((2001..4000).contains(&long.chars().count()));
+    app.fake
+        .push_intake(Ok(complete_intake("ORD-10437", ReasonCategory::Damaged)));
+
+    let res = app.say(&amara, &conv, &long).await;
+    assert_eq!(res.event("reply_start")["kind"], "final_check");
+    assert_eq!(app.fake.calls_for(Stage::Intake).len(), 1);
+    let detectors: Vec<String> = sqlx::query_scalar(
+        "SELECT s.detector FROM message_signals s
+         JOIN messages m ON m.id = s.message_id
+         WHERE m.conversation_id = $1::uuid",
+    )
+    .bind(&conv)
+    .fetch_all(&app.pool)
+    .await
+    .unwrap();
+    assert_eq!(detectors, ["abnormal_length"]);
+}
+
 #[sqlx::test(migrations = "../../migrations")]
 async fn a_split_injection_is_caught_by_the_window_scan(pool: PgPool) {
     let app = TestApp::new(pool).await;

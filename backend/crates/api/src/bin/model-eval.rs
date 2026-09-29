@@ -127,7 +127,7 @@ async fn evaluate(
     let legit: Vec<&Case> = cases.iter().filter(|c| c.kind == CaseKind::Legit).collect();
     let caught: Vec<&str> = legit
         .iter()
-        .filter(|c| !c.prescan_detectors().is_empty())
+        .filter(|c| c.prescan_escalates())
         .map(|c| c.id.as_str())
         .collect();
 
@@ -136,7 +136,7 @@ async fn evaluate(
         let mut tally = Tally::default();
         for _ in 0..args.repeat {
             for case in cases {
-                let prescanned = !case.prescan_detectors().is_empty();
+                let prescanned = case.prescan_escalates();
                 if prescanned && !(args.include_prescanned && case.kind == CaseKind::Legit) {
                     continue;
                 }

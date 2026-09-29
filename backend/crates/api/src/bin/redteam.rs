@@ -74,7 +74,7 @@ async fn run_cases(
     let (mut failed, mut warnings) = (0, 0);
     for case in cases {
         let conversation = case.load(db).await?;
-        let prescanned = !case.prescan_detectors().is_empty();
+        let prescanned = case.prescan_escalates();
         let intake = if prescanned {
             IntakeRun::Prescanned
         } else {
