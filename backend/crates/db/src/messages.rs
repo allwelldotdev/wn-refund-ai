@@ -202,18 +202,6 @@ pub async fn find_message_by_client_id(
     .transpose()
 }
 
-/// Clarifying questions already asked in this conversation.
-pub async fn clarify_count(db: &Db, conversation_id: Uuid) -> Result<i64, DbError> {
-    let n = sqlx::query_scalar!(
-        r#"SELECT count(*) AS "n!" FROM messages
-           WHERE conversation_id = $1 AND assistant_kind = 'clarify'"#,
-        conversation_id,
-    )
-    .fetch_one(&db.0)
-    .await?;
-    Ok(n)
-}
-
 /// Idempotent: re-scanning the same window inserts nothing new.
 pub async fn insert_signals(
     conn: &mut PgConnection,
