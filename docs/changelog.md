@@ -2,6 +2,11 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.13.0] — 2026-09-29
+### Fixed
+- A request the assistant was unsure about or found suspicious, for example an attempt to instruct the assistant, a mention of someone else's order, an unclear request or clarifying questions that ran out, is no longer denied automatically when a final-sale or expired-refund-window rule applies; it goes to the support team, and the customer is told it needs a closer look from the team. Ordinary requests that a rule denies are still denied automatically.
+- Admins now see these requests in Escalations; the request details panel still lists the denial rule and says "A rule denies it, but a check flagged the request, so a person decides.", while a plain denial reads "A rule denies it; a denial outranks every other rule."
+
 ## [0.12.1] — 2026-09-29
 ### Improved
 - When a customer asks to refund another customer's order, tries to instruct the assistant, impersonates staff or claims a policy change, or sends instruction-like text, the suggested review in the request details panel now starts its first risk note with "Possible misuse:" and says what happened, for example "Possible misuse: claim on another customer's order."
