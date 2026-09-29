@@ -1,6 +1,6 @@
 # AI Refund Support System
 
-A full-stack, containerized customer-support system for e-commerce refunds. A deterministic Rust policy engine — assisted by narrowly-scoped LLM calls for extraction, injection screening and reply wording — decides whether a refund is Approved, Denied or Escalated; the LLM never makes the decision itself.
+A full-stack, containerized customer-support system for e-commerce refunds. A deterministic Rust policy engine, assisted by narrowly-scoped LLM calls for extraction, injection screening and reply wording, that decides whether a refund is Approved, Denied or Escalated; the LLM never makes the decision itself.
 
 ## Quick start
 
