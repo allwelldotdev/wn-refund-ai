@@ -131,12 +131,40 @@ fn map_error(e: CompletionError) -> AiError {
         let body = e.provider_response_body().unwrap_or_default();
         return AiError::Http {
             status: status.as_u16(),
-            body: body.chars().take(MAX_ERROR_BODY_CHARS).collect(),
+            body: error_body(body),
         };
     }
     match e {
         CompletionError::ResponseError(_) => AiError::Empty,
         other => AiError::Transport(other.to_string()),
+    }
+}
+
+/// OpenRouter's error bodies name the key owner's account (`user_id`); they are
+/// stored in the audit and logged, so it is removed and the rest kept.
+fn error_body(raw: &str) -> String {
+    let mut body = match serde_json::from_str::<Value>(raw) {
+        Ok(mut json) => {
+            drop_user_ids(&mut json);
+            json.to_string()
+        }
+        Err(_) => raw.to_owned(),
+    };
+    // Not JSON, or inside a string value: cut before it.
+    if let Some(at) = body.find("user_id") {
+        body.truncate(at);
+    }
+    body.chars().take(MAX_ERROR_BODY_CHARS).collect()
+}
+
+fn drop_user_ids(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            map.remove("user_id");
+            map.values_mut().for_each(drop_user_ids);
+        }
+        Value::Array(items) => items.iter_mut().for_each(drop_user_ids),
+        _ => {}
     }
 }
 
@@ -216,5 +244,20 @@ impl RefundAssistant for OpenRouterAssistant {
             output: parse_json(raw)?,
             record,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_plain_error_body_is_kept_but_capped() {
+        let raw = "x".repeat(600);
+        assert_eq!(error_body(&raw), "x".repeat(MAX_ERROR_BODY_CHARS));
+        assert_eq!(
+            error_body("upstream failed for user_id=user_2test"),
+            "upstream failed for "
+        );
     }
 }

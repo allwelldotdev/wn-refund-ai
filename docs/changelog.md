@@ -2,6 +2,10 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.13.3] — 2026-09-29
+### Fixed
+- When an AI call fails because the AI provider returned an error, the error text admins see, in the failed review note in the request case file and in the raw audit details, no longer includes the provider account's ID; the rest of the message is kept.
+
 ## [0.13.2] — 2026-09-29
 ### Fixed
 - When a customer asks about the same item in two chats at the same time, for example in two browser tabs or on a laptop and a phone, neither chat shows "This item already has a refund in progress. Please refresh the page." any more; the second chat answers with the status of the request the first one just made.
