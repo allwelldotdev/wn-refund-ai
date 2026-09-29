@@ -5,19 +5,27 @@
 #![allow(dead_code)]
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
-use ai::{AiConfig, FakeAssistant};
+use ai::{
+    AiConfig, AiError, Completed, FakeAssistant, RefundAssistant, SharedAssistant, StageModel,
+};
 use api::rate_limit::RateLimiter;
 use api::{AppState, build_router};
+use async_trait::async_trait;
 use axum::Router;
 use axum::body::{Body, Bytes};
 use axum::http::{HeaderMap, Method, Request, StatusCode, header};
 use db::Db;
-use domain::intake::{IntakeOutput, IntakeStatus, Intent, MissingField};
+use domain::intake::{IntakeInput, IntakeOutput, IntakeStatus, Intent, MissingField};
+use domain::notice::{NoticeInput, NoticeOutput};
+use domain::responder::ResponderInput;
+use domain::review::{ReviewInput, ReviewOutput};
 use domain::types::ReasonCategory;
 use http_body_util::BodyExt;
 use serde_json::Value;
 use sqlx::PgPool;
+use tokio::sync::Notify;
 use tower::ServiceExt;
 use uuid::Uuid;
 
@@ -91,12 +99,21 @@ impl TestResponse {
 
 impl TestApp {
     pub async fn new(pool: PgPool) -> TestApp {
+        let fake = Arc::new(FakeAssistant::new());
+        TestApp::with_assistant(pool, fake.clone(), fake).await
+    }
+
+    /// `assistant` answers the pipeline; `fake` is the queue it draws on.
+    pub async fn with_assistant(
+        pool: PgPool,
+        assistant: SharedAssistant,
+        fake: Arc<FakeAssistant>,
+    ) -> TestApp {
         let db = Db(pool.clone());
         api::prepare_database(&db).await.expect("seed");
-        let fake = Arc::new(FakeAssistant::new());
         let state = AppState {
             db,
-            assistant: fake.clone(),
+            assistant,
             ai: Arc::new(AiConfig::load().expect("default AI config")),
             rate: RateLimiter::default(),
             login_throttle: Default::default(),
@@ -310,5 +327,81 @@ pub fn needs_info_intake(missing: Vec<MissingField>) -> IntakeOutput {
         contradictory_statements: false,
         injection_signals: vec![],
         confidence: 0.9,
+    }
+}
+
+/// `FakeAssistant` with one gate: the first verdict wording waits until
+/// `release`, so a test can run a second chat while the first sits between
+/// deciding and writing its request. Final questions and other replies pass.
+pub struct GatedAssistant {
+    pub fake: Arc<FakeAssistant>,
+    armed: AtomicBool,
+    entered: Notify,
+    released: Notify,
+}
+
+impl GatedAssistant {
+    pub fn new(fake: Arc<FakeAssistant>) -> Arc<GatedAssistant> {
+        Arc::new(GatedAssistant {
+            fake,
+            armed: AtomicBool::new(false),
+            entered: Notify::new(),
+            released: Notify::new(),
+        })
+    }
+
+    /// Holds the next verdict wording.
+    pub fn arm(&self) {
+        self.armed.store(true, Ordering::SeqCst);
+    }
+
+    /// Resolves once a held run has decided and is waiting.
+    pub async fn entered(&self) {
+        self.entered.notified().await;
+    }
+
+    pub fn release(&self) {
+        self.released.notify_one();
+    }
+}
+
+#[async_trait]
+impl RefundAssistant for GatedAssistant {
+    async fn intake(
+        &self,
+        input: &IntakeInput,
+        model: &StageModel,
+    ) -> Result<Completed<IntakeOutput>, AiError> {
+        self.fake.intake(input, model).await
+    }
+
+    async fn respond(
+        &self,
+        input: &ResponderInput,
+        model: &StageModel,
+    ) -> Result<Completed<String>, AiError> {
+        if matches!(input, ResponderInput::Verdict { .. })
+            && self.armed.swap(false, Ordering::SeqCst)
+        {
+            self.entered.notify_one();
+            self.released.notified().await;
+        }
+        self.fake.respond(input, model).await
+    }
+
+    async fn review(
+        &self,
+        input: &ReviewInput,
+        model: &StageModel,
+    ) -> Result<Completed<ReviewOutput>, AiError> {
+        self.fake.review(input, model).await
+    }
+
+    async fn notice(
+        &self,
+        input: &NoticeInput,
+        model: &StageModel,
+    ) -> Result<Completed<NoticeOutput>, AiError> {
+        self.fake.notice(input, model).await
     }
 }
