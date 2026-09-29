@@ -1,8 +1,10 @@
 //! Conversations and the per-conversation request summary shown to customers.
 
 use chrono::{DateTime, Utc};
+use domain::intake::IntakeOutput;
 use domain::types::RequestState;
 use serde::Serialize;
+use serde_json::json;
 use uuid::Uuid;
 
 use crate::{Db, DbError, parse_enum};
@@ -102,6 +104,38 @@ pub async fn last_seq(db: &Db, conversation_id: Uuid) -> Result<i32, DbError> {
     .await?
     .ok_or(DbError::NotFound)?;
     Ok(seq)
+}
+
+/// Keeps the reading a final question is asked on, for the answer (ADR-066).
+pub async fn set_final_check_reading(
+    db: &Db,
+    conversation_id: Uuid,
+    reading: &IntakeOutput,
+) -> Result<(), DbError> {
+    sqlx::query!(
+        "UPDATE conversations SET final_check_reading = $2 WHERE id = $1",
+        conversation_id,
+        json!(reading),
+    )
+    .execute(&db.0)
+    .await?;
+    Ok(())
+}
+
+/// The reading the final question was asked on, if it was. One that no longer
+/// parses counts as none, so the chat carries on as if it had not been kept.
+pub async fn final_check_reading(
+    db: &Db,
+    conversation_id: Uuid,
+) -> Result<Option<IntakeOutput>, DbError> {
+    let value = sqlx::query_scalar!(
+        "SELECT final_check_reading FROM conversations WHERE id = $1",
+        conversation_id,
+    )
+    .fetch_optional(&db.0)
+    .await?
+    .flatten();
+    Ok(value.and_then(|v| serde_json::from_value(v).ok()))
 }
 
 /// Most recently active first.
