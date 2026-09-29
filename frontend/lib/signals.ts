@@ -1,4 +1,4 @@
-import type { SignalView } from "./api-types";
+import type { Detector, SignalView } from "./api-types";
 
 export type Segment = { text: string; marked: boolean };
 
@@ -23,4 +23,12 @@ export function splitSignals(text: string, signals: Pick<SignalView, "start" | "
     i = j;
   }
   return out;
+}
+
+/**
+ * Mirrors the backend: every pre-scan detector stops the request before the
+ * model reads it, except length, which is only recorded for the admin.
+ */
+export function escalates(detector: Detector): boolean {
+  return detector !== "abnormal_length";
 }
