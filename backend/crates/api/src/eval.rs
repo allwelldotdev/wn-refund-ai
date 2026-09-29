@@ -23,7 +23,9 @@ use domain::types::{AssistantKind, Flag, MessageRole, ReasonCategory, Verdict};
 use serde::Deserialize;
 use uuid::Uuid;
 
-use crate::pipeline::{Gate, build_facts, gate, intake_input, screen_intake};
+use crate::pipeline::{
+    Gate, build_facts, gate, intake_input, keep_final_check_reading, screen_intake,
+};
 
 /// Unknown fields are errors, so a typo cannot silently drop an expectation.
 pub fn parse_cases(json: &str) -> serde_json::Result<Vec<Case>> {
@@ -229,6 +231,8 @@ pub struct Conversation {
     pub orders: Vec<Order>,
     pub item_requests: HashMap<Uuid, ExistingRequest>,
     pub messages: Vec<Message>,
+    /// The reading our final question was asked on, when a turn is one.
+    pub final_check_reading: Option<IntakeOutput>,
 }
 
 impl Conversation {
@@ -252,6 +256,9 @@ pub struct CaseResult {
     pub flags: Vec<Flag>,
     /// Rule kinds in the trace, most severe first; empty unless decided.
     pub fired: Vec<String>,
+    /// The answer to the final question lost the request and was replaced by
+    /// the reading the question was asked on (ADR-066).
+    pub kept_final_check_reading: bool,
 }
 
 impl Case {
@@ -337,6 +344,18 @@ impl Case {
         self.prescan_detectors().iter().any(|d| d.escalates())
     }
 
+    /// For a case that includes our final question, the reading it was asked
+    /// on: the stub, which is then the complete request.
+    pub fn final_check_reading(&self) -> Option<IntakeOutput> {
+        self.turns
+            .iter()
+            .any(|turn| {
+                matches!(turn, Turn::Assistant(t) if t.assistant == AssistantKind::FinalCheck)
+            })
+            .then(|| self.intake_stub.as_ref().map(StubIntake::to_output))
+            .flatten()
+    }
+
     pub async fn load(&self, db: &Db) -> anyhow::Result<Conversation> {
         let customer_id = self
             .customer_id()
@@ -346,6 +365,7 @@ impl Case {
             orders: db::orders::list_orders_for_customer(db, customer_id).await?,
             item_requests: db::refunds::item_requests(db, customer_id).await?,
             messages: self.messages(),
+            final_check_reading: self.final_check_reading(),
         })
     }
 
@@ -369,10 +389,11 @@ impl Case {
     }
 }
 
-/// The pipeline's decision path after intake: screening, the gate, then the
-/// engine. The gate's final question is skipped on purpose: the harness
-/// decides as soon as intake has the whole request, where the live chat
-/// would first ask "anything else?".
+/// The pipeline's decision path after intake: screening, the kept final-check
+/// reading, the gate, then the engine. The gate's final question is skipped
+/// on purpose: the harness decides as soon as intake has the whole request,
+/// where the live chat would first ask "anything else?". A case that already
+/// includes that question runs its answer the way the chat does.
 pub async fn decide_case(
     db: &Db,
     policy: &Policy,
@@ -384,9 +405,10 @@ pub async fn decide_case(
         orders,
         item_requests,
         messages,
+        final_check_reading,
     } = conversation;
     let mut flags = Vec::new();
-    let intake = match intake {
+    let mut intake = match intake {
         IntakeRun::Prescanned => {
             flags.push(Flag::PrescanSignal);
             None
@@ -400,10 +422,19 @@ pub async fn decide_case(
             Some(output)
         }
     };
+    let kept_final_check_reading = keep_final_check_reading(
+        orders,
+        messages,
+        &mut intake,
+        final_check_reading.clone(),
+        &flags,
+    )
+    .is_some();
     let undecided = |outcome| CaseResult {
         outcome,
         flags: Vec::new(),
         fired: Vec::new(),
+        kept_final_check_reading,
     };
     match gate(orders, item_requests, messages, intake.as_ref(), &mut flags) {
         Gate::Reply(kind, _) => return Ok(undecided(Outcome::Reply(kind))),
@@ -417,5 +448,6 @@ pub async fn decide_case(
         outcome: Outcome::Decided(decision.verdict),
         flags: decision.flags,
         fired: decision.fired.into_iter().map(|f| f.kind).collect(),
+        kept_final_check_reading,
     })
 }
