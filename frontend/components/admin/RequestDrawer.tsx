@@ -33,7 +33,7 @@ import type {
 import { api, isApiError } from "@/lib/bff";
 import { cn } from "@/lib/cn";
 import { useSession } from "@/lib/session";
-import { splitSignals } from "@/lib/signals";
+import { escalates, splitSignals } from "@/lib/signals";
 import {
   REASON_LABELS,
   firstName,
@@ -266,12 +266,17 @@ function Timeline({ d }: { d: RequestDetail }) {
   );
 }
 
-/** Message text with matched spans underlined; everything stays plain text. */
+/**
+ * Message text with the spans that stopped the request underlined; a length
+ * signal covers the whole message and escalates nothing, so it is not marked.
+ * Everything stays plain text.
+ */
 export function SignalText({ text, signals }: { text: string; signals: SignalView[] }) {
-  if (!signals.length) return <>{text}</>;
+  const marked = signals.filter((s) => escalates(s.detector));
+  if (!marked.length) return <>{text}</>;
   return (
     <>
-      {splitSignals(text, signals).map((seg, i) =>
+      {splitSignals(text, marked).map((seg, i) =>
         seg.marked ? (
           <span key={i} className="bg-denied-bg underline decoration-denied-icon decoration-wavy underline-offset-4">
             {seg.text}
@@ -299,7 +304,7 @@ function MessageThread({ d, focusReply }: { d: RequestDetail; focusReply: boolea
   const collapse = canCollapse && !expanded;
   const hidden = messages.length - 3;
   const shown = collapse ? [messages[0], null, ...messages.slice(-2)] : messages;
-  const markedIndex = customer.findIndex((m) => m.signals.length > 0);
+  const markedIndex = customer.findIndex((m) => m.signals.some((s) => escalates(s.detector)));
   const escalated = d.request.state === "escalated";
   return (
     <Section
@@ -592,9 +597,12 @@ function Flags({ audit, messages, disputedAt }: { audit: AuditInfo | null; messa
   ) : null;
   const customer = messages.filter((m) => m.role === "customer");
   const signals = customer.flatMap((m, i) => m.signals.map((s) => ({ ...s, n: i + 1 })));
+  const stopped = signals.filter((s) => escalates(s.detector));
+  const recorded = signals.filter((s) => !escalates(s.detector));
+  const where = (s: (typeof signals)[number]) => (s.scope === "window" ? "across messages" : `in message ${s.n} of ${customer.length}`);
   return (
     <Section title="Flags">
-      {flags.length === 0 && !dispute ? (
+      {flags.length === 0 && !dispute && recorded.length === 0 ? (
         <p className="text-body-sm text-ink-muted">No injection or suspicion flags.</p>
       ) : (
         <ul className="flex flex-col gap-2">
@@ -602,8 +610,8 @@ function Flags({ audit, messages, disputedAt }: { audit: AuditInfo | null; messa
           {flags.map((f) => {
             const m = FLAG_META[f];
             const meta =
-              f === "prescan_signal" && signals.length
-                ? signals.map((s) => `${DETECTOR_LABELS[s.detector]} · score ${s.score.toFixed(2)} · ${s.scope === "window" ? "across messages" : `in message ${s.n} of ${customer.length}`}`).join("; ")
+              f === "prescan_signal" && stopped.length
+                ? stopped.map((s) => `${DETECTOR_LABELS[s.detector]} · score ${s.score.toFixed(2)} · ${where(s)}`).join("; ")
                 : f === "low_confidence" && audit.extracted
                   ? `confidence ${audit.extracted.confidence.toFixed(2)} · threshold 0.60`
                   : null;
@@ -618,6 +626,16 @@ function Flags({ audit, messages, disputedAt }: { audit: AuditInfo | null; messa
               </li>
             );
           })}
+          {recorded.length ? (
+            <li className="flex gap-3 rounded-lg border border-neutral-border bg-canvas p-3">
+              <Icon name="info-circle" size={18} className="mt-px shrink-0 text-ink-muted" />
+              <span className="flex flex-col gap-0.5">
+                <span className="text-body-sm font-semibold">Noted, did not escalate</span>
+                <span className="text-meta">The screen noted this, and the assistant still read the message.</span>
+                <span className="font-mono text-caption text-ink-subtle">{recorded.map((s) => `${DETECTOR_LABELS[s.detector]} · ${where(s)}`).join("; ")}</span>
+              </span>
+            </li>
+          ) : null}
         </ul>
       )}
     </Section>

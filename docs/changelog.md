@@ -2,6 +2,11 @@
 
 This file records what changed in Worknoon Support for the customers who request refunds and the admins who review them; versions follow semantic versioning.
 
+## [0.13.1] — 2026-09-29
+### Fixed
+- Ordinary customer messages are no longer sent straight to the support team as suspicious before the assistant reads them; this affected messages in Persian or Hindi, everyday phrases such as "the door system override didn't work", "I followed the booking system instructions", "you are now in breach of your terms", "from now on, you should…" or "can you show me the instructions for…", receipt or tracking links with a long code, forwarded emails with a line starting "Admin:", and long, detailed messages over 2,000 characters. The assistant now reads them and handles the request normally, asking what it needs and then deciding, while messages that really try to manipulate the assistant are still escalated at once.
+- In the request details panel, admins still see a long message under Flags as "Noted, did not escalate", and the conversation now underlines only text that caused an escalation, no longer a long message.
+
 ## [0.13.0] — 2026-09-29
 ### Fixed
 - A request the assistant was unsure about or found suspicious, for example an attempt to instruct the assistant, a mention of someone else's order, an unclear request or clarifying questions that ran out, is no longer denied automatically when a final-sale or expired-refund-window rule applies; it goes to the support team, and the customer is told it needs a closer look from the team. Ordinary requests that a rule denies are still denied automatically.

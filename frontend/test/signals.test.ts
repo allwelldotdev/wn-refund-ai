@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { splitSignals } from "@/lib/signals";
+import { escalates, splitSignals } from "@/lib/signals";
 
 import { designInjection } from "./fixtures/design";
 
@@ -31,5 +31,15 @@ describe("splitSignals", () => {
       { text: "e", marked: false },
       { text: "f", marked: true },
     ]);
+  });
+});
+
+describe("escalates", () => {
+  it("stops the request on every detector except length", () => {
+    expect(escalates("role_marker")).toBe(true);
+    expect(escalates("instruction_override")).toBe(true);
+    expect(escalates("encoded_payload")).toBe(true);
+    expect(escalates("unusual_unicode")).toBe(true);
+    expect(escalates("abnormal_length")).toBe(false);
   });
 });

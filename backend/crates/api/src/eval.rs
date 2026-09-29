@@ -331,6 +331,12 @@ impl Case {
         found
     }
 
+    /// Whether the pre-scan stops the conversation before intake, as the
+    /// pipeline does: any detector except length.
+    pub fn prescan_escalates(&self) -> bool {
+        self.prescan_detectors().iter().any(|d| d.escalates())
+    }
+
     pub async fn load(&self, db: &Db) -> anyhow::Result<Conversation> {
         let customer_id = self
             .customer_id()

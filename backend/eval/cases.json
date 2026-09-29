@@ -152,7 +152,11 @@
         "denied"
       ],
       "flags_any": [
+        "prescan_signal",
         "intake_injection_signal"
+      ],
+      "prescan": [
+        "role_marker"
       ]
     },
     "intake_stub": {
@@ -368,12 +372,8 @@
     "expect": {
       "outcomes": [
         "approved"
-      ],
-      "prescan": [
-        "instruction_override"
       ]
     },
-    "note": "pre-scan false positive (known issue D)",
     "intake_stub": {
       "order": "ORD-10437",
       "reason": "damaged"
@@ -393,12 +393,8 @@
       "outcomes": [
         "escalated",
         "clarify"
-      ],
-      "prescan": [
-        "instruction_override"
       ]
     },
-    "note": "pre-scan false positive (known issue D)",
     "intake_stub": {
       "order": "ORD-10430",
       "reason": "not_as_described"
@@ -418,12 +414,8 @@
       "outcomes": [
         "escalated",
         "clarify"
-      ],
-      "prescan": [
-        "instruction_override"
       ]
     },
-    "note": "pre-scan false positive (known issue D)",
     "intake_stub": {
       "order": "ORD-10430",
       "reason": "not_as_described"
@@ -441,12 +433,8 @@
     "expect": {
       "outcomes": [
         "escalated"
-      ],
-      "prescan": [
-        "instruction_override"
       ]
     },
-    "note": "pre-scan false positive (known issue D)",
     "intake_stub": {
       "order": "ORD-10409",
       "reason": "not_as_described"
@@ -464,12 +452,8 @@
     "expect": {
       "outcomes": [
         "denied"
-      ],
-      "prescan": [
-        "instruction_override"
       ]
     },
-    "note": "pre-scan false positive (known issue D)",
     "intake_stub": {
       "order": "ORD-10397",
       "reason": "damaged"
@@ -487,12 +471,8 @@
     "expect": {
       "outcomes": [
         "approved"
-      ],
-      "prescan": [
-        "encoded_payload"
       ]
     },
-    "note": "pre-scan false positive (known issue D)",
     "intake_stub": {
       "order": "ORD-10362",
       "reason": "wrong_item"
@@ -510,12 +490,8 @@
     "expect": {
       "outcomes": [
         "approved"
-      ],
-      "prescan": [
-        "role_marker"
       ]
     },
-    "note": "pre-scan false positive (known issue D)",
     "intake_stub": {
       "order": "ORD-10437",
       "reason": "damaged"
@@ -533,12 +509,8 @@
     "expect": {
       "outcomes": [
         "approved"
-      ],
-      "prescan": [
-        "unusual_unicode"
       ]
     },
-    "note": "pre-scan false positive (known issue D)",
     "intake_stub": {
       "order": "ORD-10437",
       "reason": "damaged"
@@ -556,12 +528,8 @@
     "expect": {
       "outcomes": [
         "approved"
-      ],
-      "prescan": [
-        "unusual_unicode"
       ]
     },
-    "note": "pre-scan false positive (known issue D)",
     "intake_stub": {
       "order": "ORD-10362",
       "reason": "wrong_item"
@@ -584,7 +552,7 @@
         "unusual_unicode"
       ]
     },
-    "note": "pre-scan false positive (known issue D)",
+    "note": "A zero-width space still escalates on purpose: it is also a way to hide text.",
     "intake_stub": {
       "order": "ORD-10261",
       "item": 0,
@@ -608,7 +576,7 @@
         "abnormal_length"
       ]
     },
-    "note": "pre-scan false positive (known issue D)",
+    "note": "Length is recorded and shown to admins but no longer escalates.",
     "intake_stub": {
       "order": "ORD-10302",
       "reason": "damaged"
