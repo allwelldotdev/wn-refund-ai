@@ -2,6 +2,8 @@
 
 A containerized refund-support system for a co-working e-commerce store: customer chat plus an admin dashboard, run with one `docker compose up`. A deterministic Rust policy engine returns Approved, Denied or Escalated, and the LLM never decides a refund. It only reads the request and words the reply.
 
+[![Demo video: E-Commerce Customer Support Refund AI Tool](https://img.youtube.com/vi/78AdXVmpxnM/maxresdefault.jpg)](https://www.youtube.com/watch?v=78AdXVmpxnM)
+
 ## Quick start
 
 ```bash
